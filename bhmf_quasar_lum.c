@@ -95,7 +95,15 @@ int main(int argc, char **argv)
     for (j=0; j<LBOL_BINS; j++) prob_tot += steps[step].lum_dist_full[i*LBOL_BINS+j];
     for (j=lbol_b_low+1; j<lbol_b_high; j++) prob_lum += steps[step].lum_dist_full[i*LBOL_BINS+j];
     prob_lum += lbol_f_high * steps[step].lum_dist_full[i*LBOL_BINS+lbol_b_high];
+
+    double dc = steps[step].smhm.bh_duty;
+    double f_mass = exp((mbh - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
+    f_mass = f_mass / (1 + f_mass);
+    dc *= f_mass;
+    if (dc < 1e-4) dc = 1e-4;
+
     prob_lum /= prob_tot;
+    prob_lum *= dc;
     printf("%f %e\n", mbh, prob_lum * steps[step].bhmf[i]);
   }
   

@@ -378,6 +378,7 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
  }
 }
 
+// Calculate the relevant model parameters at a given redshift.
 struct smf smhm_at_z(double z, struct smf_fit f) {
   struct smf c;
   double a = 1.0/(1.0+z);
@@ -387,6 +388,7 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   double a2 = a1*a1;
   // double a4 = a1*a1*a1*a1;
   double z8 = z;
+
   double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
   c.bin_real = (mass_real - M_MIN) * BPDEX - 1;
   //if (z8 > 10) z8=10;

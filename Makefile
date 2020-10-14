@@ -278,6 +278,8 @@ gen_bhmf_quasar_lum:
 	$(CC) $(BASE_FILES) bhmf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_quasar_lum
 gen_host_smf_quasar_lum:
 	$(CC) $(BASE_FILES) host_smf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_smf_quasar_lum
+gen_host_hmf_quasar_lum:
+	$(CC) $(BASE_FILES) host_hmf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_hmf_quasar_lum
 clean:
 	rm -f $(CACHE_OBJ_NAME) $(ASMF_OBJ_NAME) $(SMF_NAME) $(R_NAME) $(SMASS_NAME) $(SM2_NAME) $(FIT_NAME) $(DEC_NAME) $(COSMO_NAME) $(SMASS_CV_NAME) $(FIT2_NAME) $(REMARG_NAME)
 	rm -f *~

@@ -18,44 +18,6 @@
 #define MASS_BINS (int)((MASS_STOP-MASS_START)*(MASS_BPDEX))
 #define MASS_STEP (1.0/(double)MASS_BPDEX)
 
-float integrate_smf(float z_low, float z_high, double m, struct smf_fit *fit) {
-  float smf_val, epsilon;
-  double v_high = comoving_volume(z_high);
-  double v_low = comoving_volume(z_low);
-  double weight = fabs(v_high - v_low);
-
-  if (z_low != z_high) {
-      epsilon = chi2_err_helper((v_high+v_low)/2.0, &m)*weight*1e-5;
-      //if (PHI_HIGH_Z < z_high) epsilon *= 1e1;
-      smf_val = adaptiveSimpsons(chi2_err_helper, &m,
-         v_low, v_high, epsilon, 10);
-      smf_val /= weight;
-  }
-  else {
-    smf_val = chi2_err_helper(v_low, &m);
-  }
-  return (smf_val ? log10f(smf_val) : -15);
-}
-
-float fitter(float *params) {
-  struct smf_fit test;
-  int i;
-  for (i=0; i<NUM_PARAMS; i++)
-    test.params[i] = params[i];
-
-  assert_model(&test);
-
-  for (i=0; i<NUM_PARAMS; i++)
-    params[i] = test.params[i];
-  //iterations++;
-  float err = all_smf_chi2_err(test);
-  if (!isfinite(err) || err<0) return 1e30;
-  return err;
-}
-
-float calc_chi2(float *params) {
-  return fitter(params);
-}
 
 int main(int argc, char **argv)
 {
@@ -127,24 +89,22 @@ int main(int argc, char **argv)
     // printf("%f %e\n", mbh, prob_lum * steps[step].bhmf[i]);
   }
 
-  for (i=0; i<MASS_BINS; i++) 
+  for (i=0; i<M_BINS; i++) 
   {
-    m = MASS_START + i*MASS_STEP; //observed stellar mass.
-    double smf_tot = integrate_smf(z, z, m, &smf);
-    double mb = bulge_mass(m, 1.0 / (1 + z));
-    double mbh_med = calc_bh_at_bm(mb, steps[step].smhm);
+    m = M_MIN + (i + 0.5) * INV_BPDEX; //halo mass.
+    double mbh_med = steps[step].log_bh_mass[i];
     double p_l = 0;
 
     for (j=0; j<MBH_BINS; j++)
     {
       double mbh = mbh_min + (j + 0.5) * mbh_inv_bpdex;
-      double dmbh = (mbh - mbh_med) / steps[step].smhm.bh_scatter;
+      double dmbh = (mbh - mbh_med) / scatter;
       // The probability of having a BH mass.
-      double prob_tmp = 1 / sqrt(2*M_PI) / steps[step].smhm.bh_scatter * exp(-0.5*dmbh*dmbh) * mbh_inv_bpdex;
+      double prob_tmp = 1 / sqrt(2*M_PI) / scatter * exp(-0.5*dmbh*dmbh) * mbh_inv_bpdex;
       p_l += prob_tmp * prob_lbol[j];
     }
 
-    printf("%f %e\n", m, exp10(smf_tot) * p_l);
+    printf("%f %e\n", m, steps[step].t[j] * BPDEX * p_l);
 
   }
 

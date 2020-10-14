@@ -104,7 +104,7 @@ int main(int argc, char **argv)
       p_l += prob_tmp * prob_lbol[j];
     }
 
-    printf("%f %e\n", m, steps[step].t[j] * BPDEX * p_l);
+    printf("%f %e\n", m, steps[step].t[i] * BPDEX * p_l);
 
   }
 

@@ -48,38 +48,37 @@ extern int no_obs_scatter;
 void calc_sfh(struct smf_fit *f) {
   //fprintf(stderr, "z_start: %f", 1 / steps[0].scale - 1);
    int64_t i,j;
-  for (i=0; i<num_outputs; i++) {
+  for (i=0; i<num_outputs; i++) 
+  {
     if (!no_z_scaling || ((steps[i].scale < 1.0/(z_min+1.0)) &&
 			  (steps[i].scale > 1.0/(z_max+1.0))))
-    calc_sm_hist(i, f);
-    //for (j=0; j<M_BINS; j++)
-    //{
-      //fprintf(stdout, "%d %f %f\n", i, steps[i].med_hm_at_a[j], steps[i].log_sm[j]);
-    //}
-    
+    calc_sm_hist(i, f); //Calculate the star formation & black hole assembly histories
   }
 
 #pragma omp for schedule(guided,5)
   for (j=1; j<num_outputs; j++) {
     if (!no_z_scaling || ((steps[j].scale < 1.0/(z_min+1.0)) &&
 			  (steps[j].scale > 1.0/(z_max+1.0)))) {
-      calc_smf_and_ssfr(j, f);
-      calc_uvlf(j, f);
-      calc_total_sfr(j);
+      // Calculate various "intermediate" observables that we can conveniently use when making predictions.
+      calc_smf_and_ssfr(j, f); //Calculate the "intrinsic" galaxy stellar mass functions and SSFR(M_*).
+      calc_uvlf(j, f); //"Intrinsic" galaxy UV luminosity functions
+      calc_total_sfr(j); //Cosmic SFR densities
 
-      calc_bh_acc_rate_distribution(j, f);
-      calc_bh_acc_rate_distribution_full(j, f);
-      calc_bh_lum_distribution_full(j, f);
-      // calc_bh_acc_rate_distribution_kinetic(j, f);
-      calc_active_bh_fraction(j, f);
-      //calc_bh_eta_avg(j);
-      // calc_bh_eta_kin_avg(j);
-      calc_total_bhar(j);
-      // calc_observed_bhar(j);
+      calc_bh_acc_rate_distribution(j, f); //BH accretion rate distributions. See the comments for this function.
+      calc_bh_acc_rate_distribution_full(j, f); //Full BH accretion rate distributions. See the comments for this function.
+      calc_bh_lum_distribution_full(j, f); //BH luminosity distributions as functions of BH mass.
+      // calc_bh_acc_rate_distribution_kinetic(j, f); //BH kinetic Eddington ratio distributions.
+      calc_active_bh_fraction(j, f);  //Active (log Edd_rad >= -2) fractions as functions of halo mass and redshift.
+      //calc_bh_eta_avg(j); //Average ***radiative*** Eddington ratio.
+      // calc_bh_eta_kin_avg(j); //Average ***kinetic*** Eddington ratio.
+      calc_total_bhar(j); //Cosmic BHAR density
+      //The fraction of super-Eddington objects among AGN brighter than Lbol=10^45 erg/s.
+      //This is used only in the process of writing papers. Should be commented out when actually running the MCMC.
       for (i=0; i<M_BINS; i++)
         calc_supEdd_frac_lum(j, i, 45);
     }
   }
+  // The prior that the CSFR should keep decreasing with redshift at z>6.
   for (j=1; j<num_outputs; j++)
   {
     if (1 / steps[j].scale - 1 >= 6 && steps[j].cosmic_sfr < steps[j-1].cosmic_sfr)
@@ -89,7 +88,7 @@ void calc_sfh(struct smf_fit *f) {
       break;
     }
   }
-  //for (j=0; j<M_BINS; j++) fprintf("sm_hist[0, %d]=%e\n", j, steps[0].sm_hist[j*num_outputs]);
+  
 }
 
 
@@ -249,7 +248,8 @@ void calc_total_sfr(int n) {
   {
     sfr += steps[n].sfr[i]*steps[n].t[i];
     // if (steps[n].sfr[i]<sfr_minimum) continue;
-    if (steps[n].sfr[i] > 0) 
+    if (steps[n].sfr[i] > 0) //Instead of completely excluding halo mass bins with SFR smaller than the threshold, we
+                              //assign weights for them using the error function when calculating the ***observed*** CSFR. 
     {
       float weight = 0.5+0.5*erf(log10(steps[n].sfr[i]/sfr_minimum)/(sqrt(2)*steps[n].smhm.scatter));
       obs_sfr += weight * steps[n].sfr[i]*steps[n].t[i]*sm_corr;

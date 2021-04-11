@@ -507,12 +507,10 @@ double calc_smf_at_m(double m, double sm, int64_t n, int64_t n_spline, struct sm
   }
   if (sm > steps[n].smhm.sm_max) 
   {
-    // printf("at z=%f, sm=%f > sm_max\n", (1 / steps[n].scale - 1, sm));
     return 1e-17;
   }
   if (!steps[n].smhm.valid) 
   {
-    // printf("at z=%f, sm=%f, model not valid.\n", (1 / steps[n].scale - 1, sm));
     return 1e-17;
   }
 
@@ -526,23 +524,10 @@ double calc_smf_at_m(double m, double sm, int64_t n, int64_t n_spline, struct sm
 
   if (err || !isfinite(dlm_dlsm))
   {
-    // sprintf(buffer, "Error in GSL spline interpolation #4.\n");
-    //fprintf(stderr, "Error in GSL spline interpolation #4.\n");
-    //INVALIDATE(fit, buffer);
     return 0;
   }
   dlm_dlsm = fabs(dlm_dlsm);
   double dndlogm = mf_cache(steps[n].scale, m);
-  // double z = 1 / steps[n].scale - 1;
-  // if (z > 3.5 && z < 4.0)
-	 //  printf("at z=%f, m=%f, sm=%f, sm_max=%f, dlm_dlsm=%f, dndlogm=%f.\n", z, m, sm, steps[n].smhm.sm_max, dlm_dlsm, dndlogm);
-  // if (!(dlm_dlsm>0)) { // && fit) {
-  //   // printf("at z=%f, sm=%f, Falling SMHM.\n", (1 / steps[n].scale - 1), sm);
-  //   // INVALIDATE(fit, "Falling SM(M) relation.");
-  //   // return 0;
-  //   dlm_dlsm = 1.0;
-  // }
-  // double dndlogm = mf_cache(steps[n].scale, m);
   double phi = doexp10(dndlogm)*dlm_dlsm;
   if (!isfinite(phi)) phi = 0;
   return phi;
@@ -553,15 +538,11 @@ double calc_smf_at_sm(int64_t n, double sm) {
   if (sm > steps[n].smhm.sm_max) return 1e-17;
   if (!steps[n].smhm.valid) return 1e-17;
   gsl_interp_accel ga = {0};
-  // printf("sm_min=%f, sm_max=%f\n", steps[n].smhm.sm_min, steps[n].smhm.sm_max);
   double m;
   int err = gsl_spline_eval_e(steps[n].spline, sm, &ga, &m);
 
   if (err)
     {
-      // sprintf(buffer, "Error in GSL spline interpolation #1.\n");
-      // fprintf(stderr, "Error in GSL spline interpolation #1.\n");
-      // INVALIDATE(fit, buffer);
       return 0;
     }
   double result = calc_smf_at_m(m, sm, n, 1, NULL, &ga);
@@ -580,18 +561,15 @@ double calc_smf_at_sm(int64_t n, double sm) {
 
 double calc_uvlf_at_m(double m, double uv, int64_t n, int64_t n_spline, struct smf_fit *fit, gsl_interp_accel *ga) {
   if (uv < steps[n].smhm.uv_min) 
-    {
-      // printf("at z=%f, sm=%f < sm_min\n", (1 / steps[n].scale - 1, sm));
-      return 1e-17;
-    }
+  {
+    return 1e-17;
+  }
   if (uv > steps[n].smhm.uv_max) 
   {
-    // printf("at z=%f, sm=%f > sm_max\n", (1 / steps[n].scale - 1, sm));
     return 1e-17;
   }
   if (!steps[n].smhm.valid) 
   {
-    // printf("at z=%f, sm=%f, model not valid.\n", (1 / steps[n].scale - 1, sm));
     return 1e-17;
   }
   if (m < M_MIN || m > M_MAX) return 1e-17;
@@ -605,22 +583,13 @@ double calc_uvlf_at_m(double m, double uv, int64_t n, int64_t n_spline, struct s
 
   if (err || !isfinite(dlm_dMuv))
   {
-    // sprintf(buffer, "Error in GSL spline interpolation #4.\n");
-    //fprintf(stderr, "Error in GSL spline interpolation #4.\n");
-    // INVALIDATE(fit, buffer);
     return 0;
   }
   double dndlogm = mf_cache(steps[n].scale, m);
-  // double z = 1 / steps[n].scale - 1;
-  // if (z > 3.5 && z < 4.0)
-   //  printf("at z=%f, m=%f, sm=%f, sm_max=%f, dlm_dlsm=%f, dndlogm=%f.\n", z, m, sm, steps[n].smhm.sm_max, dlm_dlsm, dndlogm);
-  if (!(dlm_dMuv>0)) { // && fit) {
-    // printf("at z=%f, sm=%f, Falling SMHM.\n", (1 / steps[n].scale - 1), sm);
-    // INVALIDATE(fit, "Falling SM(M) relation.");
-    // return 0;
+  if (!(dlm_dMuv>0)) {
     dlm_dMuv = 1.0;
   }
-  // double dndlogm = mf_cache(steps[n].scale, m);
+
   double phi = doexp10(dndlogm)*dlm_dMuv;
   if (!isfinite(phi)) phi = 0;
   return phi;
@@ -631,14 +600,11 @@ double calc_uvlf_at_uv(int64_t n, double uv) {
   if (uv > steps[n].smhm.uv_max) return 1e-17;
   if (!steps[n].smhm.valid) return 1e-17;
   gsl_interp_accel ga = {0};
-  // printf("sm_min=%f, sm_max=%f\n", steps[n].smhm.sm_min, steps[n].smhm.sm_max);
+
   double m;
   int err = gsl_spline_eval_e(steps[n].spline_uv, uv, &ga, &m);
   if (err)
     {
-      // sprintf(buffer, "Error in GSL spline interpolation #1.\n");
-      // fprintf(stderr, "Error in GSL spline interpolation #1.\n");
-      // INVALIDATE(fit, buffer);
       return 0;
     }
   double result = calc_uvlf_at_m(m, uv, n, 1, NULL, &ga);
@@ -650,30 +616,6 @@ double calc_uvlf_at_uv(int64_t n, double uv) {
   }
   return result;
 }
-
-
-
-// void calc_active_bh_fraction(int n, struct smf_fit *fit) {
-//   int64_t i;
-//   for (i=0; i<M_BINS; i++) {
-//     double dc = steps[n].smhm.bh_duty;
-//     double alpha = steps[n].smhm.bh_alpha;
-//     double delta = steps[n].smhm.bh_delta;
-//     // modulate the duty cycle with a power-law dependence on mass.
-//     // dc *= pow(log10(steps[n].bh_mass_avg[i]) / log10(steps[n].bh_mass_avg[M_BINS - 1]), steps[n].smhm.dc_beta);
-//     // dc *= pow((M_MIN + (i + 0.5) * INV_BPDEX) / (M_MAX - 0.5 * INV_BPDEX), steps[n].smhm.dc_beta);
-//     // double f_mass = pow(exp10((M_MIN + (i + 0.5) * INV_BPDEX) - (M_MAX - 0.5 * INV_BPDEX)), steps[n].smhm.dc_beta);
-//     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-//     f_mass = f_mass / (1 + f_mass);
-//     // f_mass = f_mass < 1? f_mass : 1;
-//     dc *= f_mass;
-//     if (dc < 1e-4) dc = 1e-4;
-//     double sn = dc/doublePL_frac_above_thresh(BHER_EFF_MIN, alpha, delta, 1.0, fit);
-//     double bh_eta = steps[n].bh_eta[i];
-//     double thresh = -2.0 - bh_eta;
-//     steps[n].f_active[i] = doublePL_frac_above_thresh(thresh, alpha, delta, sn, fit);
-//   }
-// }
 
 void calc_active_bh_fraction(int n, struct smf_fit *fit) {
   int64_t i, j;
@@ -687,12 +629,6 @@ void calc_active_bh_fraction(int n, struct smf_fit *fit) {
 
     double eta_frac = -2.0 - steps[n].bh_eta[i];
 
-    
-
-    //if (n == 177)
-    //{
-      //fprintf(stderr, "n=%d, i=%ld, eta_frac=%f, ledd_min=%f, ledd_max=%f\n", n, i, eta_frac, steps[n].ledd_min[i], steps[n].ledd_max[i]);
-    //}
     if (eta_frac < ledd_min || eta_frac > ledd_max) continue; 
     
     double bher_f = (eta_frac-ledd_min)*bpdex;
@@ -711,35 +647,22 @@ void calc_active_bh_fraction(int n, struct smf_fit *fit) {
     for (j = bher_b + 1; j < BHER_BINS; j++)
     {
       p_good += steps[n].bher_dist[i*BHER_BINS + j];
-      // p_total += steps[n].bher_dist[i*BHER_BINS + j];
     }
-
-    // for (j = 0; j < bher_b + 2; j++)
-    // {
-    //   p_total += steps[n].bher_dist[i*BHER_BINS + j];
-    // }
 
     double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
-    // f_mass = f_mass < 1? f_mass : 1;
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4;
 
     steps[n].f_active[i] = p_good / p_total * dc;
-    //if (n == 177)
-    //{
-      //fprintf(stderr, "n=%d, i=%ld, p_good=%e, p_total=%e, dc=%e\n", n, i, p_good, p_total, dc);
-    //}
   }
 }
 
 void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, double lim) {
   int64_t i, j;
   for (i=0; i<M_BINS; i++) {
-    //fprintf(stderr, "Before recalculation, steps[%d].f_active[%d]=%e\n", n, i, steps[n].f_active[i]);
     double ledd_lim = ledd_or_lum ? lim : lim - 38.1 - steps[n].log_bh_mass[i];
-    //fprintf(stderr, "Before recalculation, steps[%d].f_active[%d]=%e, ledd_or_lum=%d, lim=%f\n", n, i, steps[n].f_active[i], ledd_or_lum, ledd_lim);
     double ledd_min = steps[n].ledd_min[i];
     double ledd_max = steps[n].ledd_max[i];
 
@@ -748,21 +671,12 @@ void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, do
 
     double eta_frac = ledd_lim - steps[n].bh_eta[i];
 
-    
-
-    //if (n == 177)
-    //{
-      //fprintf(stderr, "n=%d, i=%ld, eta_frac=%f, ledd_min=%f, ledd_max=%f\n", n, i, eta_frac, steps[n].ledd_min[i], steps[n].ledd_max[i]);
-    //}
     if (eta_frac < ledd_min || eta_frac > ledd_max) 
     {
-
       steps[n].f_active[i] = 0;
-      //fprintf(stderr, "After eta_frac=%f, ledd_min=%f, ledd_max=%f, recalculation, steps[%d].f_active[%d]=%e\n", eta_frac, ledd_min, ledd_max, n, i, steps[n].f_active[i]);
       continue;
-    
-
     } 
+
     double bher_f = (eta_frac-ledd_min)*bpdex;
     int64_t bher_b = bher_f;
     bher_f -= bher_b;
@@ -773,20 +687,13 @@ void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, do
     if (!isfinite(p_good) || !isfinite(p_total) || p_total == 0)
     {
       steps[n].f_active[i] = 0;
-      //fprintf(stderr, "After recalculation, steps[%d].f_active[%d]=%e\n", n, i, steps[n].f_active[i]);
       continue;
     }
 
     for (j = bher_b + 1; j < BHER_BINS; j++)
     {
       p_good += steps[n].bher_dist[i*BHER_BINS + j];
-      // p_total += steps[n].bher_dist[i*BHER_BINS + j];
     }
-
-    // for (j = 0; j < bher_b + 2; j++)
-    // {
-    //   p_total += steps[n].bher_dist[i*BHER_BINS + j];
-    // }
 
     double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
@@ -796,11 +703,6 @@ void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, do
     if (dc < 1e-4) dc = 1e-4;
 
     steps[n].f_active[i] = p_good / p_total * dc;
-    //fprintf(stderr, "After recalculation, steps[%d].f_active[%d]=%e\n", n, i, steps[n].f_active[i]);
-    //if (n == 177)
-    //{
-      //fprintf(stderr, "n=%d, i=%ld, p_good=%e, p_total=%e, dc=%e\n", n, i, p_good, p_total, dc);
-    //}
   }
 }
 

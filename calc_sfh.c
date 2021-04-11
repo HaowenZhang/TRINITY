@@ -75,15 +75,11 @@ void calc_sfh(struct smf_fit *f) {
       calc_bh_acc_rate_distribution(j, f);
       calc_bh_acc_rate_distribution_full(j, f);
       calc_bh_lum_distribution_full(j, f);
-      // calc_bh_acc_rate_distribution_kinetic(j, f);
       calc_active_bh_fraction(j, f);
       calc_avg_eta_rad(j);
-      //calc_bh_eta_avg(j);
-      // calc_bh_eta_kin_avg(j);
       calc_total_bhar(j);
-      // calc_observed_bhar(j);
-      for (i=0; i<M_BINS; i++)
-        calc_supEdd_frac_lum(j, i, 45);
+      // for (i=0; i<M_BINS; i++)
+      //   calc_supEdd_frac_lum(j, i, 45);
     }
   }
   for (j=1; j<num_outputs; j++)
@@ -94,9 +90,7 @@ void calc_sfh(struct smf_fit *f) {
       INVALIDATE(f, "decreasing CSFR at z>6.");
       break;
     }
-    //for (int k=0; k<M_BINS; k++) steps[j].sfr[k] -= (1 - steps[j].sfrac[k]) * steps[j].old_sm[k] * SSFR_AVG_Q;
   }
-  //for (j=0; j<M_BINS; j++) fprintf("sm_hist[0, %d]=%e\n", j, steps[0].sm_hist[j*num_outputs]);
 }
 
 
@@ -149,7 +143,6 @@ void calc_supEdd_frac_lum(int n, int i, double l)
     double prob = norm_gauss * exp(-0.5 * dmbh_in_sigma * dmbh_in_sigma);
 
     frac_above_l += frac_above_l_tmp * prob * dmbh;
-    //fprintf(stderr, "n=%d, i=%d, mbh=%f, frac_above_l_tmp=%e, eta_frac_l=%f, bher_b_l=%d, l=%f\n", n, i, mbh, frac_above_l_tmp, eta_frac_l, bher_b_l, l);
 
     double eta_frac_edd1 = 0.0 - steps[n].bh_eta[i];
     double frac_above_edd1 = 0.0;
@@ -181,8 +174,6 @@ void calc_supEdd_frac_lum(int n, int i, double l)
   steps[n].frac_supEdd_l[i] = prob_edd1 / frac_above_l;
   double z = 1 / steps[n].scale - 1;
   double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
-  
-  //if (i == 20) fprintf(stderr, "z=%f, steps[%d].frac_supEdd_l[%d]=%e, prob_edd1=%e, frac_above_l=%e\n", 1/steps[n].scale-1, n, i, steps[n].frac_supEdd_l[i], prob_edd1, frac_above_l); 
 }
 
 
@@ -286,7 +277,6 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
   double eta = -(l_min + 5.26) / 2.5 - log10(steps[n].bh_mass_avg[i]);
    double eta_frac = eta - steps[n].bh_eta[i];
    bhar += steps[n].bh_acc_rate[i] * steps[n].t[i];
-   //fprintf(stderr, "eta_frac=%e\n", eta_frac);
    if (eta_frac > steps[n].ledd_max[i]) continue;
    if (eta_frac < steps[n].ledd_min[i]) 
     {
@@ -327,7 +317,6 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
  }
  steps[n].cosmic_bhar = bhar;
  steps[n].observed_cosmic_bhar = bhar_obs;
- //printf("cosmic_bhar=%e\n", steps[n].cosmic_bhar);
 }
 
 // Also calculates observable duty cycle.
@@ -389,30 +378,23 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   struct smf c;
   double a = 1.0/(1.0+z);
   double a1 = -z/(1.0+z);
-  //  double expscale = 1.0; //doexp10(-EXPSCALE(f)*(a*a)*M_LOG10E);
   double incompleteness;
   double a2 = a1*a1;
-  // double a4 = a1*a1*a1*a1;
+
   double z8 = z;
   double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
   c.bin_real = (mass_real - M_MIN) * BPDEX - 1;
-  //if (z8 > 10) z8=10;
-  //fprintf(stderr, "z_ceil: %f\n", Z_CEIL(f));
-   if (z8 > 15) z8 = 15;
+
+  if (z8 > 15) z8 = 15;
   a = 1.0/(1.0+z);
   a1 = a - 1.0;
-  // c.icl_m = ICL_FRAC(f)+a1*ICL_FRAC_E(f);
-  //c.icl_frac = ICL_FRAC(f)+a1*ICL_FRAC_E(f);
+
   c.v_1 = M_1(f) + (a1*M_1_A(f) + log(1 + z) * M_1_A2(f)) + z8 * M_1_A3(f);
-  // double z8 = z;
-  // if (z8 > 12) z8=12;
   c.sm_0 = 0;
   c.epsilon = doexp10(EFF_0(f) + EFF_0_A(f)*a1 + EFF_0_A2(f) * log(1 + z) + EFF_0_A3(f)*z8);
   c.alpha = ALPHA(f) + (a1*ALPHA_A(f) + log(1 + z) * ALPHA_A2(f)) + z8 * ALPHA_A3(f);
   c.delta = DELTA(f); // + (a1*DELTA_A(f) + z8*DELTA_A2(f))*expscale;
   c.beta = BETA(f) + a1*BETA_A(f) + z8*BETA_A2(f);
-  //c.gamma = GAMMA(f) + (a1*GAMMA_A(f) + z8*GAMMA_A2(f));
-  //c.gamma = doexp10(c.gamma);
   c.gamma = 0;
   c.lambda = doexp10(LAMBDA(f) + (a1*LAMBDA_A(f) + z8*LAMBDA_A2(f)));
   c.mu = MU(f) + a1*MU_A(f);
@@ -420,21 +402,12 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   c.passive_mass = 10.3 + z*0.5 - c.mu;
   c.scatter = SCATTER(f) + z*SCATTER_A(f);
   if (c.scatter > 0.4) c.scatter = 0.4;
-  //c.scatter = 0.212;
   c.scatter_corr = exp(pow(c.scatter*log(10), 2)/2.0);
   c.obs_scatter = (no_obs_scatter) ? 0 : SIGMA_CENTER + SIGMA_Z(f)*(z);
-  //c.obs_scatter = (no_obs_scatter) ? 0 : SIGMA_CENTER + SIGMA_Z(f)*(z-0.1) + SIGMA_A(f)*a1;
   if (c.obs_scatter > 0.3) c.obs_scatter = 0.3;
 
   c.icl_frac = exp10(ICL_FRAC(f) + a1 * ICL_FRAC_E(f) + z8 * ICL_FRAC_Z(f));
-  //if (c.icl_frac < 1e-20 || c.icl_frac > 1)
-  //{
-//	fprintf(stderr, "Bad ICL fraction: %e at z=%f\n", c.icl_frac, z);
-  //	INVALIDATE(&f, "Bad ICL fraction");
-  //}
-  //fprintf(stderr, "z=%f, alpha=%f, beta=%f, gamma=%f, delta=%f, epsilon=%f, V=%f, kappa=%f, mu=%f, lambda=%f, scatter=%f, obs_scatter=%f, icl_frac=%e\n", z, c.alpha, c.beta, c.gamma, c.delta, c.epsilon, c.v_1, c.kappa, c.mu, c.lambda, c.scatter, c.obs_scatter, c.icl_frac);
-  //c.icl_frac = exp10(ICL_FRAC(f));
-  //c.icl_frac_e = ICL_FRAC_E(f);
+
   incompleteness = BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-z));
   if (z < 1.0) incompleteness = 0;
   if (z > 1.0) incompleteness -= BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-1.0));
@@ -463,36 +436,18 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   c.bh_alpha = BH_ALPHA_0(f) + BH_ALPHA_1(f)*a1;
   c.bh_delta = BH_DELTA_0(f) + BH_DELTA_1(f)*a1;
 
-  // if (c.bh_alpha > c.bh_delta)
-  // {
-  //   double tmp = c.bh_alpha;
-  //   c.bh_alpha = c.bh_delta;
-  //   c.bh_delta = tmp;
-  // }
 
   c.abhmf_shift = ABHMF_SHIFT(f);
-  // c.bh_efficiency = pow(10, BH_EFFICIENCY_0(f)+BH_EFFICIENCY_1(f)*a1);
-  // if (c.bh_efficiency > 0.7) c.bh_efficiency = 0.7;
-  // c.bh_efficiency_rad = c.bh_efficiency / (1.0-c.bh_efficiency);
   c.bh_efficiency_rad = exp10(BH_EFFICIENCY_0(f) + a1 * BH_ETA_CRIT_1(f));
   c.bh_eta_crit = BH_ETA_CRIT_0(f)+BH_ETA_CRIT_1(f)*a1;
   c.bh_duty = BH_DUTY_0(f)+BH_DUTY_1(f)*a1;
   if (c.bh_duty < 1e-4) c.bh_duty = 1e-4;
   c.bh_scatter = BH_SCATTER_0(f) + BH_SCATTER_1(f)*a1;
-  //c.bh_scatter = BH_SCATTER_0(f);
-  // c.bh_prob_norm = 1.0; //Since in the current model, the scatter is larger than zero and we are renormalizing the bher_dist_full each time, 
-  //                                               //we don't really have to use this quantity.
+
   c.dc_mbh = DC_MBH_0(f);
   c.dc_mbh_w = DC_MBH_W_0(f);
   c.eta_mu = ETA_MU_0(f);
-  // // c.rho_bh = RHO_BH(f);
 
-  // double comb_scatter = sqrt(c.obs_scatter*c.obs_scatter + c.scatter*c.scatter);
-  // double sm_at_m14 = 11.5; //calc_sm_at_m(14, c)+c.mu;
-  // double passive_frac = 1.0/(exp10fc(-1.3*(sm_at_m14-c.passive_mass))+1);
-  // double avg_offset_passive = (1.0-passive_frac)*c.kappa;
-  // double avg_offset_active = c.kappa - avg_offset_passive;
-  // c.combined_scatter = sqrt(pow(comb_scatter,2) + passive_frac*pow(avg_offset_passive,2) + (1.0-passive_frac)*pow(avg_offset_active,2)); 
   return c;
 }
 
@@ -527,11 +482,8 @@ double calc_sm_at_m(double m, struct timestep steps) {
 double calc_sfr_at_lv(double m, double lv, struct smf c) {
   double vd = lv - c.v_1;
   double vd2 = vd/c.delta;
-  // double vd3 = (lv-c.qv)/c.qsig;
-  // double qfrac = c.fqmin + (1.0 - c.fqmin) * (0.5 + 0.5 * erf(vd3*M_SQRT1_2));
   
   double sfrac = 1 / (1 + exp((lv - c.qm) / c.qwidth));
-  //double sfrac = 0.5+0.5*erf(-vd3*M_SQRT1_2);
   return (sfrac*c.epsilon * (1.0/(doexp10(c.alpha*vd) + doexp10(c.beta*vd)) + c.gamma*exp(-0.5*vd2*vd2)));
 }
 
@@ -550,10 +502,9 @@ double calc_sfrac_at_m(double m, struct smf c) {
 
 double calc_smf_at_m(double m, double sm, int64_t n, int64_t n_spline, struct smf_fit *fit, gsl_interp_accel *ga) {
   if (sm < steps[n].smhm.sm_min) 
-    {
-      // printf("at z=%f, sm=%f < sm_min\n", (1 / steps[n].scale - 1, sm));
-      return 1e-17;
-    }
+  {
+    return 1e-17;
+  }
   if (sm > steps[n].smhm.sm_max) 
   {
     // printf("at z=%f, sm=%f > sm_max\n", (1 / steps[n].scale - 1, sm));

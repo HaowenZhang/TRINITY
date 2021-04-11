@@ -1062,7 +1062,8 @@ void calc_avg_eta_rad(int n)
 }
 
 
-void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
+void calc_smf_and_ssfr(int n, struct smf_fit *fit) 
+{
   int64_t i, j;
   char buffer[1024];
   double m, m2, sm, sm_max=0, sm_min=1000;
@@ -1077,10 +1078,11 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     return;
   }
 
-  for (i=0; i<M_BINS; i++) {
+  for (i=0; i<M_BINS; i++) 
+  {
 
-    // if (steps[n].log_sm[i]>-1000 && bin_min < 0) {
-    if (steps[n].log_sm[i]>0) {
+    if (steps[n].log_sm[i]>0) 
+    {
       bin_end = i;
       if (bin_start < 0) bin_start = i;
     }
@@ -1099,18 +1101,16 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
      
     // INPLEMENTAION 2: bin_max - bin_min + 1 < M_BINS
 
-    if (steps[n].log_sm[i]>steps[n].smhm.sm_max) {
+    if (steps[n].log_sm[i]>steps[n].smhm.sm_max) 
+    {
       sm_max = steps[n].smhm.sm_max = steps[n].log_sm[i];
       // bin_max = i;
     }
 
-    if (steps[n].log_sm[i]>0 && steps[n].log_sm[i]<sm_min) {
+    if (steps[n].log_sm[i]>0 && steps[n].log_sm[i]<sm_min) 
+    {
       sm_min = steps[n].smhm.sm_min = steps[n].log_sm[i];
     }
-
-    
-
-    
 
     if (i && (steps[n].log_sm[i] <= steps[n].log_sm[i-1]) && steps[n].log_sm[i] > 0 && (!count_falling)) 
     {
@@ -1121,17 +1121,17 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
   }
 
 
-    if (bin_start < 0 || bin_end - bin_start + 1 < 10 || (count_falling && bin_peak <= bin_start + 1))
-    {
-            //sprintf(buffer, "All the stellar masses are zero.\n");
-            //fprintf(stderr, "All the stellar masses are zero at z=%f.\n", 1.0 / steps[n].scale - 1);
-            if (n > 0) 
-    {
+  if (bin_start < 0 || bin_end - bin_start + 1 < 10 || (count_falling && bin_peak <= bin_start + 1))
+  {
+    //sprintf(buffer, "All the stellar masses are zero.\n");
     //fprintf(stderr, "All the stellar masses are zero at z=%f.\n", 1.0 / steps[n].scale - 1);
-    INVALIDATE(fit, buffer);
-            }
-  return;
+    if (n > 0) 
+    {
+      //fprintf(stderr, "All the stellar masses are zero at z=%f.\n", 1.0 / steps[n].scale - 1);
+      INVALIDATE(fit, buffer);
     }
+    return;
+  }
 
 
   
@@ -1146,10 +1146,8 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     sfr_tmp = malloc(sizeof(double)*(bin_end - bin_start + 1));
     for (j=bin_start; j <= bin_end; j++)
     {
-      // printf("log_sm=%f\n", steps[n].log_sm[j]);
       log_sm_tmp[j - bin_start] = steps[n].log_sm[j];
       hm_tmp[j - bin_start] = steps[n].med_hm_at_a[j];
-      // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_start, hm_tmp[j - bin_start], j, steps[n].med_hm_at_a[j]);
       sfr_tmp[j - bin_start] = steps[n].sfr[j];
     }
     // The spline does not need to be modified. What should be changed is that the dn/dlogm
@@ -1169,12 +1167,9 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     sfr_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
     for (j=bin_start; j <= bin_peak; j++)
     {
-      // printf("log_sm=%f\n", steps[n].log_sm[j]);
       log_sm_tmp[j - bin_start] = steps[n].log_sm[j];
       hm_tmp[j - bin_start] = steps[n].med_hm_at_a[j];
-      // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_start, hm_tmp[j - bin_start], j, steps[n].med_hm_at_a[j]);
       sfr_tmp[j - bin_start] = steps[n].sfr[j];
-
     }
 
     // The spline does not need to be modified. What should be changed is that the dn/dlogm
@@ -1195,62 +1190,18 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     steps[n].flag_alloc = 1;
     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
 
-
-    //int n_seg = bin_end - bin_peak + 1 > 4 ? bin_end - bin_peak + 1 : 5;
     int n_seg = bin_end - bin_peak + 1;
 
     log_sm_tmp = malloc(sizeof(double)*n_seg);
     hm_tmp = malloc(sizeof(double)*n_seg);
     sfr_tmp = malloc(sizeof(double)*n_seg);
 
-
-
-    // log_sm_tmp = (double *)realloc(log_sm_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-    // hm_tmp = (double *)realloc(hm_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-    // sfr_tmp = (double *)realloc(sfr_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-    //if (bin_end - bin_peak + 1 > 4)
-    //{
-      for (j=bin_peak; j <= bin_end; j++)
-      {
-        // printf("log_sm=%f\n", steps[n].log_sm[j]);
-        log_sm_tmp[j - bin_peak] = steps[n].log_sm[bin_end - (j - bin_peak)];
-        hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[bin_end - (j - bin_peak)];
-        // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_start, hm_tmp[j - bin_start], j, steps[n].med_hm_at_a[j]);
-        sfr_tmp[j - bin_peak] = steps[n].sfr[bin_end - (j - bin_peak)];
-      }
-    //}
-
-    //else
-    //{
-      //int npt_real = bin_end - bin_peak + 1;
-      //// reverse the order of the last a few points.
-      //for (int kk = 0; kk < npt_real; kk++)
-      //{
-        //hm_tmp[n_seg - kk - 1] = steps[n].med_hm_at_a[bin_peak + kk];
-        //log_sm_tmp[n_seg - kk - 1] = steps[n].log_sm[bin_peak + kk];
-        //sfr_tmp[n_seg - kk - 1] = steps[n].sfr[bin_peak + kk];
-      //}
-
-      // // Linear interpolation beyond the end.
-      //for (int kk = npt_real + 1; kk < n_seg; kk++)
-      //{
-        //hm_tmp[n_seg - kk] = hm_tmp[n_seg - kk + 1] + INV_BPDEX; 
-        //log_sm_tmp[n_seg - kk] = 2 * log_sm_tmp[n_seg - kk + 1] - log_sm_tmp[n_seg - kk + 2];
-        //sfr_tmp[n_seg - kk] = 2 * sfr_tmp[n_seg - kk + 1] - sfr_tmp[n_seg - kk + 2];
-      //}
-      // // log_sm_tmp[2] = steps[n].log_sm[bin_peak];
-      // // log_sm_tmp[1] = steps[n].log_sm[bin_peak + 1];
-      // // log_sm_tmp[0] = 2 * log_sm_tmp[1] - log_sm_tmp[2];
-      // // hm_tmp[0] = 16.3; hm_tmp[1] = 16.1; hm_tmp[2] = 15.9;
-    //}
-    
-
-    // if (n_seg > M_BINS - bin_peak)
-    // {
-    //   hm_tmp[2] = 16.3;
-    //   log_sm_tmp[2] = 2 * log_sm_tmp[1] - log_sm_tmp[0];
-    //   sfr_tmp[2] = 2 * sfr_tmp[1] - sfr_tmp[0];
-    // }
+    for (j=bin_peak; j <= bin_end; j++)
+    {
+      log_sm_tmp[j - bin_peak] = steps[n].log_sm[bin_end - (j - bin_peak)];
+      hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[bin_end - (j - bin_peak)];
+      sfr_tmp[j - bin_peak] = steps[n].sfr[bin_end - (j - bin_peak)];
+    }
 
     steps[n].spline2 = gsl_spline_alloc(gsl_interp_linear, n_seg);
     steps[n].spline_sfr2 = gsl_spline_alloc(gsl_interp_linear, n_seg);
@@ -1261,29 +1212,18 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     {
       //fprintf(stderr, "More than 1 turning point in the SMHM.\n");
       if (1.0 / steps[n].scale - 1 < 5) 
-  {
-         INVALIDATE(fit, buffer);
+      {
+        INVALIDATE(fit, buffer);
         //fprintf(stderr, "More than 1 turning point in the SMHM. at the %d-th snapshot.\n", n);
-        //for (int ii=0; ii<M_BINS; ii++) fprintf(stderr, "bin_real=%d, log_sm[%d]=%f.\n", steps[n].smhm.bin_real, ii, steps[n].log_sm[ii]);
-  }
-  gsl_spline_free(steps[n].spline2); gsl_spline_free(steps[n].spline_sfr2);
+      }
+
+      gsl_spline_free(steps[n].spline2); gsl_spline_free(steps[n].spline_sfr2);
       steps[n].flag_alloc = 1;
       return;
     }
     steps[n].flag_alloc = 1;
     steps[n].alloc2smf = 1;
-    // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
   }
-
-  // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-
-  // // The spline does not need to be modified. What should be changed is that the dn/dlogm
-  // // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-  // steps[n].spline = gsl_spline_alloc(gsl_interp_cspline, bin_end - bin_start + 1);
-  // steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_cspline, bin_end - bin_start + 1);
-  // steps[n].flag_alloc = 1;
-  // gsl_spline_init(steps[n].spline, log_sm_tmp, hm_tmp, bin_end - bin_start + 1);
-  // gsl_spline_init(steps[n].spline_sfr, log_sm_tmp, sfr_tmp, bin_end - bin_start + 1);
 
   i = M_BINS-1;
   for (j=SM_BINS-1; j>=0; j--) 
@@ -1295,25 +1235,16 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
       steps[n].sfr_sm_sf[j+SM_EXTRA] = 0;
       steps[n].sfr_sm_q[j+SM_EXTRA] = 0;
       steps[n].smf[j+SM_EXTRA] = 0;
-      //steps[n].smf_sf[j+SM_EXTRA] = 0;
-      //steps[n].smf_q[j+SM_EXTRA] = 0;
     }
     else 
     {
       gsl_interp_accel_reset(&ga);
       int err = gsl_spline_eval_e(steps[n].spline, sm, &ga, &m);
-      //fprintf(stderr, "%d %f %f\n", n, sm, m);
       if (err || !isfinite(m))
-      //if (err || m < M_MIN - 1.0 || m > M_MAX + 1.0)
       {
-        // sprintf(buffer, "Error in GSL spline interpolation #2.\n");
-        //fprintf(stderr, "Error in GSL spline interpolation #2. n=%d, sm=%f, sm_min=%f, sm_max=%f, m=%f\n", n, sm, sm_min, sm_max, m);
-        //for (int ii=0; ii<M_BINS; ii++) fprintf(stderr, "log_sm[%d]=%f\n", ii, steps[n].log_sm[ii]);
         INVALIDATE(fit, buffer);
-        // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
         return;
       }
-      //int64_t b = gsl_interp_accel_find(&ga, steps[n].log_sm+bin_start, (bin_end-bin_start+1), sm)+bin_start;
       // find out the sfrac to weight the smf_sf and smf_q.
       
       double f = (m - M_MIN) * BPDEX;
@@ -1329,8 +1260,6 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
         f -= b;
       }
 
-      
-
       double sfrac_tmp = steps[n].sfrac[b] + f * (steps[n].sfrac[b+1] - steps[n].sfrac[b]);
       steps[n].sfrac_sm[j+SM_EXTRA] = sfrac_tmp;
       steps[n].smf[j+SM_EXTRA] = calc_smf_at_m(m,sm,n, 1, fit,&ga);
@@ -1342,14 +1271,11 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
       steps[n].sfr_sm[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
       steps[n].sfr_sm_q[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
       steps[n].sfr_sm_sf[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
-  // steps[n].sfr_sm[j+SM_EXTRA] = gsl_spline_eval(steps[n].spline_sfr, sm, &ga)*steps[n].smf[j+SM_EXTRA];
       if (err || !isfinite(steps[n].sfr_sm[j + SM_EXTRA]))
-  //if (err || steps[n].sfr_sm[j + SM_EXTRA] < 0 || !(isfinite(steps[n].sfr_sm[j+SM_EXTRA])))
       {
         //sprintf(buffer, "Error in GSL spline interpolation #3.\n");
         //fprintf(stderr, "Error in GSL spline interpolation #3. sfr=%e\n", steps[n].sfr_sm[j+SM_EXTRA]);
         INVALIDATE(fit, buffer);
-        // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
         return;
       }
 
@@ -1362,6 +1288,7 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
         {
           double f2 = (m2 - M_MIN) * BPDEX;
           int64_t b2;
+
           if (f2 >= M_BINS - 1)
           {
             b2 = M_BINS - 2;
@@ -1373,7 +1300,7 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
             f2 -= b2;
           }
 
-    if (b2 < 0) continue;
+          if (b2 < 0) continue;
 
           // Given the second branch of the SMHM, we need to modify the sfrac_sm value
           // s.t. it is the weighted average of the two HM bins.
@@ -1385,7 +1312,7 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
           sfrac_tmp = steps[n].sfrac[b2] + f2 * (steps[n].sfrac[b2+1] - steps[n].sfrac[b2]);
           double smf2 = calc_smf_at_m(m2,sm,n,2,fit,&ga);
           steps[n].smf[j+SM_EXTRA] += smf2;
-    gsl_interp_accel_reset(&ga);
+          gsl_interp_accel_reset(&ga);
           double sfr_sm_tmp;
           double err_sfr = gsl_spline_eval_e(steps[n].spline_sfr2, sm, &ga, &(sfr_sm_tmp));
           if (!err_sfr && isfinite(sfr_sm_tmp))
@@ -1403,12 +1330,16 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
 
   //Check status of SMF bins
   steps[n].smf_ok[SM_BINS+SM_EXTRA-1] = 0;
-  for (j=0; j<SM_BINS-1; j++) {
+  for (j=0; j<SM_BINS-1; j++) 
+  {
     sm = SM_MIN + (double)j*SM_INV_BPDEX;
     double avg = 0.5*(steps[n].smf[j+SM_EXTRA-1]+steps[n].smf[j+SM_EXTRA+1]);
-    if (fabs(avg-steps[n].smf[j+SM_EXTRA]) > steps[n].smf[j+SM_EXTRA]*5e-4) {
+    if (fabs(avg-steps[n].smf[j+SM_EXTRA]) > steps[n].smf[j+SM_EXTRA]*5e-4) 
+    {
       steps[n].smf_ok[j+SM_EXTRA] = 0;
-    } else {
+    } 
+    else 
+    {
       steps[n].smf_ok[j+SM_EXTRA] = 1;
     }
   }

@@ -698,7 +698,6 @@ void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, do
     double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
-    // f_mass = f_mass < 1? f_mass : 1;
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4;
 
@@ -719,32 +718,21 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit) {
 
 
   double bher_min = BHER_EFF_MIN;
-  //if (nonlinear_luminosity) bher_min = (bher_min - 2) / 2.0;  
 
   for (i=0; i<M_BINS; i++)
   {
     // mass-dependent modulation of duty cycle
-    // double bh_eta_corr = log10(schechter_inv_avg(steps[n].smhm.bh_alpha, bher_min, BHER_EFF_MAX, fit)/(steps[n].smhm.bh_duty * pow(log10(steps[n].bh_mass_avg[i]) / log10(steps[n].bh_mass_avg[M_BINS - 1]), steps[n].smhm.dc_beta)));
-    // double bh_eta_corr = log10(schechter_inv_avg(steps[n].smhm.bh_alpha, bher_min, BHER_EFF_MAX, fit)/(steps[n].smhm.bh_duty * pow((M_MIN + (i + 0.5) * INV_BPDEX) - (M_MAX - 0.5 * INV_BPDEX), steps[n].smhm.dc_beta)));
-    // double f_mass = pow(exp10((M_MIN + (i + 0.5) * INV_BPDEX) - (M_MAX - 0.5 * INV_BPDEX)), steps[n].smhm.dc_beta);
-    // f_mass = f_mass < 1? f_mass : 1;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
     double dc = (steps[n].smhm.bh_duty * f_mass);
     if (dc < 1e-4) dc = 1e-4;
-    // printf("the %d-th mass bin.\n", i);
-    // double bh_eta_corr = log10(schechter_inv_avg(steps[n].smhm.bh_alpha, bher_min, BHER_EFF_MAX, fit)/dc);
-    
+
     // Note that here we are going to calculate integrals of 1 / (x**a + x**b) dx and 1 / (x**(a+1) + x**(b+1)) dx,
     // while the doublePL_norm is implemented to calculate the norm assuming dP/dlogx = 1 / (x**a + x**b), so there is
     // an additional -1 offset in the following power-law indices!!!!!!
     double nom = doublePL_norm(steps[n].smhm.bh_alpha + 1 - 1, steps[n].smhm.bh_delta + 1 - 1, bher_min, BHER_EFF_MAX, fit);
     double dnom = doublePL_norm(steps[n].smhm.bh_alpha - 1, steps[n].smhm.bh_delta - 1, bher_min, BHER_EFF_MAX, fit);
     double bh_eta_corr = log10(nom/dnom/dc);
-    // printf("alpha=%e, delta=%e, nominator=%e, denominator=%e, bh_eta_corr=%e for %d-th bin at %d-th snapshot\n", 
-    //             steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, nom, dnom, log10(nom/dnom), i, n);
-    //if (n == 63 && i == 19) fprintf(stderr, "avg bh_eta=%f, bh_eta_corr=%f, bh_eta0 = %f\n", steps[n].bh_eta[i], bh_eta_corr, steps[n].bh_eta[i] + bh_eta_corr);
-    //if (n == 63 && i == 19) fprintf(stderr, "avg bh_eta=%f, alpha=%f, delta=%f, nom=%e, dnom=%e, dc=%e, bh_eta_corr=%f, bh_eta0 = %f\n", steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, nom, dnom, dc, bh_eta_corr, steps[n].bh_eta[i] + bh_eta_corr);
     steps[n].bh_eta[i] += bh_eta_corr;
 
     // Update the minimum/maximum ABSOULTE RADIATIVE EDDINGTON ratios for this snapshot.
@@ -765,60 +753,11 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit) {
   steps[n].bh_mass_min = 2;
   steps[n].bh_mass_max = 11;
 
-  // if (scatter <= 0) {
-  //   for (i=0; i<BHER_BINS; i++) {
-  //     double bher = BHER_MIN+i*BHER_INV_BPDEX;
-  //     // steps[n].bher_dist[i] = exp10(bher*steps[n].smhm.bh_alpha)*exp(-exp10(bher));
-  //     steps[n].bher_dist[i] = 1 / (exp10(bher*steps[n].smhm.bh_alpha) * exp10(bher*steps[n].smhm.bh_delta));
-  //   }
-  // } else {
-  //   const int64_t cmin = -BHER_BINS-3*BHER_BPDEX;
-  //   const int64_t cmax = 3*BHER_BPDEX + BHER_BINS;
-  //   double *ecache = check_realloc(NULL, sizeof(double)*(cmax-cmin+1), "Allocating ecache");
-  //   double inv_scatter = 1.0/scatter;
-  //   for (j=cmin; j<=cmax; j++) {
-  //     double db = inv_scatter*j*BHER_INV_BPDEX;
-  //     ecache[j-cmin] = exp(-0.5*db*db);
-  //   }
-  //   for (j=-3*BHER_BPDEX; j<BHER_BINS+3*BHER_BPDEX; j++) {
-  //     double bher = BHER_MIN+j*BHER_INV_BPDEX;
-  //     double prob = 1 / (exp10(bher*steps[n].smhm.bh_alpha) * exp10(bher*steps[n].smhm.bh_delta));
-  //     double *ec = ecache + (-j - cmin);
-  //     for (i=0; i<BHER_BINS; i++) {
-  // //double bher2 = BHER_MIN+i*BHER_INV_BPDEX;
-  // //double db = inv_scatter*(bher - bher2);
-  // double weight = ec[i]; //exp(-0.5*db*db);
-  // //printf("%e %e %"PRId64" %"PRId64" %f %"PRId64"\n", weight, ec[i], i, j, db, i-j-cmin);  
-  // steps[n].bher_dist[i] += weight*prob;
-  //     }
-  //   }
-  //   free(ecache);
-  // }
-
-  // //Normalize;
-  // double total = 0;
-  // for (i=0; i<BHER_BINS; i++) total += steps[n].bher_dist[i];
-  // total *= BHER_INV_BPDEX;
-  // //assert(total > 0);
-  // if (total > 0)
-  // {
-  // total = 1.0 / total;
-  // }
-  // for (i=0; i<BHER_BINS; i++) steps[n].bher_dist[i] *= total;
-
-  /*  char buffer[1024];
-  sprintf(buffer, "bher_dist/dist_%f.dat\n", steps[n].scale);
-  FILE *out = check_fopen(buffer, "w");
-  fprintf(out, "#ER Prob.\n");
-  for (i=0; i<BHER_BINS; i++) fprintf(out, "%f %e\n", BHER_MIN+i*BHER_INV_BPDEX, steps[n].bher_dist[i]);
-  fclose(out);
-  */
 }
 
 
 void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
   int64_t i, j, k;
-  // memset(steps[n].bher_dist_full, 0, sizeof(float)*BHER_BINS*M_BINS);
   memset(steps[n].bher_dist, 0, sizeof(double)*BHER_BINS*M_BINS);
   memset(steps[n].bher_dist_norm, 0, sizeof(double)*M_BINS);
 
@@ -826,131 +765,64 @@ void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
   double sm_scatter = steps[n].smhm.scatter*steps[n].smhm.bh_gamma;
   double scatter = sqrt(sm_scatter*sm_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter);
 
-  //  Already corrected in bh_acc_rate_distribution...
-  //  double bh_eta_corr = log10(schechter_inv_avg(steps[n].smhm.bh_alpha, BHER_MIN, BHER_EFF_MAX, fit)/steps[n].smhm.bh_duty);
-  //  for (i=0; i<M_BINS; i++) steps[n].bh_eta[i] += bh_eta_corr;
-
   double (*bher_prob)(double, double, double, double, double, double) = &_prob_of_ledd_linear;
   if (nonlinear_luminosity) bher_prob = &_prob_of_ledd_nonlinear;
-  //assert(bher_prob == &_prob_of_ledd_linear);
 
-  if (scatter <= 0) {
-    for (i=0; i<M_BINS; i++) {
-      for (j=0; j<BHER_BINS; j++) {
-  double bher = BHER_MIN+j*BHER_INV_BPDEX;
-  // steps[n].bher_dist_full[i*BHER_BINS+j] = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit)*steps[n].smhm.bh_prob_norm;
-  steps[n].bher_dist[i*BHER_BINS+j] = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit)*steps[n].smhm.bh_prob_norm;
-  steps[n].ledd_min[i] = BHER_MIN;
-  steps[n].ledd_max[i] = BHER_MAX;
-  steps[n].ledd_bpdex[i] = BHER_BPDEX;
-  //exp10(bher*steps[n].smhm.bh_alpha)*exp(-exp10(bher));
+  if (scatter <= 0) 
+  {
+    for (i=0; i<M_BINS; i++) 
+    {
+      for (j=0; j<BHER_BINS; j++) 
+      {
+        double bher = BHER_MIN+j*BHER_INV_BPDEX;
+        steps[n].bher_dist[i*BHER_BINS+j] = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit)*steps[n].smhm.bh_prob_norm;
+        steps[n].ledd_min[i] = BHER_MIN;
+        steps[n].ledd_max[i] = BHER_MAX;
+        steps[n].ledd_bpdex[i] = BHER_BPDEX;
       }
     }
-  } else {
-    // const int64_t cmin = -BHER_BINS-6*BHER_BPDEX;
-    // const int64_t cmax = 6*BHER_BPDEX + BHER_BINS;
-    // //    int64_t llim=cmin, ulim = cmax;
-    // float *ecache = check_realloc(NULL, sizeof(float)*(cmax-cmin+1), "Allocating ecache");
-
-
-    //fprintf(stderr, "%"PRId64" %"PRId64"\n", llim, ulim);
-    for (i=0; i<M_BINS; i++) {
-      // float *bher_dist = steps[n].bher_dist_full+i*BHER_BINS;
+  } 
+  else 
+  {
+    for (i=0; i<M_BINS; i++) 
+    {
       double ledd_min = steps[n].bh_eta[i] + BHER_MIN;
       if (nonlinear_luminosity && ledd_min < bh_eta_crit)
-  ledd_min = (ledd_min - 0.5 * bh_eta_crit)*2.0;
+      ledd_min = (ledd_min - 0.5 * bh_eta_crit)*2.0;
       ledd_min -= steps[n].bh_eta[i];
       double ledd_eff_min = steps[n].bh_eta[i] + BHER_EFF_MIN;
       // if (nonlinear_luminosity && ledd_min < -2.0) // This is what Peter has written, which is a bug...
       if (nonlinear_luminosity && ledd_eff_min < bh_eta_crit)
-  ledd_eff_min = (ledd_eff_min - 0.5 * bh_eta_crit)*2.0;
+      ledd_eff_min = (ledd_eff_min - 0.5 * bh_eta_crit)*2.0;
       ledd_eff_min -= steps[n].bh_eta[i];
       double ledd_max = steps[n].bh_eta[i] + BHER_MAX;
       if (nonlinear_luminosity && ledd_max < bh_eta_crit)
-  ledd_max = (ledd_max - 0.5 * bh_eta_crit)*2.0;
+      ledd_max = (ledd_max - 0.5 * bh_eta_crit)*2.0;
       ledd_max -= steps[n].bh_eta[i];
 
 
       double bpdex = ((double)BHER_BINS-1)/(ledd_max - ledd_min);
       double inv_bpdex = 1.0/bpdex;
-      // int64_t kmax = 6.7*scatter*bpdex;
-      // int64_t kmin = -kmax;
-      // if (kmax - kmin > cmax - cmin + 1)
-      // {
-      //   //fprintf(stderr, "Too large scatters in BH mass!\n");
-      //   for (k=0; k<BHER_BINS; k++) bher_dist[k] = 0;
-      //   //INVALIDATE(fit, "Too large scatter. INVALIDATE.\n");
-      //   free(ecache);
-      //   return;
-      // }
-      // double inv_scatter = 1.0/scatter;
+
 
       steps[n].ledd_min[i] = ledd_min;
       steps[n].ledd_eff_min[i] = ledd_eff_min;
       steps[n].ledd_max[i] = ledd_max;
       steps[n].ledd_bpdex[i] = bpdex;
-      //if (n == 63 && i == 19) fprintf(stderr, "ledd_min=%f, ledd_eff_min=%f, ledd_max=%f, ledd_bpdex=%f\n", ledd_min, ledd_eff_min, ledd_max, bpdex);
-  //     for (k=kmin; k<kmax; k++) {
-  // double db = inv_scatter*k*inv_bpdex;
-  // ecache[k-kmin] = exp(-0.5*db*db);
-  //     }
+
 
       int64_t jmin = (ledd_eff_min-ledd_min)*bpdex;
       int64_t jmax = (ledd_max-ledd_min)*bpdex;
 
-      for (j=jmin; j<jmax; j++) {
-  float bher = ledd_min+j*inv_bpdex;
-  // int64_t emin = j+kmin;
-  // // if (emin < 0) emin = 0;
-  // int64_t emax = j+kmax;
-  // // if (emax>BHER_BINS-1) emax = BHER_BINS-1;
-
-  // // if ((j + kmin < 0))
-  // // {
-  // //   for (k=0; k<BHER_BINS; k++) bher_dist[k] = 0;
-  // //   INVALIDATE(fit, "Not good j + kmin. INVALIDATE.\n");
-  // //   free(ecache);
-  // //   return;
-  // // }
-
-  // // float *ec = ecache - (j+kmin);
-  // float *ec = ecache - emin;
-
-
-
-  float prob = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit);
-  //if (n == 63 && i == 19)
-  //fprintf(stderr, "j=%d, mbh_med=%f, bher=%f, bher_0=%f, bh_alpha=%f, bh_delta=%f, prob=%e\n", j, steps[n].log_bh_mass[i], bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, prob);
-  //if (prob < 1e-15) {
-  //  if (steps[n].smhm.bh_alpha > 0 && steps[n].smhm.bh_delta > 0) break;
-  //  else if (bher+steps[n].bh_eta[i] > 0) break;
-  //  else continue;
-  //}
-
-  //bher_dist[j] = prob;
-  steps[n].bher_dist[i*BHER_BINS+j] = prob;
-  // steps[n].bher_dist_full[i*BHER_BINS+j] = prob; //Use this to calculate the active fraction later.
-  steps[n].bher_dist_norm[i] += prob;
+      for (j=jmin; j<jmax; j++) 
+      {
+        float bher = ledd_min+j*inv_bpdex;
+        float prob = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit);
+        steps[n].bher_dist[i*BHER_BINS+j] = prob;
+        steps[n].bher_dist_norm[i] += prob;
   
-  // for (k=emin; k<emax; k++) {
-  //   if (k < 0 || k > BHER_BINS - 1) continue;
-  //   float weight = ec[k]; //exp(-0.5*db*db);
-  //   bher_dist[k] += weight*prob;
-  // } 
-  }
+      }
 
-
-  //     //Normalize;
-  //     double total = 0;
-  //     for (k=0; k<BHER_BINS; k++) total += steps[n].bher_dist_full[i*BHER_BINS+k];
-  //     total *= inv_bpdex;
-  //     if (!(total>0)) {
-  // // fprintf(stderr, "%e %"PRId64" %f %f\n", total, i, steps[n].scale, steps[n].bh_eta[i]);
-  //     }
-  //     // assert(total > 0);
-  //     if (total > 0)
-  //       total = 1.0/total;
-  //     for (k=0; k<BHER_BINS; k++) steps[n].bher_dist_full[i*BHER_BINS+k] *= total;
       double total = 0;
       total = steps[n].bher_dist_norm[i] * inv_bpdex;
       if (total > 0)
@@ -959,16 +831,7 @@ void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
       steps[n].bher_dist_norm[i] = bpdex;
 
     }
-    // free(ecache);
   }
-
-  /*  char buffer[1024];
-  sprintf(buffer, "bher_dist/dist_%f.dat\n", steps[n].scale);
-  FILE *out = check_fopen(buffer, "w");
-  fprintf(out, "#ER Prob.\n");
-  for (i=0; i<BHER_BINS; i++) fprintf(out, "%f %e\n", BHER_MIN+i*BHER_INV_BPDEX, steps[n].bher_dist[i]);
-  fclose(out);
-  */
 }
 
 

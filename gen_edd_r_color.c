@@ -86,9 +86,9 @@ int main(int argc, char **argv)
       double mf = (m-M_MIN)*BPDEX+0.5;
       int64_t j = mf;
       mf -= j;
-      double log_bh_mass, log_bh_acc_rate, log_edd, log_edd_obs, avg_l, efficiency, bh_merge_rate, bh_unmerged, log_bm, log_sfr, gal_mr, bh_eta, obs_uv, frac_active, log_bh_acc_rate_obs, log_sm, eta_avg, eta_kin_avg;
+      double log_bh_mass, log_bh_acc_rate, log_edd, log_edd_obs, avg_l, efficiency, bh_merge_rate, bh_unmerged, log_bm, log_sfr, gal_mr, bh_eta, obs_uv, frac_active, log_bh_acc_rate_obs, log_sm, eta_rad_avg, eta_kin_avg;
       double l_kin;
-      INTERP(log_bh_mass,log_bh_mass);
+      LINTERP(log_bh_mass,bh_mass_avg);
       INTERP(obs_uv, obs_uv);
       // LINTERP(log_bh_mass,bh_mass_avg);
       LINTERP(log_bh_acc_rate,bh_acc_rate);
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
       //log_sm += mu;
 
       INTERP(bh_eta, bh_eta);
-      INTERP(eta_avg, bh_eta_avg);
+      LINTERP(eta_rad_avg, bh_eta_rad_avg);
       INTERP(eta_kin_avg, bh_eta_kin_avg);
       INTERP(bh_merge_rate,bh_merge_rate);
       INTERP(bh_unmerged,bh_unmerged);
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
       // bh_unmerged = (bh_unmerged > 0.1 ) ? log10(bh_unmerged) : -1;
       // bh_unmerged = log10(bh_unmerged);
 	float years = scale_to_years(1.0 / zp1);
-      printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", zp1, years, m, log_bm, log_bh_mass, log_sfr, log_bh_acc_rate, log_edd, bh_eta, log_edd_obs, avg_l, bh_merge_rate, bh_unmerged, frac_active, log_bh_acc_rate_obs, log_sm, eta_avg, l_kin, obs_uv, gal_mr);
+      printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", zp1, years, m, log_bm, log_bh_mass, log_sfr, log_bh_acc_rate, log_edd, bh_eta, log_edd_obs, avg_l, bh_merge_rate, bh_unmerged, frac_active, log_bh_acc_rate_obs, log_sm, eta_rad_avg, l_kin, obs_uv, gal_mr);
     }
   }
   return 0;

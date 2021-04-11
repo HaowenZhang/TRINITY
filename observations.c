@@ -60,6 +60,13 @@ double find_Lx_at_Lbol(double Lbol)
   return Lbol - log10(BC);
 }
 
+double find_Lbol_at_Lx(double Lx)
+{
+  double dlx = Lx - 4.21484284e+01;
+  double logBC = 8.82970680e-01 + log10(exp10(-3.31381964e-03 * dlx) + exp10(3.87414950e-01 * dlx));
+  return Lx + logBC;
+}
+
 // ref: Schulze+2015
 double F_obs(double Lx)
 {
@@ -930,7 +937,7 @@ double calc_bhmf(double m, double z) {
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   double s3 = s1*s1+s2*s2;
-  if (!s3) return 1e-15;
+  if (!s3) return 1e-19;
   double norm_gauss = 1 / sqrt(2 * M_PI * s3);
   double nd = 0;
 
@@ -956,8 +963,8 @@ double calc_bhmf(double m, double z) {
   }
   // nd /= tw*INV_BPDEX;
   nd /= 5.0;
-  if (nd > 1e-15) return nd;
-  return 1e-15;
+  if (nd > 1e-19) return nd;
+  return 1e-19;
 }
 
 
@@ -971,7 +978,7 @@ double calc_bhmf_typeI(double m, double z) {
   double mbh_bpdex = MBH_BINS / (steps[step].bh_mass_max - steps[step].bh_mass_min);
   double mbh_inv_bpdex = 1.0 / mbh_bpdex;
 
-  double bhm_f = (m - MBH_MIN) * mbh_bpdex;
+  double bhm_f = (m - steps[step].bh_mass_min) * mbh_bpdex;
   int64_t bhm_b = bhm_f;
   bhm_f -= bhm_b;
 
@@ -992,11 +999,14 @@ double calc_bhmf_typeI(double m, double z) {
   {
     double lbol = LBOL_MIN + (i + 0.5) * LBOL_INV_BPDEX;
     double lx = find_Lx_at_Lbol(lbol);
+    //fprintf(stderr, "lbol=%f, lx=%f, f_obs=%e, lum_dist_full[i]=%e\n", lbol, lx, f_obs, steps[step].lum_dist_full[i]);
     double f_obs = F_obs(lx);
-    corr_obs += (1 - f_obs) * steps[step].lum_dist_full[i];
-    tw += steps[step].lum_dist_full[i];
+    //fprintf(stderr, "lbol=%f, lx=%f, f_obs=%e, lum_dist_full[i]=%e\n", lbol, lx, f_obs, steps[step].lum_dist_full[bhm_b*LBOL_BINS+i]);
+    corr_obs += (1 - f_obs) * steps[step].lum_dist_full[bhm_b*LBOL_BINS+i];
+    tw += steps[step].lum_dist_full[bhm_b*LBOL_BINS+i];
   }  
   if (tw > 0) corr_obs /= tw;
+  //fprintf(stderr, "m=%f, z=%f, bhmf_tot=%e, corr_obs=%e, dc=%e\n", m, z, bhmf_tot, corr_obs, dc);
   return bhmf_tot * corr_obs * dc;
 
 }
@@ -1083,7 +1093,7 @@ double calc_bhar_mbh(double m, double z) {
     
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
     double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
-    if (!isfinite(tbhm_avg)) continue;
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     //fprintf(stderr, "tbhm=%f, tbhm_avg=%f\n", tbhm, tbhm_avg);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
@@ -1110,7 +1120,7 @@ double calc_bhar_mstar(double m, double z) {
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
   double s1 = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step].smhm.scatter);
   double mu = (1.0-f)*(steps[step].smhm.mu) + f*(steps[step].smhm.mu);
-  // double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   // double s3 = s1*s1+s2*s2;
   double s3 = s1*s1;
   if (!s3) return 1e-15;
@@ -1121,6 +1131,10 @@ double calc_bhar_mstar(double m, double z) {
 
   double mbulge = bulge_mass(m + mu, steps[step].scale);
   double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
+  double med_to_avg_bh = 0.5 * ((s2 * s2) * M_LN10);
+
+
+  if (mbh_med + 3 * s2 < 5) return 0;
 
   double sm[M_BINS]={0}, t[M_BINS]={0}, mbh_avg[M_BINS]={0};
   double bhar[M_BINS] = {0};
@@ -1139,10 +1153,11 @@ double calc_bhar_mstar(double m, double z) {
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
     double tmbh_avg = mbh_avg[i] + f*(mbh_avg[i+1]-mbh_avg[i]);
+    if (!isfinite(tmbh_avg) || tmbh_avg < 5) continue;
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
-    tbhar *= exp10fc(m - tmbh_avg);
+    tbhar *= exp10fc(mbh_med + med_to_avg_bh - tmbh_avg);
     double dm = tsm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     // tw += weight;
@@ -1171,7 +1186,7 @@ double calc_bhar_sfr_mbh(double m, double z) {
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step+1].smhm.scatter * steps[step+1].smhm.bh_gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
-  double scatter = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter);
+  double scatter = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter));
   double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
   double sfr_sm_corr = (1.0-f)*steps[step].smhm.sfr_sm_corr + f*(steps[step+1].smhm.sfr_sm_corr);
   double s3 = s1*s1+s2*s2;
@@ -1204,7 +1219,7 @@ double calc_bhar_sfr_mbh(double m, double z) {
     if (i==(M_BINS-1)) { i--; f=1; }
     double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
-    if (!isfinite(tbhm_avg)) continue;
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
@@ -1236,8 +1251,8 @@ double calc_bhar_sfr_mbh(double m, double z) {
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     // tw += weight;
     nd += weight*tnd;
-    bhar_nd += weight*tnd*tbhar;
-    sfr_nd += weight*tnd*tsfr;
+    if (isfinite(tbhar)) bhar_nd += weight*tnd*tbhar;
+    if (isfinite(tsfr)) sfr_nd += weight*tnd*tsfr;
   }
   // nd /= tw*INV_BPDEX;
   // nd /= 5.0;
@@ -1261,8 +1276,8 @@ double calc_bhar_sfr_mstar(double m, double z) {
   calc_step_at_z(z, &step, &f);
   int64_t i;
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
-  double s1 = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter);
-  // double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double s1 = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter));
+  double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   // double scatter = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter);
   // double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
   double sfr_sm_corr = (1.0-f)*steps[step].smhm.sfr_sm_corr + f*(steps[step+1].smhm.sfr_sm_corr);
@@ -1278,6 +1293,9 @@ double calc_bhar_sfr_mstar(double m, double z) {
 
   double mbulge = bulge_mass(m + mu, steps[step].scale);
   double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
+  double med_to_avg_bh = 0.5 * ((s2 * s2) * M_LN10);
+
+  if (mbh_med + 3 * s2 < 5) return 0;
 
   double sm[M_BINS]={0}, t[M_BINS]={0}, bhm_avg[M_BINS]={0};
   double bhar[M_BINS] = {0};
@@ -1298,13 +1316,13 @@ double calc_bhar_sfr_mstar(double m, double z) {
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
-    if (!isfinite(tbhm_avg)) continue;
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
     double tsfr = sfr[i] + f*(sfr[i+1]-sfr[i]);
 
-    tbhar *= exp10fc(mbh_med - tbhm_avg);
+    tbhar *= exp10fc(mbh_med + med_to_avg_bh - tbhm_avg);
 
     tsfr *= pow(exp10(m) / (exp10(tsm) * med_to_avg_star), sfr_sm_corr);
 
@@ -1330,8 +1348,8 @@ double calc_bhar_sfr_mstar(double m, double z) {
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     // tw += weight;
     nd += weight*tnd;
-    bhar_nd += weight*tnd*tbhar;
-    sfr_nd += weight*tnd*tsfr;
+    if (isfinite(tbhar)) bhar_nd += weight*tnd*tbhar;
+    if (isfinite(tsfr)) sfr_nd += weight*tnd*tsfr;
   }
   // nd /= tw*INV_BPDEX;
   // nd /= 5.0;
@@ -1423,7 +1441,7 @@ double calc_sbhar_ssfr_mbh(double m, double z) {
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step+1].smhm.scatter * steps[step+1].smhm.bh_gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
-  double scatter = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter);
+  double scatter = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter));
   double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
   double sfr_sm_corr = (1.0-f)*steps[step].smhm.sfr_sm_corr + f*(steps[step+1].smhm.sfr_sm_corr);
   double s3 = s1*s1+s2*s2;
@@ -1461,6 +1479,7 @@ double calc_sbhar_ssfr_mbh(double m, double z) {
     if (sm[i] == 0) continue;
     double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
@@ -1490,9 +1509,9 @@ double calc_sbhar_ssfr_mbh(double m, double z) {
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     // tw += weight;
     nd += weight*tnd;
-    bhar_nd += weight*tnd*tbhar;
-    sfr_nd += weight*tnd*tsfr;
-    sm_avg_nd += weight * tnd * tsm_avg;
+    if (isfinite(tbhar)) bhar_nd += weight*tnd*tbhar;
+    if (isfinite(tsfr)) sfr_nd += weight*tnd*tsfr;
+    if (isfinite(tsm_avg)) sm_avg_nd += weight * tnd * tsm_avg;
   }
   //nd /= 5.0;
   bhar_nd /= nd; //divide by the number density
@@ -1503,6 +1522,106 @@ double calc_sbhar_ssfr_mbh(double m, double z) {
   // double sm_scaling = stellar_mass(bm_scaling, 1 / (1 + z)) - mu;
   // fprintf(stderr, "mbh=%e, z=%f,  mstar_from_scaling=%f, mstar_from_integral=%f, dMstar=%f, log10(bhar/sfr)=%f\n", m, z, sm_scaling, log10(sm_avg_nd/med_to_avg_star), sm_scaling - log10(sm_avg_nd/med_to_avg_star), log10(bhar_nd/sfr_nd)); 
   if (bhar_sfr > 1e-15) return bhar_sfr;
+  return 1e-15;
+}
+
+// calculate the average SBHAR as a function of Mstar and z.
+// This function is actually more complicated than the calculation of
+// BHAR, BHMR, and BHERs, because there's a correlation between the 
+// SFR and the average stellar mass. Consequently we need to trace
+// the galaxy mass distribution in each halo mass, ***given the
+// BH mass*** that we're looking for.
+double calc_sbhar_mstar(double m, double z) {
+  int64_t step;
+  double f;
+  calc_step_at_z(z, &step, &f);
+  int64_t i;
+  if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+  double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step+1].smhm.scatter * steps[step+1].smhm.bh_gamma);
+  double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double scatter = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter));
+  double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
+  double sfr_sm_corr = (1.0-f)*steps[step].smhm.sfr_sm_corr + f*(steps[step+1].smhm.sfr_sm_corr);
+  double s3 = s1 * s1;
+  // double s3 = s1*s1+s2*s2;
+  // double scatter_tot = sqrt(s3);
+  if (!s3) 
+  {
+    fprintf(stderr, "s3=%f, s1=%f, scatter=%f, gamma=\n");
+    return 1e-15;
+  }
+  double norm_gauss = 1 / sqrt(2 * M_PI * s3);
+  double nd = 0;
+  double bhar_nd = 0;
+  double bhm_avg_nd = 0;
+  double sfr_nd = 0;
+  double sm_avg_nd = 0;
+
+  double mbulge = bulge_mass(m + mu, steps[step].scale);
+  double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
+  double med_to_avg_bh = (0.5 * ((s2 * s2) * M_LN10));
+
+  //if (log10(med_to_avg_bh) + mbh_med < 5) return 0;
+  if (mbh_med + 3*s2 < 5) return 0; 
+  double sm[M_BINS]={0}, t[M_BINS]={0}, bhm_avg[M_BINS]={0};
+  double bhar[M_BINS] = {0};
+  double sfr[M_BINS] = {0};
+  double bhm[M_BINS] = {0};
+  for (i=0; i<M_BINS; i++) {
+    bhm_avg[i] = (1.0-f)*log10(steps[step].bh_mass_avg[i]) + f*log10(steps[step+1].bh_mass_avg[i]);
+    bhar[i] = (1.0-f)*steps[step].bh_acc_rate[i] + f*steps[step+1].bh_acc_rate[i];
+    sfr[i] = (1.0-f)*steps[step].sfr[i] + f*steps[step+1].sfr[i];
+    sm[i] = (1.0-f)*steps[step].log_sm[i] + f*steps[step+1].log_sm[i];
+    // sm_avg[i] = (1.0-f)*steps[step].sm_avg[i] + f*steps[step+1].sm_avg[i];
+    double ndm = (1.0-f)*steps[step].t[i] + f*steps[step+1].t[i];
+    t[i] = ndm;
+  }
+
+  double med_to_avg_star = exp(0.5 * (scatter * M_LN10 * scatter * M_LN10));
+  // double med_to_avg_bh = exp(0.5 * ((s2 * s2) * M_LN10 * M_LN10));
+  int64_t s;
+  for (s=0; s<=(M_BINS-1)*5; s++) {
+    i = s/5;
+    f = (s%5)/5.0;
+    if (i==(M_BINS-1)) { i--; f=1; }
+    double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
+    double tbm = bulge_mass(m + mu, 1/(1+z));
+    double tbhm = calc_bh_at_bm(tbm, steps[step].smhm);
+    double tsm = sm[i] + f*(sm[i+1]-sm[i]);
+    // double tsm_avg = sm_avg[i] + f*(sm_avg[i+1]-sm_avg[i]);
+    double tnd = t[i] + f*(t[i+1]-t[i]);
+    double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
+    double tsfr = sfr[i] + f*(sfr[i+1]-sfr[i]);
+
+    tbhar *= exp10fc(mbh_med + med_to_avg_bh - tbhm_avg);
+
+    tsfr *= pow(exp10(m) / (exp10(tsm) * med_to_avg_star), sfr_sm_corr);
+
+
+    double dm = tsm - m;
+    double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
+    // tw += weight;
+    nd += weight*tnd;
+    if (isfinite(tbhar)) bhar_nd += weight*tnd*tbhar;
+    if (isfinite(tsfr)) sfr_nd += weight*tnd*tsfr;
+    // sm_avg_nd += weight*tnd*exp10(tsm) * med_to_avg_star;
+    if (isfinite(tbhm)) bhm_avg_nd += weight*tnd*exp10(tbhm +  med_to_avg_bh);
+    //fprintf(stderr, "sm=%f, i=%d, f=%f, weight=%e, bhar=%e\n", m, i, f, weight, tbhar);
+  }
+  // nd /= tw*INV_BPDEX;
+  //nd /= 5.0;
+  bhar_nd /= nd;
+  sfr_nd /= nd;
+  // sm_avg_nd /= nd;
+  bhm_avg_nd /= nd;
+  //fprintf(stderr, "m=%f, z=%f, bhar=%e, sfr=%e, bhm=%e, sm_corr=%e, bh_corr=%e\n", m, z, bhar_nd, sfr_nd, bhm_avg_nd, med_to_avg_star, med_to_avg_bh);
+  // double bhar_sfr = bhar_nd / sfr_nd / (bhm_avg_nd / (exp10(m)));
+  double sbhar = bhar_nd / bhm_avg_nd;
+  double tbm = bulge_mass(m + mu, 1/(1+z));
+  double tbhm = calc_bh_at_bm(tbm, steps[step].smhm);
+  //fprintf(stderr, "mstar=%f, z=%f, mbh_from_scaling=%f, mbh_from_integral=%f, dmbh=%f, log10(bhar/sfr)=%f\n", m, z, tbhm, log10(bhm_avg_nd/med_to_avg_bh), tbhm - log10(bhm_avg_nd/med_to_avg_bh), log10(bhar_nd/sfr_nd));
+  if (sbhar > 1e-15) return sbhar;
   return 1e-15;
 }
 
@@ -1523,7 +1642,7 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step+1].smhm.scatter * steps[step+1].smhm.bh_gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
-  double scatter = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter);
+  double scatter = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step+1].smhm.scatter));
   double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
   double sfr_sm_corr = (1.0-f)*steps[step].smhm.sfr_sm_corr + f*(steps[step+1].smhm.sfr_sm_corr);
   double s3 = s1 * s1;
@@ -1543,6 +1662,9 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
 
   double mbulge = bulge_mass(m + mu, steps[step].scale);
   double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
+  double med_to_avg_bh = (0.5 * ((s2 * s2) * M_LN10));
+
+  if (mbh_med + 3*s2 < 5) return 0;
 
   double sm[M_BINS]={0}, t[M_BINS]={0}, bhm_avg[M_BINS]={0};
   double bhar[M_BINS] = {0};
@@ -1559,14 +1681,14 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
   }
 
   double med_to_avg_star = exp(0.5 * (scatter * M_LN10 * scatter * M_LN10));
-  double med_to_avg_bh = exp(0.5 * ((s2 * s2) * M_LN10 * M_LN10));
+  // double med_to_avg_bh = exp(0.5 * ((s2 * s2) * M_LN10 * M_LN10));
   int64_t s;
   for (s=0; s<=(M_BINS-1)*5; s++) {
     i = s/5;
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
-    if (!isfinite(tbhm_avg)) continue;
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tbm = bulge_mass(m + mu, 1/(1+z));
     double tbhm = calc_bh_at_bm(tbm, steps[step].smhm);
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
@@ -1575,7 +1697,7 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
     double tsfr = sfr[i] + f*(sfr[i+1]-sfr[i]);
 
-    tbhar *= exp10fc(mbh_med - tbhm_avg);
+    tbhar *= exp10fc(mbh_med + med_to_avg_bh - tbhm_avg);
 
     tsfr *= pow(exp10(m) / (exp10(tsm) * med_to_avg_star), sfr_sm_corr);
 
@@ -1601,10 +1723,10 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     // tw += weight;
     nd += weight*tnd;
-    bhar_nd += weight*tnd*tbhar;
-    sfr_nd += weight*tnd*tsfr;
+    if (isfinite(tbhar)) bhar_nd += weight*tnd*tbhar;
+    if (isfinite(tsfr)) sfr_nd += weight*tnd*tsfr;
     // sm_avg_nd += weight*tnd*exp10(tsm) * med_to_avg_star;
-    bhm_avg_nd += weight*tnd*exp10(tbhm) * med_to_avg_bh;
+    if (isfinite(tbhm)) bhm_avg_nd += weight*tnd*exp10(tbhm) * exp10fc(med_to_avg_bh);
   }
   // nd /= tw*INV_BPDEX;
   //nd /= 5.0;
@@ -1616,7 +1738,7 @@ double calc_sbhar_ssfr_mstar(double m, double z) {
   double bhar_sfr = bhar_nd / sfr_nd / (bhm_avg_nd / (exp10(m)));
   double tbm = bulge_mass(m + mu, 1/(1+z));
   double tbhm = calc_bh_at_bm(tbm, steps[step].smhm);
-  fprintf(stderr, "mstar=%f, z=%f, mbh_from_scaling=%f, mbh_from_integral=%f, dmbh=%f, log10(bhar/sfr)=%f\n", m, z, tbhm, log10(bhm_avg_nd/med_to_avg_bh), tbhm - log10(bhm_avg_nd/med_to_avg_bh), log10(bhar_nd/sfr_nd));
+  //fprintf(stderr, "mstar=%f, z=%f, mbh_from_scaling=%f, mbh_from_integral=%f, dmbh=%f, log10(bhar/sfr)=%f\n", m, z, tbhm, log10(bhm_avg_nd/med_to_avg_bh), tbhm - log10(bhm_avg_nd/med_to_avg_bh), log10(bhar_nd/sfr_nd));
   if (bhar_sfr > 1e-15) return bhar_sfr;
   return 1e-15;
 }
@@ -1726,7 +1848,7 @@ double calc_bher_mstar(double m, double z) {
     if (!isfinite(tbher)) continue;
     double dm = tsm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
-    // tw += weight;
+    // tw +=) weight;
     nd += weight*tnd;
     bher_nd += weight*tnd*tbher;
   }
@@ -1755,9 +1877,10 @@ double calc_bhmr_mbh(double m, double z) {
   double nd = 0;
   double bhmr_nd = 0;
 
-  double bhm[M_BINS]={0}, t[M_BINS]={0};
+  double bhm[M_BINS]={0}, t[M_BINS]={0}, bhm_avg[M_BINS]={0};
   double bhmr[M_BINS] = {0};
   for (i=0; i<M_BINS; i++) {
+    bhm_avg[i] = (1.0-f)*log10(steps[step].bh_mass_avg[i]) + f*log10(steps[step+1].bh_mass_avg[i]);
     bhm[i] = (1.0-f)*steps[step].log_bh_mass[i] + f*steps[step+1].log_bh_mass[i];
     bhmr[i] = (1.0-f)*steps[step].bh_merge_rate[i] + f*steps[step+1].bh_merge_rate[i];
     double ndm = (1.0-f)*steps[step].t[i] + f*steps[step+1].t[i];
@@ -1770,11 +1893,16 @@ double calc_bhmr_mbh(double m, double z) {
     i = s/5;
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
+    
     double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
+    double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhmr = bhmr[i] + f*(bhmr[i+1]-bhmr[i]);
+    tbhmr *= exp10fc(m - tbhm_avg);
     double dm = tbhm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
+    fprintf(stderr, "z=%f, bhm=%f, i=%d, f=%f, dbhm=%f, weight=%e, tbhmr=%e\n", z, m, i, f, dm, weight, tbhmr);
     // tw += weight;
     nd += weight*tnd;
     bhmr_nd += weight*tnd*tbhmr;
@@ -1793,8 +1921,9 @@ double calc_bhmr_mstar(double m, double z) {
   calc_step_at_z(z, &step, &f);
   int64_t i;
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
-  double s1 = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step].smhm.scatter);
-  // double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double s1 = fabs((1.0-f)*(steps[step].smhm.scatter) + f*(steps[step].smhm.scatter));
+  double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double mu = (1.0-f)*steps[step].smhm.mu + f*(steps[step+1].smhm.mu);
   // double s3 = s1*s1+s2*s2;
   double s3 = s1*s1;
   if (!s3) return 1e-15;
@@ -1802,9 +1931,16 @@ double calc_bhmr_mstar(double m, double z) {
   double nd = 0;
   double bhmr_nd = 0;
 
-  double sm[M_BINS]={0}, t[M_BINS]={0};
+  double mbulge = bulge_mass(m + mu, steps[step].scale);
+  double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
+  double med_to_avg_bh = (0.5 * ((s2 * s2) * M_LN10));
+
+  if (mbh_med + 3*s2 < 5) return 0;
+
+  double sm[M_BINS]={0}, t[M_BINS]={0}, bhm_avg[M_BINS]={0};
   double bhmr[M_BINS] = {0};
   for (i=0; i<M_BINS; i++) {
+    bhm_avg[i] = (1.0-f)*log10(steps[step].bh_mass_avg[i]) + f*log10(steps[step+1].bh_mass_avg[i]);
     sm[i] = (1.0-f)*steps[step].log_sm[i] + f*steps[step+1].log_sm[i];
     bhmr[i] = (1.0-f)*steps[step].bh_merge_rate[i] + f*steps[step+1].bh_merge_rate[i];
     double ndm = (1.0-f)*steps[step].t[i] + f*steps[step+1].t[i];
@@ -1817,11 +1953,16 @@ double calc_bhmr_mstar(double m, double z) {
     i = s/5;
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
+
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
+    double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
+    if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tbhmr = bhmr[i] + f*(bhmr[i+1]-bhmr[i]);
     double dm = tsm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
+    tbhmr *= exp10fc(mbh_med + med_to_avg_bh - tbhm_avg);
+    fprintf(stderr, "z=%f, sm=%f, i=%d, f=%f, dsm=%f, weight=%e, tbhmr=%e\n", z, m, i, f, dm, weight, tbhmr);
     // tw += weight;
     nd += weight*tnd;
     bhmr_nd += weight*tnd*tbhmr;
@@ -2412,10 +2553,11 @@ double calc_qpdf_at_sBHAR_m_z_new(double sBHAR, double m, double z) {
 
   // Get the luminosity from the sBHAR. We will use this 
   // to find the probability distribution values.
-  double lbol = log10(2.6e35) + m + sBHAR;
+  double lx = log10(2.6e35 / 25) + m + sBHAR;
   // double lum_i = 72.5 - 2.5*(Lbol - 7);
   // Compton-thick fractions.
-  double lx = find_Lx_at_Lbol(lbol);
+  double lbol = find_Lbol_at_Lx(lx);
+  //fprintf(stderr, "lx=%f, lbol=%f\n", lx, lbol);
   double psi_ctn = psi(lx, z);
 
   double mbh_bpdex = MBH_BINS / (steps[step].bh_mass_max - steps[step].bh_mass_min);
@@ -2628,9 +2770,9 @@ double model_chi2_point(struct obs_smf_point *m_smf,
      //fprintf(stdout, "%f %f %f %f %f %f\n",
      //r_smf->z_low, r_smf->z_high, r_smf->mass, r_smf->val, m_smf->val, err * err);
   if (!isfinite(err)) {
-    fprintf(stderr, "Infinite error at z=%f, m=%f, type=%d, model val=%f, real val=%f\n", 
+    fprintf(stderr, "Infinite error at z=%f, m=%f, extra=%f, type=%d, model val=%f, real val=%f\n", 
 	    0.5*(r_smf->z_low + r_smf->z_high),
-	    r_smf->mass, r_smf->type, m_smf->val, r_smf->val);
+	    r_smf->mass, r_smf->extra, r_smf->type, m_smf->val, r_smf->val);
     // chi2 = 1e30;
     //   return chi2;
   }
@@ -2896,7 +3038,7 @@ void load_real_smf(struct obs_smf_point **cur_smf, int64_t *num_points, char *fi
   FILE *smf_data;
   char buffer[1024];
   // char *data_types[] = {"smf", "ssfr", "cosmic sfr"};
-  char *data_types[] = {"smf", "ssfr", "cosmic sfr", "quasar lf", "quasar luminosity pdf", "active bhmf", "quasar eddington ratio pdf", "Compton-thin quasar lf", "qf", "uvlf"};
+  char *data_types[] = {"smf", "ssfr", "cosmic sfr", "quasar lf", "quasar luminosity pdf", "active bhmf", "quasar eddington ratio pdf", "Compton-thin quasar lf", "qf", "uvlf", "type I bhmf"};
   char *error_types[] = {"log", "linear"};
   struct obs_smf_point next_smf, conv_smf;
   int64_t n, loaded=0;

@@ -8,7 +8,8 @@ extern int64_t num_outputs;
 
 void calc_sfh(struct smf_fit *f);
 struct smf smhm_at_z(double z, struct smf_fit f);
-double calc_sm_at_m(double m, struct smf c);
+// double calc_sm_at_m(double m, struct smf c);
+double calc_sm_at_m(double m, struct timestep steps);
 void calc_sm(int n, struct smf_fit *fit);
 // double calc_smf_at_m(double m, double scale, struct smf c, struct smf_fit *fit);
 void calc_smf_and_ssfr(int n, struct smf_fit *fit);
@@ -32,6 +33,11 @@ double recent_Micl_Mstar_ratio_in_massive_halos(void);
 double recent_radiative_power_in_massive_halos(void);
 double recent_kinetic_power_in_massive_halos(void);
 double recent_kinetic_frac_in_massive_halos(void);
+double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, double frac_area);
+double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_area);
+void calc_avg_eta_rad(int n);
+double rising_sfh_penalty(void);
+
 void calc_bh_integral(struct smf *c);
 void calc_bh_eta_avg(int n);
 void calc_bh_eta_kin_avg(int n);

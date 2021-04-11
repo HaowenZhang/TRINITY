@@ -39,11 +39,11 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  double mh, mstar, mbh;
-  mh = 12.1;
+  //double mh, mstar, mbh;
+  double mh = 12.1;
   int mb = (mh - M_MIN) * BPDEX - 0.5;
-  mstar = 9;
-  mbh = 4;
+  //mstar = 9;
+  //mbh = 4;
   if (argc<2+NUM_PARAMS) {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);

@@ -13,6 +13,8 @@
 #include "observations.h"
 #include "check_syscalls.h"
 #include "smoothing.h"
+#include "distance.h"
+#include "mah.h"
 #include <omp.h>
 #include <assert.h>
 
@@ -45,40 +47,45 @@ extern struct timestep *steps;
 extern int64_t num_outputs;
 extern int no_obs_scatter;
 
+extern double frac_below8[MBH_BINS];
+extern double frac_below11[MBH_BINS];
+
 void calc_sfh(struct smf_fit *f) {
   //fprintf(stderr, "z_start: %f", 1 / steps[0].scale - 1);
    int64_t i,j;
-  for (i=0; i<num_outputs; i++) 
-  {
+  for (i=0; i<num_outputs; i++) {
     if (!no_z_scaling || ((steps[i].scale < 1.0/(z_min+1.0)) &&
 			  (steps[i].scale > 1.0/(z_max+1.0))))
-    calc_sm_hist(i, f); //Calculate the star formation & black hole assembly histories
+    calc_sm_hist(i, f);
+    //for (j=0; j<M_BINS; j++)
+    //{
+      //fprintf(stdout, "%d %f %f\n", i, steps[i].med_hm_at_a[j], steps[i].log_sm[j]);
+    //}
+    
   }
 
 #pragma omp for schedule(guided,5)
   for (j=1; j<num_outputs; j++) {
     if (!no_z_scaling || ((steps[j].scale < 1.0/(z_min+1.0)) &&
 			  (steps[j].scale > 1.0/(z_max+1.0)))) {
-      // Calculate various "intermediate" observables that we can conveniently use when making predictions.
-      calc_smf_and_ssfr(j, f); //Calculate the "intrinsic" galaxy stellar mass functions and SSFR(M_*).
-      calc_uvlf(j, f); //"Intrinsic" galaxy UV luminosity functions
-      calc_total_sfr(j); //Cosmic SFR densities
+      calc_smf_and_ssfr(j, f);
+      calc_uvlf(j, f);
+      calc_total_sfr(j);
 
-      calc_bh_acc_rate_distribution(j, f); //BH accretion rate distributions. See the comments for this function.
-      calc_bh_acc_rate_distribution_full(j, f); //Full BH accretion rate distributions. See the comments for this function.
-      calc_bh_lum_distribution_full(j, f); //BH luminosity distributions as functions of BH mass.
-      // calc_bh_acc_rate_distribution_kinetic(j, f); //BH kinetic Eddington ratio distributions.
-      calc_active_bh_fraction(j, f);  //Active (log Edd_rad >= -2) fractions as functions of halo mass and redshift.
-      //calc_bh_eta_avg(j); //Average ***radiative*** Eddington ratio.
-      // calc_bh_eta_kin_avg(j); //Average ***kinetic*** Eddington ratio.
-      calc_total_bhar(j); //Cosmic BHAR density
-      //The fraction of super-Eddington objects among AGN brighter than Lbol=10^45 erg/s.
-      //This is used only in the process of writing papers. Should be commented out when actually running the MCMC.
+      calc_bh_acc_rate_distribution(j, f);
+      calc_bh_acc_rate_distribution_full(j, f);
+      calc_bh_lum_distribution_full(j, f);
+      // calc_bh_acc_rate_distribution_kinetic(j, f);
+      calc_active_bh_fraction(j, f);
+      calc_avg_eta_rad(j);
+      //calc_bh_eta_avg(j);
+      // calc_bh_eta_kin_avg(j);
+      calc_total_bhar(j);
+      // calc_observed_bhar(j);
       for (i=0; i<M_BINS; i++)
         calc_supEdd_frac_lum(j, i, 45);
     }
   }
-  // The prior that the CSFR should keep decreasing with redshift at z>6.
   for (j=1; j<num_outputs; j++)
   {
     if (1 / steps[j].scale - 1 >= 6 && steps[j].cosmic_sfr < steps[j-1].cosmic_sfr)
@@ -87,8 +94,9 @@ void calc_sfh(struct smf_fit *f) {
       INVALIDATE(f, "decreasing CSFR at z>6.");
       break;
     }
+    //for (int k=0; k<M_BINS; k++) steps[j].sfr[k] -= (1 - steps[j].sfrac[k]) * steps[j].old_sm[k] * SSFR_AVG_Q;
   }
-  
+  //for (j=0; j<M_BINS; j++) fprintf("sm_hist[0, %d]=%e\n", j, steps[0].sm_hist[j*num_outputs]);
 }
 
 
@@ -248,8 +256,7 @@ void calc_total_sfr(int n) {
   {
     sfr += steps[n].sfr[i]*steps[n].t[i];
     // if (steps[n].sfr[i]<sfr_minimum) continue;
-    if (steps[n].sfr[i] > 0) //Instead of completely excluding halo mass bins with SFR smaller than the threshold, we
-                              //assign weights for them using the error function when calculating the ***observed*** CSFR. 
+    if (steps[n].sfr[i] > 0) 
     {
       float weight = 0.5+0.5*erf(log10(steps[n].sfr[i]/sfr_minimum)/(sqrt(2)*steps[n].smhm.scatter));
       obs_sfr += weight * steps[n].sfr[i]*steps[n].t[i]*sm_corr;
@@ -378,7 +385,6 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
  }
 }
 
-// Calculate the relevant model parameters at a given redshift.
 struct smf smhm_at_z(double z, struct smf_fit f) {
   struct smf c;
   double a = 1.0/(1.0+z);
@@ -388,7 +394,6 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   double a2 = a1*a1;
   // double a4 = a1*a1*a1*a1;
   double z8 = z;
-
   double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
   c.bin_real = (mass_real - M_MIN) * BPDEX - 1;
   //if (z8 > 10) z8=10;
@@ -469,11 +474,12 @@ struct smf smhm_at_z(double z, struct smf_fit f) {
   // c.bh_efficiency = pow(10, BH_EFFICIENCY_0(f)+BH_EFFICIENCY_1(f)*a1);
   // if (c.bh_efficiency > 0.7) c.bh_efficiency = 0.7;
   // c.bh_efficiency_rad = c.bh_efficiency / (1.0-c.bh_efficiency);
-  c.bh_efficiency_rad = exp10(BH_EFFICIENCY_0(f));
+  c.bh_efficiency_rad = exp10(BH_EFFICIENCY_0(f) + a1 * BH_ETA_CRIT_1(f));
   c.bh_eta_crit = BH_ETA_CRIT_0(f)+BH_ETA_CRIT_1(f)*a1;
   c.bh_duty = BH_DUTY_0(f)+BH_DUTY_1(f)*a1;
   if (c.bh_duty < 1e-4) c.bh_duty = 1e-4;
   c.bh_scatter = BH_SCATTER_0(f) + BH_SCATTER_1(f)*a1;
+  //c.bh_scatter = BH_SCATTER_0(f);
   // c.bh_prob_norm = 1.0; //Since in the current model, the scatter is larger than zero and we are renormalizing the bher_dist_full each time, 
   //                                               //we don't really have to use this quantity.
   c.dc_mbh = DC_MBH_0(f);
@@ -498,17 +504,25 @@ double calc_bh_at_vdisp(double vd, struct smf c) {
   return c.bh_beta + c.bh_gamma * (vd - 2.30103);
 }
 
-/*double calc_sm_at_m(double m, struct smf c) {
-  double dm = m-c.m_1;
-  double sm, dma = dm*c.alpha;
-  //if (dma > dmb+20) sm = -dma;
-  //else if (dmb > dma+20) sm = -dmb;
-  //else sm = -dolog10(doexp10(dma) + doexp10(dmb));
-  sm = -log10_1p_exp10fc(dma);
-  //sm += c.sm_0 + c.delta*(exp10(log10fc(log10_1p_exp10fc(dm))*c.gamma)/(1.0+exp(exp10(-dm)))) + c.f_1;
-  sm += c.sm_0 + c.delta*(exp10(dolog10(log10(1.0+exp(dm)))*c.gamma)/(1.0+exp(exp10(-dm)))) + c.f_1;
+double calc_sm_at_m(double m, struct timestep steps) {
+  double mf = (m - M_MIN) * BPDEX;
+
+  int64_t mb;
+  if (mf >= M_BINS - 1)
+  {
+    mb = M_BINS - 2;
+    mf = 1;
+  }
+  else
+  {
+    mb = mf;
+    mf -= mb;
+  }
+
+  double sm = steps.log_sm[mb] + mf * (steps.log_sm[mb+1] - steps.log_sm[mb]);
+
   return sm;
-  }*/
+}
 
 double calc_sfr_at_lv(double m, double lv, struct smf c) {
   double vd = lv - c.v_1;
@@ -516,7 +530,7 @@ double calc_sfr_at_lv(double m, double lv, struct smf c) {
   // double vd3 = (lv-c.qv)/c.qsig;
   // double qfrac = c.fqmin + (1.0 - c.fqmin) * (0.5 + 0.5 * erf(vd3*M_SQRT1_2));
   
-  double sfrac = 1 / (1 + exp((m - c.qm) / c.qwidth));
+  double sfrac = 1 / (1 + exp((lv - c.qm) / c.qwidth));
   //double sfrac = 0.5+0.5*erf(-vd3*M_SQRT1_2);
   return (sfrac*c.epsilon * (1.0/(doexp10(c.alpha*vd) + doexp10(c.beta*vd)) + c.gamma*exp(-0.5*vd2*vd2)));
 }
@@ -876,6 +890,8 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit) {
     double bh_eta_corr = log10(nom/dnom/dc);
     // printf("alpha=%e, delta=%e, nominator=%e, denominator=%e, bh_eta_corr=%e for %d-th bin at %d-th snapshot\n", 
     //             steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, nom, dnom, log10(nom/dnom), i, n);
+    //if (n == 63 && i == 19) fprintf(stderr, "avg bh_eta=%f, bh_eta_corr=%f, bh_eta0 = %f\n", steps[n].bh_eta[i], bh_eta_corr, steps[n].bh_eta[i] + bh_eta_corr);
+    //if (n == 63 && i == 19) fprintf(stderr, "avg bh_eta=%f, alpha=%f, delta=%f, nom=%e, dnom=%e, dc=%e, bh_eta_corr=%f, bh_eta0 = %f\n", steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, nom, dnom, dc, bh_eta_corr, steps[n].bh_eta[i] + bh_eta_corr);
     steps[n].bh_eta[i] += bh_eta_corr;
 
     // Update the minimum/maximum ABSOULTE RADIATIVE EDDINGTON ratios for this snapshot.
@@ -1020,7 +1036,7 @@ void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
       steps[n].ledd_eff_min[i] = ledd_eff_min;
       steps[n].ledd_max[i] = ledd_max;
       steps[n].ledd_bpdex[i] = bpdex;
-
+      //if (n == 63 && i == 19) fprintf(stderr, "ledd_min=%f, ledd_eff_min=%f, ledd_max=%f, ledd_bpdex=%f\n", ledd_min, ledd_eff_min, ledd_max, bpdex);
   //     for (k=kmin; k<kmax; k++) {
   // double db = inv_scatter*k*inv_bpdex;
   // ecache[k-kmin] = exp(-0.5*db*db);
@@ -1050,6 +1066,8 @@ void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
 
 
   float prob = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit);
+  //if (n == 63 && i == 19)
+  //fprintf(stderr, "j=%d, mbh_med=%f, bher=%f, bher_0=%f, bh_alpha=%f, bh_delta=%f, prob=%e\n", j, steps[n].log_bh_mass[i], bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, prob);
   //if (prob < 1e-15) {
   //  if (steps[n].smhm.bh_alpha > 0 && steps[n].smhm.bh_delta > 0) break;
   //  else if (bher+steps[n].bh_eta[i] > 0) break;
@@ -1128,6 +1146,7 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
     for (j=0; j < M_BINS; j++)
     {
       double dmbh = (mbh - steps[n].log_bh_mass[j]) / scatter;
+      //if (fabs(dmbh) > 5) continue;
       double w_mbh = gauss_norm * exp(-0.5 * dmbh * dmbh) * mbh_inv_bpdex; //Here I chose not to include
                                                             //mbh_inv_bpdex, which is "dlogMbh"
                                                           //in the integral of QLF/QPDF.
@@ -1156,7 +1175,7 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         double bh_eta = lbol - 38.1 - mbh;
         double eta_frac = bh_eta - steps[n].bh_eta[j];
         //if (n == 134 && mbh == 7.715) fprintf(stderr, "n=%d, j=%d, mbh=%f, lbol=%f, bh_eta=%f, bh_eta0=%f, eta_frac=%f, ledd_max=%f\n", n, j, mbh, lbol, bh_eta, steps[n].bh_eta[j], eta_frac, steps[n].ledd_max[j]);
-        if (eta_frac < steps[n].ledd_min[j] || eta_frac > steps[n].ledd_max[j])
+        if ((!isfinite(eta_frac)) || eta_frac < steps[n].ledd_min[j] || eta_frac > steps[n].ledd_max[j])
 	{
      //           if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "0 ");
                 continue;
@@ -1173,16 +1192,21 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         double nd_l = (p1 + bher_f*(p2-p1)) * w_mbh * steps[n].t[j] * dc; //The number density (Mpc^-3)
                                                                           //of AGN with this luminosity
                                                                           //and this Mbh in this Mh bin.
+        //if (n == 63 && j==19 && lbol >= 46.725 && lbol <= 47.075 && mbh >= 7.075 && mbh <= 7.095)
+	    //fprintf(stderr, "lbol=%f, j=%d, nd_l=%e\n", lbol, j, nd_l);
+	  //  fprintf(stderr, "lbol=%f, j=%d, dmbh=%f-sigma, bher_b=%d, bher_f=%f, p1=%e, p2=%e, w_mbh=%e, dc=%e, nd=%e, nd_l=%e\n", lbol, j, dmbh, bher_b, bher_f, p1, p2, w_mbh, dc, steps[n].t[j], nd_l); 
         //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "%e ", nd_l);
         //if (n == 134 && mbh == 7.715) fprintf(stderr, "n=%d, j=%d, mbh=%f, lbol=%f, bh_eta=%f, bh_eta0=%f, eta_frac=%f, ledd_max=%f, nd_l=%e, bher_b=%d, bher_f=%f, p1=%e, p2=%e\n", n, j, mbh, lbol, bh_eta, steps[n].bh_eta[j], eta_frac, steps[n].ledd_max[j], nd_l, bher_b, bher_f, p1, p2);
 	steps[n].lum_func_full[i*LBOL_BINS+k] += nd_l;
         // steps[n].lum_dist_full[i*MBH_BINS+k] = steps[n].lum_func_full[i*MBH_BINS+k];
         //if (n == 134) fprintf(stderr, "n=%d, Mh=%f, mbh=%f, w_mbh=%e, lbol=%f, eta_frac=%f, bher_f=%f, bher_b=%d, p1=%e, p2=%e, dc=%e\n", n, M_MIN + (j + 0.5) * INV_BPDEX, mbh, w_mbh, lbol, eta_frac, bher_f, bher_b, p1, p2, dc);
       }
+     // if (n == 63 && mbh >= 7.075 && mbh <= 7.095)
+       //   fprintf(stderr, "\n");
       //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "\n");
       
     }
-    steps[n].bhmf[i] = tnd * mbh_bpdex; //remember to put the bin width (mbh_bpdex) back!!!!!!!
+    steps[n].bhmf[i] = tnd * mbh_bpdex;
     
     //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) 
     //{
@@ -1361,6 +1385,40 @@ void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
   fclose(out);
   */
 }
+
+void calc_avg_eta_rad(int n)
+{
+  int64_t i, j;
+  for (i = 0; i < M_BINS; i++)
+  {
+    double eta0 = steps[n].bh_eta[i];
+    double ledd_min = steps[n].ledd_min[i];
+    double ledd_bpdex = steps[n].ledd_bpdex[i];
+    double ledd_inv_bpdex = 1 / ledd_bpdex;
+    double norm = 0; 
+    double tot = 0;
+    double dc = steps[n].smhm.bh_duty;
+    //double dc = steps[n].smhm.bh_duty;
+    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
+    f_mass = f_mass / (1 + f_mass);
+    f_mass = f_mass < 1? f_mass : 1;
+    dc *= f_mass;
+    if (dc < 1e-4) dc = 1e-4; 
+    for (j = 0; j < BHER_BINS; j++)
+    {
+      double prob = steps[n].bher_dist[i*BHER_BINS + j];
+      if isfinite(prob)
+      {  
+          //norm += prob;
+          tot += prob * exp10(eta0 + ledd_min + (j + 0.5) * ledd_inv_bpdex) * ledd_inv_bpdex * dc;
+      }
+      }
+      //if (norm) steps[n].bh_eta_rad_avg[i] = tot / norm;
+      if (isfinite(tot)) steps[n].bh_eta_rad_avg[i] = tot;
+      //fprintf(stderr, "n=%d, z=%f, i=%d, eta0=%e, eta_avg=%e\n", n, 1 / steps[n].scale - 1, i, eta0, steps[n].bh_eta_rad_avg[i]);
+  }
+}
+
 
 // void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
 //   int64_t i, j;
@@ -2826,7 +2884,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     // This shouldn't affect anything, because the sm[i] calculated in line 962 is useful
     // only for generating fake SFH, where all the galaxies should be SF-ing.
     // steps[n].sfrac[i] = calc_sfrac_at_lv(lv, steps[n].smhm);
-    steps[n].sfrac[i] = calc_sfrac_at_m(steps[n].med_hm_at_a[i], steps[n].smhm);
+    steps[n].sfrac[i] = calc_sfrac_at_m(steps[n].lv[i], steps[n].smhm);
     steps[n].sfr[i] = calc_sfr_at_lv(steps[n].med_hm_at_a[i], lv, steps[n].smhm)*exp(pow(0.30*log(10), 2)/2.0);
     
 
@@ -3013,6 +3071,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
 
     //if (i == 0) fprintf(stderr, "z=%f, sfr=%e, after adding QFGs.\n", 1 / steps[n].scale - 1, steps[n].sfr[i]);
     calc_new_sm_and_sfr(n,i,fit);
+    //steps[n].sfr[i] -= (1 - steps[n].sfrac[i]) * steps[n].old_sm[i] * SSFR_AVG_Q;
     // // Moved to the calc_new_sm_and_sfr().
     // steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
     // steps[n].log_bh_mass[i] = (vel_dispersion) ? 
@@ -3041,6 +3100,156 @@ void calc_old_sm(int n, int j) {
     steps[n].sm_icl[j] += steps[n].smloss[k]*steps[n].icl_stars[j*num_outputs+k];
 }
 
+// Calculate the number of quasars that exist between (z_low, z_high), and
+// above a certain luminosity threshold, lbol, from a survey that covers 
+// frac_area of the WHOLE SKY.
+double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, double frac_area)
+{
+  int n, i, j;
+  // Find out the relevant snapshots
+  double a_max = 1.0 / (1 + z_low);
+  double a_min = 1.0 / (1 + z_high);
+  double n_qso = 0;
+
+  // Find out the relevant luminosity bins
+  double lbol_f = (lbol - LBOL_MIN) * LBOL_BPDEX;
+  int64_t lbol_b = lbol_f; lbol_f -= lbol_b;
+  if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
+
+  // go to the first snapshot within (z_low, z_high)
+  for (n=0; n<num_outputs; n++) if (steps[n].scale >= a_min) break;
+  for (; n<num_outputs; n++)
+  {
+    double n_qso_n = 0;
+    // Calculate the comoving volume around this snapshot
+    double z_max = 0.5 * (1.0 / steps[n-1].scale + 1.0 / steps[n].scale - 2);
+    double z_min = 0.5 * (1.0 / steps[n+1].scale + 1.0 / steps[n].scale - 2);
+    double V_comoving = comoving_volume(z_max) - comoving_volume(z_min);
+    //fprintf(stderr, "z_min=%.6f, z_max=%.6f, Vcom=%.6e\n", z_min, z_max, V_comoving);
+    // traverse every MBH bin.
+    for (i=0; i<MBH_BINS; i++)
+    {
+      double n_qso_mbh = (1 - lbol_f) * steps[n].lum_func_full[i*LBOL_BINS+lbol_b];
+      // fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
+      //        n, steps[n].scale,i, lbol_b, steps[n].lum_func_full[i*LBOL_BINS+lbol_b]);
+      for (j=lbol_b+1; j<LBOL_BINS; j++)
+      {
+        n_qso_mbh += steps[n].lum_func_full[i*LBOL_BINS+j];
+       // fprintf(stderr, "a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
+       //       steps[n].scale,i, j, steps[n].lum_func_full[i*LBOL_BINS+j]);
+      }
+      // weight every MBH bin by the fraction that BHs in this bin get scattered
+      // below 10^8 Msun due to virial estimate. This gives the number ***density***,
+      // i.e., the Mpc^-3
+      // n_qso_mbh *= frac_below8[i];
+      //fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, n_qso_mbh=%e, frac_below8=%e\n", 
+      //       n, steps[n].scale,i, n_qso_mbh, frac_below8[i]);
+      n_qso_n += n_qso_mbh * frac_below8[i];
+    }
+    // Multiply the numeber density with comoving volume.
+    // n_qso_n *= V_comoving;
+    //fprintf(stderr, "n=%d, n_qso_n * V_comoving = %e\n", n, n_qso_n * V_comoving);
+    n_qso += n_qso_n * V_comoving;
+    // Stop if the redshift is lower than the threshold.
+    if (steps[n].scale > a_max) break;
+  }
+  // The calculated comoving volume is for the 4pi surface area, so we have to
+  // multiply it by the fractional survey area relative to the whole sky.
+  // Also, the luminosity functions are in the unit of dex^-1, we have to convert
+  // them back by multiplying LBOL_INV_BPDEX.
+  n_qso *= frac_area * LBOL_INV_BPDEX;
+  return n_qso;
+}
+
+// Calculate the number ratio of quasars that exist between (z_low, z_high), and
+// above/below a certain luminosity threshold, lbol, from a survey that covers 
+// frac_area of the WHOLE SKY.
+double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_area)
+{
+  int n, i, j;
+  // Find out the relevant snapshots
+  double a_max = 1.0 / (1 + z_low);
+  double a_min = 1.0 / (1 + z_high);
+  // double n_qso = 0;
+  double n_qso_above = 0;
+  double n_qso_below = 0;
+
+  // Find out the relevant luminosity bins
+  double lbol_f = (lbol - LBOL_MIN) * LBOL_BPDEX;
+  int64_t lbol_b = lbol_f; lbol_f -= lbol_b;
+  if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
+
+  // go to the first snapshot within (z_low, z_high)
+  for (n=0; n<num_outputs; n++) if (steps[n].scale >= a_min) break;
+  for (; n<num_outputs; n++)
+  {
+    // double n_qso_n = 0;
+    double n_qso_n_above = 0;
+    double n_qso_n_below = 0;
+
+    // Calculate the comoving volume around this snapshot
+    double z_max = 0.5 * (1.0 / steps[n-1].scale + 1.0 / steps[n].scale - 2);
+    double z_min = 0.5 * (1.0 / steps[n+1].scale + 1.0 / steps[n].scale - 2);
+    double V_comoving = comoving_volume(z_max) - comoving_volume(z_min);
+    //fprintf(stderr, "z_min=%.6f, z_max=%.6f, Vcom=%.6e\n", z_min, z_max, V_comoving);
+    // traverse every MBH bin.
+    for (i=0; i<MBH_BINS; i++)
+    {
+      double n_qso_mbh = (1 - lbol_f) * steps[n].lum_func_full[i*LBOL_BINS+lbol_b];
+      //fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
+        //      n, steps[n].scale,i, lbol_b, steps[n].lum_func_full[i*LBOL_BINS+lbol_b]);
+      for (j=lbol_b+1; j<LBOL_BINS; j++)
+      {
+        n_qso_mbh += steps[n].lum_func_full[i*LBOL_BINS+j];
+       // fprintf(stderr, "a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
+         //     steps[n].scale,i, j, steps[n].lum_func_full[i*LBOL_BINS+j]);
+      }
+      // weight every MBH bin by the fraction that BHs in this bin get scattered
+      // below 10^8 Msun due to virial estimate. This gives the number ***density***,
+      // i.e., the Mpc^-3
+      // n_qso_n += n_qso_mbh * frac_below8[i];
+      n_qso_n_below += n_qso_mbh * frac_below8[i];
+      n_qso_n_above += n_qso_mbh * (frac_below11[i] - frac_below8[i]);
+    }
+    // Multiply the numeber density with comoving volume.
+    // n_qso_n *= V_comoving;
+    // n_qso += n_qso_n * V_comoving;
+    n_qso_below += n_qso_n_below * V_comoving;
+    n_qso_above += n_qso_n_above * V_comoving;
+    // Stop if the redshift is lower than the threshold.
+    if (steps[n].scale > a_max) break;
+  }
+  // The calculated comoving volume is for the 4pi surface area, so we have to
+  // multiply it by the fractional survey area relative to the whole sky.
+  // Also, the luminosity functions are in the unit of dex^-1, we have to convert
+  // them back by multiplying LBOL_INV_BPDEX.
+  // n_qso *= frac_area * LBOL_INV_BPDEX;
+  // return n_qso;
+
+  double ratio = n_qso_below / n_qso_above;
+  return ratio;
+}
+
+double rising_sfh_penalty(void)
+{
+  double penalty = 0.0;
+  int64_t n, i;
+  int64_t imin = (RISING_SFH_M_CONSTRAINT - M_MIN) * BPDEX;
+  for (n=0; n<num_outputs; n++) if (steps[n].scale > RISING_SFH_A_CONSTRAINT) break;
+  int64_t nmin = n;
+  for (i=imin; i<M_BINS; i++)
+  {
+    double sfr = steps[nmin].sfr[i] - (1 - steps[nmin].sfrac[i]) * steps[n].old_sm[i] * SSFR_AVG_Q;
+    double sfr_next;
+    for (n=nmin; n<num_outputs - 1; n++)
+    {
+      sfr_next = steps[n+1].sfr[i] - (1 - steps[n+1].sfrac[i]) * steps[n+1].old_sm[i] * SSFR_AVG_Q;
+      if (sfr_next > sfr && sfr > 0) penalty += 10 * log10(sfr_next / sfr);
+      sfr = sfr_next;
+    }  
+  }
+  return penalty;
+}
 double recent_sfh_in_massive_halos(void) {
   int64_t n, j, count=0;
   double sfr = 0;
@@ -3269,6 +3478,63 @@ double recent_kinetic_frac_in_massive_halos(void) {
 
 
 
+// // Calculate the recent AGN radiative power in massive halos.
+// double recent_radiative_power_in_massive_halos(void) {
+//   int64_t n, j, k, count=0;
+//   double L_rad = 0;
+//   double nd_tot = 0;
+
+//   // Find the smallest scale factor that enters the window
+//   for (n=0; n<num_outputs; n++) if (steps[n].scale > RAD_POWER_A_CONSTRAINT_LOW) break;
+//   for (; n<num_outputs; n++) 
+//   {
+//     // If the scale factor is bigger than the upper limit, stop.
+//     if (steps[n].scale > RAD_POWER_A_CONSTRAINT_HIGH) break;
+
+
+//     // Only count the kinetic powers in massive halos.
+//     for (j=(RAD_POWER_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
+//     {
+//       double L_tmp = 0;
+//       //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
+//       if (steps[n].t[j] <= 0) continue;
+
+//       double dc = steps[n].smhm.bh_duty;
+//       double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
+//       f_mass = f_mass / (1 + f_mass);
+//       // f_mass = f_mass < 1? f_mass : 1;
+//       dc *= f_mass;
+//       if (dc < 1e-4) dc = 1e-4;
+//       double norm = 0;
+//       for (k=0; k<BHER_BINS; k++) 
+//         {
+//           L_tmp += exp10(38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j])
+//                                               * steps[n].bher_dist_full[j * BHER_BINS + k];
+//           // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, eta=%f, Prob(eta)=%e, L=%f, duty=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
+//           //         steps[n].log_bh_mass[j], steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], 
+//           //         steps[n].bher_dist_full[j * BHER_BINS + k],
+//           //         38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], dc);
+//           norm += steps[n].bher_dist_full[j * BHER_BINS + k];
+//         }
+//       // From the calculation of bher_dist, we know that the normalization of bher_dist turns out to be bher_bpdex.
+//       // L_rad *= dc * steps[n].t[j] / steps[n].ledd_bpdex[j];
+//       L_tmp /= norm;
+//       // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, L=%e, norm=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
+//       //             steps[n].log_bh_mass[j], L_tmp, norm);
+//       // L_tmp *= dc * steps[n].t[j];
+//       L_rad += L_tmp * dc * steps[n].t[j];
+
+//       nd_tot += steps[n].t[j];
+    
+//     }
+
+//   }
+
+//   L_rad /= nd_tot;
+//   return log10(L_rad);
+// }
+
+
 // Calculate the recent AGN radiative power in massive halos.
 double recent_radiative_power_in_massive_halos(void) {
   int64_t n, j, k, count=0;
@@ -3290,30 +3556,8 @@ double recent_radiative_power_in_massive_halos(void) {
       //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
       if (steps[n].t[j] <= 0) continue;
 
-      double dc = steps[n].smhm.bh_duty;
-      double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-      f_mass = f_mass / (1 + f_mass);
-      // f_mass = f_mass < 1? f_mass : 1;
-      dc *= f_mass;
-      if (dc < 1e-4) dc = 1e-4;
-      double norm = 0;
-      for (k=0; k<BHER_BINS; k++) 
-        {
-          L_tmp += exp10(38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j])
-                                              * steps[n].bher_dist_full[j * BHER_BINS + k];
-          // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, eta=%f, Prob(eta)=%e, L=%f, duty=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-          //         steps[n].log_bh_mass[j], steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], 
-          //         steps[n].bher_dist_full[j * BHER_BINS + k],
-          //         38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], dc);
-          norm += steps[n].bher_dist_full[j * BHER_BINS + k];
-        }
-      // From the calculation of bher_dist, we know that the normalization of bher_dist turns out to be bher_bpdex.
-      // L_rad *= dc * steps[n].t[j] / steps[n].ledd_bpdex[j];
-      L_tmp /= norm;
-      // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, L=%e, norm=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-      //             steps[n].log_bh_mass[j], L_tmp, norm);
-      // L_tmp *= dc * steps[n].t[j];
-      L_rad += L_tmp * dc * steps[n].t[j];
+      L_tmp = 5.66e46 * steps[n].smhm.bh_efficiency_rad * steps[n].bh_acc_rate[j];
+      L_rad += L_tmp * steps[n].t[j];
 
       nd_tot += steps[n].t[j];
     
@@ -3470,7 +3714,7 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
     // for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] *= steps[n].bh_unmerged[i] / (steps[n].bh_unmerged[i] + mfrac*new_bh_mass);
  }
   double bhar_tmp = steps[n].bh_acc_rate[i] > 0 ? steps[n].bh_acc_rate[i] : 1e-8;
-  if (steps[n].bh_acc_rate[i] <= 0) steps[n].bh_acc_rate[i] = 1e-8;
+  //if (steps[n].bh_acc_rate[i] <= 0) steps[n].bh_acc_rate[i] = 1e-8;
   steps[n].bh_eta[i] = 
     log10(//schechter_inv_avg(steps[n].smhm.bh_alpha, BHER_MIN, BHER_EFF_MAX)*
     bhar_tmp/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency_rad));

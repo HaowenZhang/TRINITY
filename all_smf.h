@@ -7,6 +7,9 @@
 #define SFR_A_CONSTRAINT 0.8
 #define SFR_M_CONSTRAINT 13.5
 
+#define RISING_SFH_M_CONSTRAINT 14
+#define RISING_SFH_A_CONSTRAINT 0.5
+
 #define ICL_RATIO_CONSTRAINT 0.0
 #define ICL_RATIO_CONSTRAINT_WIDTH 0.3
 #define ICL_RATIO_A_CONSTRAINT 0.8
@@ -232,6 +235,7 @@ struct smf_fit {
 };
 
 void shutdown_clients(void);
+void init_frac_below8(void);
 float all_smf_chi2_err(struct smf_fit test);
 float all_smf_chi2_err_write(struct smf_fit test);
 float chi2_type(struct smf_fit test);

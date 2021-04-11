@@ -73,8 +73,8 @@ int main(int argc, char **argv)
   double t,m;
   int64_t step_low, step_high;
   double f;
-  calc_step_at_z(z_low, &step_low, &f);
-  calc_step_at_z(z_high, &step_high, &f);
+  calc_step_at_z(z_low, &step_high, &f);
+  calc_step_at_z(z_high, &step_low, &f);
 
   double prob_Mh[M_BINS] = {0};
   
@@ -93,6 +93,7 @@ int main(int argc, char **argv)
     for (k=0; k<MBH_BINS; k++)
     {
       double Mbh = mbh_min + (k + 0.5) * mbh_inv_bpdex;
+      //fprintf(stderr, "i=%d, z=%f, mbh=%f\n", i, 1/steps[i].scale-1, Mbh);
       if (Mbh < Mbh_low) continue;
       double lbol_f = (Lbol_low - LBOL_MIN) * LBOL_BPDEX;
       int64_t lbol_b = lbol_f;
@@ -100,7 +101,10 @@ int main(int argc, char **argv)
       if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
       prob_lbol[k] = (1 - lbol_f) * steps[i].lum_dist_full[k*LBOL_BINS + lbol_b];
       for (l=lbol_b+1; l<LBOL_BINS; l++) prob_lbol[k] += steps[i].lum_dist_full[k*LBOL_BINS + l];
+      //fprintf(stderr, "i=%d, z=%f, mbh=%f, prob_l=%e\n", i, 1/steps[i].scale-1, Mbh, prob_lbol[k]);
     }
+
+
 
     for (j=0; j<M_BINS; j++)
     {

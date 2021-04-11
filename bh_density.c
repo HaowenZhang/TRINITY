@@ -20,7 +20,7 @@ int main(int argc, char **argv)
   }
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
-gsl_set_error_handler_off();
+  gsl_set_error_handler_off();
   setup_psf(1);
   load_mf_cache(argv[1]);
   init_timesteps();
@@ -44,10 +44,30 @@ gsl_set_error_handler_off();
         bh_unmerged += steps[i].bh_unmerged[j] * steps[i].t[j];
       }
       
-    printf("%f %g %g %g %g %g %g", z, log10(cosmic_bh_density(z,0,0,NULL)), 
+    fprintf(stdout, "%f %g %g %g %g %g %g", z, log10(cosmic_bh_density(z,0,0,NULL)), 
      log10(cosmic_bh_density(z,-2,0,NULL)), log10(cosmic_bh_density(z,0,43,NULL)), log10(cosmic_bh_density(z,0,46,NULL)), log10(bh_unmerged), steps[i].dt);
-    for (double m=7.0; m < 16.0; m += 1.0) printf(" %g", log10(cosmic_bh_density_split(z, m, m + 1.0, NULL)));
-    printf("\n");
+    for (double m=7.0; m < 16.0; m += 1.0) fprintf(stdout, " %g", log10(cosmic_bh_density_split(z, m, m + 1.0, NULL)));
+    fprintf(stdout, "\n");
   }
+
+  remove_bh_merger();
+  for (i=0; i < num_outputs; i++)
+  {
+    double z = 1 / steps[i].scale - 1;
+    double bh_unmerged = 0;
+    for (int j = 0; j < M_BINS; j++) 
+      if (steps[i].bh_unmerged[j] > 0)
+      {
+        bh_unmerged += steps[i].bh_unmerged[j] * steps[i].t[j];
+      }
+      
+    fprintf(stderr, "%f %g %g %g %g %g %g", z, log10(cosmic_bh_density(z,0,0,NULL)), 
+     log10(cosmic_bh_density(z,-2,0,NULL)), log10(cosmic_bh_density(z,0,43,NULL)), log10(cosmic_bh_density(z,0,46,NULL)), log10(bh_unmerged), steps[i].dt);
+    for (double m=7.0; m < 16.0; m += 1.0) fprintf(stderr, " %g", log10(cosmic_bh_density_split(z, m, m + 1.0, NULL)));
+    fprintf(stderr, "\n");
+  }
+
+
+
   return 0;
 }

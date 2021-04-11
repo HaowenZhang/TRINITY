@@ -40,6 +40,7 @@ int main(int argc, char **argv)
   double f;
   calc_step_at_z(z, &step, &f);
 
+  printf("#z=%f, snapshot=%d\n", z, step);
   printf("#Mbh_min: %f\n", steps[step].bh_mass_min);
   printf("#Mbh_max: %f\n", steps[step].bh_mass_max);
   printf("#Mbh_bpdex: %f\n", (double)(MBH_BINS) / (steps[step].bh_mass_max - steps[step].bh_mass_min));
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
   printf("#Lbol_max: %f\n", (double)(LBOL_MAX));
   printf("#Lbol_bpdex: %f\n", (double)(LBOL_BPDEX));
 
-
+  fprintf(stderr, "#z=%f, snapshot=%d\n", z, step);
   fprintf(stderr, "#Mbh_min: %f\n", steps[step].bh_mass_min);
   fprintf(stderr, "#Mbh_max: %f\n", steps[step].bh_mass_max);
   fprintf(stderr, "#Mbh_bpdex: %f\n", (double)(MBH_BINS) / (steps[step].bh_mass_max - steps[step].bh_mass_min));

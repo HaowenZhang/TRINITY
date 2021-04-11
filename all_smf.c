@@ -32,6 +32,28 @@ int no_z_scaling = 0;
 int no_sfr_constraint = 0;
 int dplaw_only = 0;
 
+
+
+double bh_scatter_obs = 0.4;
+double area_sdss = 14500.0 / 41252.96124941928; //fractional survey area of sdss, ***relative to*** the whole sky.
+double frac_below8[MBH_BINS] = {0};
+double frac_below11[MBH_BINS] = {0};
+
+void init_frac_below8(void)
+// Calculate the frac_below8, i.e., the fractional probability that BH in each mass bin
+// get scattered below 10^8 Msun.
+{
+  for (int i=0; i<MBH_BINS; i++)
+  {
+    double mbh = MBH_MIN + (i + 0.5) * MBH_INV_BPDEX;
+    frac_below8[i] = 0.5 * (1 + erf((8.0 - mbh) / bh_scatter_obs * M_SQRT1_2));
+    frac_below11[i] = 0.5 * (1 + erf((11.0 - mbh) / bh_scatter_obs * M_SQRT1_2));
+    //fprintf(stderr, "i_Mbh=%d, mbh=%f, frac_below8=%e\n", i, mbh, frac_below8[i]);
+  }
+}
+
+
+
 float z_limit = 0;
 float z_max = 0;
 float z_min = 100;
@@ -176,6 +198,7 @@ float all_smf_chi2_err(struct smf_fit test) {
       //LAMBDA(test) < -10 || smf_limit.lambda < -10 || 
       SIGMA_Z(test) < 0 || EFF_0(test) > 1 ||
       SIGMA_Z(test) < 0 || EFF_0(test) > 3 ||
+      EFF_0_A(test) < -2 ||
       smf_limit.epsilon > 1e5 || smf_mid.epsilon > 1e4 ||
       SIGMA_A(test) > 0 ||
       //      smf_limit.sm_0 > smf_limit.m_1+1 ||
@@ -195,22 +218,23 @@ float all_smf_chi2_err(struct smf_fit test) {
 
       smf_limit.bh_beta < 4 || smf_limit.bh_beta > 12 ||
       smf_limit.bh_gamma < 0.5 || smf_limit.bh_gamma > 8.5 ||
-      BH_ALPHA_0(test) < -0.5 || BH_ALPHA_0(test) > 3.0 || 
-      BH_DELTA_0(test) < -0.5 || BH_DELTA_0(test) > 3.0 ||
+      BH_ALPHA_0(test) < -2.0 || BH_ALPHA_0(test) >= 1.0 || 
+      BH_DELTA_0(test) < -2.0 || BH_DELTA_0(test) > 3.0 ||
       BH_ALPHA_0(test) > BH_DELTA_0(test) ||
       smf_limit.bh_alpha > smf_limit.bh_delta || 
       fabs(smf_limit.bh_alpha) > 4 ||
+      fabs(smf_limit.bh_alpha) >= 1.0 ||
       fabs(smf_limit.bh_delta) > 4 ||
 
       smf_limit.icl_frac < 1e-20 || smf_limit.icl_frac > 1 ||
       ICL_FRAC(test) < -20 || ICL_FRAC(test) > 0 ||
-      QM_0(test) < 9 || QM_0(test) > 14 ||
-      smf_limit.qm < 9 ||
+      QM_0(test) < 0 || QM_0(test) > 8 ||
+      smf_limit.qm < 0 ||
       QWIDTH_0(test) < 0.001 || QWIDTH_0(test) > 2 ||
       smf_limit.qwidth < 0.001 || smf_limit.qwidth > 2 ||
 
-      BH_MERGE_F_0(test) < -20 || BH_MERGE_F_0(test) > 5 ||
-      smf_limit.f_merge_bh < 1e-20 || smf_limit.f_merge_bh > 1e5 || 
+      BH_MERGE_F_0(test) < -5 || BH_MERGE_F_0(test) > 5 ||
+      smf_limit.f_merge_bh < 1e-5 || smf_limit.f_merge_bh > 1e5 || 
       //smf_limit.bh_merge < 12 || smf_limit.bh_merge > 17 ||
       //BH_MERGE_W_0(test) < 0.001 || BH_MERGE_W_0(test) > 4 ||
       //smf_limit.bh_merge_width < 0.001 || smf_limit.bh_merge_width > 4 ||
@@ -220,7 +244,7 @@ float all_smf_chi2_err(struct smf_fit test) {
       BH_DUTY_0(test) < 0.001 || BH_DUTY_0(test) > 1 ||
       BH_DUTY_1(test) > BH_DUTY_0(test) ||
       smf_limit.bh_duty < 0.001 || smf_limit.bh_duty > 1 ||
-      BH_SCATTER_0(test) < 0 || BH_SCATTER_0(test) > 0.4 ||
+      BH_SCATTER_0(test) < 0 || BH_SCATTER_0(test) > 2 ||
       smf_limit.bh_scatter < 0 || smf_limit.bh_scatter > 2 ||
       DC_MBH_0(test) < 4 || DC_MBH_0(test) > 10 ||
       DC_MBH_W_0(test) < 0.001 || DC_MBH_W_0(test) > 4 ||
@@ -243,7 +267,7 @@ float all_smf_chi2_err(struct smf_fit test) {
       //chi2_bhmf = 200 * pow(bhz1 / bhz0, 2);
       //chi2 += chi2_bhmf;
       
-      //  fprintf(stderr, "BH ND down. bhz0: %.6e, bhz1: %.6e\n", bhz0, bhz1);
+      //fprintf(stderr, "BH ND down. bhz0: %.6e, bhz1: %.6e\n", bhz0, bhz1);
       INVALIDATE(&test, "BH Number Density Decreased from z=1 to z=0!");
     }
     //fprintf(stderr, "chi2_bhmf: %f\n", chi2_bhmf);
@@ -349,6 +373,21 @@ float all_smf_chi2_err(struct smf_fit test) {
     double chi2_icl = 0;
     double chi2_kin = 0;
     double chi2_rad = 0;
+    double chi2_qso = 0;
+    
+    double penalty_rising_sfh = rising_sfh_penalty();
+    fprintf(stderr, "The chi2 penalty for rising SFH in massive halos at low-z: %f\n", penalty_rising_sfh); 
+
+    double ratio_z6_qso = ratio_high_z_qso(5.7, 6.5, 47, area_sdss);
+    fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
+
+
+    double n_z6_qso = number_high_z_low_mass_qso(5.7, 6.5, 47, area_sdss);
+    fprintf(stderr, "The number of quasars with Lbol>10^47, Mbh<10^8, and 5.7 < z < 6.5 is %e\n", n_z6_qso);
+
+    if (n_z6_qso > 0) chi2_qso = 2 * n_z6_qso;
+    chi2_qso += log10(ratio_z6_qso) * 10;
+
     double recent_sfr = recent_sfh_in_massive_halos();
     //double recent_sfr = recent_sfh_in_massive_halos_nocorr();
     //fprintf(stderr, "recent sfr: %.6e\n", recent_sfr);
@@ -383,8 +422,9 @@ float all_smf_chi2_err(struct smf_fit test) {
       chi2_rad = pow((recent_radiative_power - RAD_POWER_CONSTRAINT_HIGH) / (RAD_POWER_CONSTRAINT_WIDTH), 2);
 
 
-    chi2 += chi2_sfr + chi2_icl + chi2_rad;
-    //fprintf(stderr, "recent rad power: %f, chi2_rad:%f\n", recent_radiative_power, chi2_rad);
+    chi2 += chi2_sfr + chi2_icl + chi2_qso + chi2_rad;
+    chi2 += penalty_rising_sfh;
+    fprintf(stderr, "recent rad power: %f, chi2_rad:%f\n", recent_radiative_power, chi2_rad);
     //fprintf(stderr, "chi2_sfr: %.6f, chi2_icl=%f, chi2_rad: %.6f\n", chi2_sfr, chi2_icl, chi2_rad);
   }
   //fprintf(stderr, "After adding all priors, chi2=%f\n", chi2);
@@ -816,16 +856,26 @@ float chi2_type(struct smf_fit test) {
   }
 
   double chi2_type[11] = {0};
+  double chi2_qpdf_z[5] = {0};
+  double zlows[5] = {0.1, 0.5, 1.0, 1.5, 2.0};
   for (i=0; i<num_obs_smfs; i++) 
     {
       chi2 += obs_smfs[i].chi2;
       chi2_type[obs_smfs[i].type] += obs_smfs[i].chi2;
-      //printf("z_low=%f, z_high=%f, mass=%f, type=%d, chi2=%f\n", obs_smfs[i].z_low, obs_smfs[i].z_high, obs_smfs[i].mass, obs_smfs[i].type, obs_smfs[i].chi2);
+      //for (int ii=0; ii<5; ii++)
+      //  if (obs_smfs[i].type == QPDF_ETA_TYPE && obs_smfs[i].z_low == zlows[ii])
+       // {
+        //fprintf(stderr, "the %d-th data point is at z_low=%.2f\n", i, obs_smfs[i].z_low);
+        //chi2_qpdf_z[ii] += obs_smfs[i].chi2;
+        //}
+	//printf("z_low=%f, z_high=%f, mass=%f, type=%d, chi2=%f\n", obs_smfs[i].z_low, obs_smfs[i].z_high, obs_smfs[i].mass, obs_smfs[i].type, obs_smfs[i].chi2);
 
     }
 
     // fprintf(stderr, "The total chi2 for all the types before the priors are: %f\n", chi2);
-
+  //for (i=0; i<5; i++)
+    //    fprintf(stderr, "The total chi2 from QPDF_ETA at zlow=%.2f is: %.6f\n",
+//zlows[i], chi2_qpdf_z[i]);
   for (i=0; i < 11; i++)
     fprintf(stderr, "The total chi2 for the %d-th type data is: %f\n", i, chi2_type[i]);
 
@@ -1127,15 +1177,17 @@ int main(int argc, char **argv)
   int64_t i;
   float temps[5] = {0.1, 0.2, 0.3, 0.5, 0.8};
   int64_t num_temps = 5;
+  init_frac_below8();
   gsl_set_error_handler_off();
   
   init_mcmc_from_args(argc, argv);
   initial_conditions();
+  fprintf(stderr, "Total number of data points: %ld", num_obs_smfs);
   return 0;
 
-  //srand(time(0));
-  //srand48(time(0));
-  //init_genrand64((unsigned long long) time(0));
+  srand(time(0));
+  srand48(time(0));
+  init_genrand64((unsigned long long) time(0));
 
   //for (i=0; i < num_outputs; i++)
   //{
@@ -1330,9 +1382,10 @@ void assert_model(struct smf_fit *a) {
   }
 
   //BH_GAMMA_0(*a) = 1.1;
-  BH_SCATTER_0(*a) = 0.3;
+  //BH_SCATTER_0(*a) = 0.4;
+  BH_SCATTER_1(*a) = 0;
   BH_ETA_CRIT_0(*a) = -1.5;
-  BH_ETA_CRIT_1(*a) = 0.0;
+  //BH_ETA_CRIT_1(*a) = 0.0;
   //BH_EFFICIENCY_0(*a) = -1.0;
   ABHMF_SHIFT(*a) = 0.2;
   //EFF_0(*a) = 0.109; EFF_0_A(*a) = 3.441; EFF_0_A2(*a) = 5.079; EFF_0_A3(*a) = -0.781;
@@ -1354,7 +1407,7 @@ void assert_model(struct smf_fit *a) {
   BURST_DUST_AMP(*a) = 0;
   BURST_DUST_Z(*a) = 1;
   BURST_DUST(*a) = 0;
-
+  SCATTER_A(*a) = 0;
   //SIGMA_Z(*a) = 0.071;
   SIGMA_A(*a) = 0;
   

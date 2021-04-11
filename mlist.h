@@ -29,15 +29,15 @@
 #define UV_EXTRA 20
 
 // The MBH bin specs to build the bh_unmerged_dist table.
-#define MBH_MIN 0
-#define MBH_MAX 10
-#define MBH_BPDEX 20
+#define MBH_MIN 2
+#define MBH_MAX 11
 #define MBH_BINS 100
+#define MBH_BPDEX ((double)(MBH_BINS) / (MBH_MAX - MBH_MIN))
 #define MBH_INV_BPDEX (1.0/((double)MBH_BPDEX))
 
 #define LBOL_MIN 36
-#define LBOL_MAX 50
-#define LBOL_BPDEX 10
+#define LBOL_MAX 52
+#define LBOL_BPDEX 20
 #define LBOL_INV_BPDEX (1.0 / ((double) LBOL_BPDEX))
 #define LBOL_BINS ((int64_t)((LBOL_MAX - LBOL_MIN) * LBOL_BPDEX)) 
 
@@ -131,6 +131,7 @@ struct timestep {
   double old_bh_mass_self[M_BINS];
   double old_bh_mass_next[M_BINS];
   double bh_eta_avg[M_BINS];
+  double bh_eta_rad_avg[MBH_BINS];
   double bh_eta_kin_avg[M_BINS];
   double bh_acc_rate[M_BINS];
   double bh_acc_rate_obs[M_BINS]; //BH accretion rates that induce a luminosity above the observable limit.

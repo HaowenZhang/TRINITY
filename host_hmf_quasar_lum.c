@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 
     prob_lum /= prob_tot;
     prob_lbol[i] = prob_lum * dc;
-    // printf("%f %e\n", mbh, prob_lum * steps[step].bhmf[i]);
+    fprintf(stderr, "%f %e\n", mbh, prob_lbol[i]);
   }
 
   for (i=0; i<M_BINS; i++) 
@@ -102,8 +102,10 @@ int main(int argc, char **argv)
       // The probability of having a BH mass.
       double prob_tmp = 1 / sqrt(2*M_PI) / scatter * exp(-0.5*dmbh*dmbh) * mbh_inv_bpdex;
       p_l += prob_tmp * prob_lbol[j];
+      //fprintf(stderr, "Mh=%.1f, SM=%.6f, mbh_med=%.6f, mbh=%.6f, scatter=%.6f, dmbh=%.6f, prob_tmp=%.6e\n",
+        //     m, steps[step].log_sm[i], steps[step].log_bh_mass[i], mbh, scatter, dmbh, prob_tmp);
     }
-
+    //fprintf(stderr, "Mh=%.1f, SM=%.6f, prob=%.6e\n", m, steps[step].log_sm[i], p_l);
     printf("%f %e\n", m, steps[step].t[i] * BPDEX * p_l);
 
   }

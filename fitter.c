@@ -5,19 +5,24 @@
 #include "all_smf.h"
 #include "smf.h"
 #include "observations.h"
+#include "mlist.h"
 
 #define FITTING_ROUNDS 4
 #define CHI2_LIMIT 1e-2
 #define STEP_LIMIT 8
 #define MIN_FIT_LIMIT 10
-#define STEP_RATIO (1/2.0) //How quickly step sizes shrink
+//#define STEP_RATIO (1/2.0) //How quickly step sizes shrink
 //#define STEP_RATIO (7/10.0)
-//#define STEP_RATIO 1.1
+#define STEP_RATIO 1.1
 
 extern int no_z_scaling;
 extern int no_matching_scatter;
 extern int no_systematics;
 extern int no_obs_scatter;
+
+extern double frac_below8[MBH_BINS];
+extern double frac_below11[MBH_BINS];
+
 int iterations = 0;
 
 extern int ind_var[4];
@@ -47,6 +52,7 @@ float calc_chi2(float *params);
 int main(int argc, char **argv) {
   int i;
   float params[NUM_PARAMS], steps[NUM_PARAMS];
+  init_frac_below8();
   gsl_set_error_handler_off();
   init_mcmc_from_args(argc, argv);
   read_params_and_steps(params, steps);
@@ -166,13 +172,14 @@ void read_params_and_steps(float *params, float *steps) {
   fgets(buffer, 2048, stdin);
   read_params(buffer, steps, NUM_PARAMS);
   for (i=0; i<NUM_PARAMS; i++) {
-    steps[i]-=params[i];
-    steps[i] = fabs(steps[i]);
+    //steps[i]-=params[i];
+    //steps[i] = fabs(steps[i]);
+    steps[i] = 0.03 * fabs(steps[i]);
   }
   fgets(buffer, 2048, stdin);
   read_params(buffer, inputs, NUM_PARAMS);
-  for (i=0; i<NUM_PARAMS; i++) {
-    inputs[i] = fabs(params[i] - inputs[i]);
-    if (inputs[i] > steps[i]) steps[i] = inputs[i];
-  }
+  //for (i=0; i<NUM_PARAMS; i++) {
+  //  inputs[i] = fabs(params[i] - inputs[i]);
+  //  if (inputs[i] > steps[i]) steps[i] = inputs[i];
+  //}
 }

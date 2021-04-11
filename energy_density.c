@@ -104,10 +104,12 @@ int main(int argc, char **argv)
         {
           double eta_kin = log10(exp10(0.5*(eta_crit + eta_rad)) - exp10(eta_rad));
           double lkin = eta_kin + mbh + 38.1;
-          // double dlog_rad_dlog_kin = (exp10(0.5*eta_crit) - exp10(0.5*eta_rad)) / 
+          if (eta_kin < -6 || mbh < 8) continue;
+	  // double dlog_rad_dlog_kin = (exp10(0.5*eta_crit) - exp10(0.5*eta_rad)) / 
           //                           (0.5*exp10(0.5*eta_crit) - exp10(0.5*eta_rad));
           rho_kin += exp10(lkin) * steps[i].lum_func_full[j*LBOL_BINS + k] * LBOL_INV_BPDEX;
-        }
+          fprintf(stderr, "scale=%f, mbh=%f, lbol=%f, eta_rad=%f, eta_kin=%f, lkin=%f, contribution=%e\n", steps[i].scale, mbh, lbol, eta_rad, eta_kin, lkin, exp10(lkin) * steps[i].lum_func_full[j*LBOL_BINS + k] * LBOL_INV_BPDEX);
+	}
 
         
 

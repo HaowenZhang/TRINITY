@@ -13,6 +13,7 @@ SSFR2_FILES = $(BASE_FILES) gen_ssfr2.c
 CPLOT_FILES = $(BASE_FILES) gen_colorplots.c
 CSFR_FILES = $(BASE_FILES) gen_csfr.c
 CATALOG_FILES= $(BASE_FILES) sm_catalog.c stringparse.c inthash.c 
+AGN_UM_CATALOG_FILES = $(BASE_FILES) sm_agn_catalog_from_um.c stringparse.c 
 ASMF_C_FILES = $(BASE_FILES) 
 SMF_FILES = $(BASE_FILES) gen_smf.c 
 UVLF_FILES = $(BASE_FILES) gen_uvlf.c
@@ -31,6 +32,7 @@ REMATCH_FILES = $(BASE_FILES)  rematch_smass.c sm_limits.c
 COSMO_FILES = cosmo_volume.c distance.c
 
 CATALOG_NAME=sm_catalog
+AGN_UM_CATALOG_NAME=sm_agn_catalog_from_um
 REMARG_NAME=marginalize_systematics
 ASMF_OBJ_NAME=all_smf_mcmc
 SMASS_NAME=smass
@@ -198,6 +200,10 @@ reg:
 #	$(CC) $(SMASS_P_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(SMASS_P_NAME)
 #	$(CC) $(SMASS_CV_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(SMASS_CV_NAME)
 #	$(CC) $(FIT2_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(FIT2_NAME)
+gen_sm_agn_catalog_from_um:
+	$(CC) $(AGN_UM_CATALOG_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(AGN_UM_CATALOG_NAME)
+bher_dist_check:
+	$(CC) $(BASE_FILES) bher_dist_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_bher_dist_check
 lum_dist_check:
 	$(CC) $(BASE_FILES) lum_dist_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_check
 baryon_eff:
@@ -218,6 +224,8 @@ bhar_sfr_mstar:
 	$(CC) $(BASE_FILES) bhar_sfr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_sfr_mstar
 smar_ssfr_sbhar:
 	$(CC) $(BASE_FILES) smar_ssfr_sbhar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o smar_ssfr_sbhar
+sbhar_mstar:
+	$(CC) $(BASE_FILES) sbhar_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sbhar_mstar
 sbhar_ssfr_mstar:
 	$(CC) $(BASE_FILES) sbhar_ssfr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sbhar_ssfr_mstar
 bher_mstar:
@@ -226,6 +234,8 @@ bhmr_mstar:
 	$(CC) $(BASE_FILES) bhmr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmr_mstar
 hist2d:
 	$(CC) $(BASE_FILES) gen_edd_r_color.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_edd_r_color
+gen_sm_sfr_check:
+	$(CC) $(BASE_FILES) sm_sfr_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sm_sfr_check
 chi2_type:
 	$(CC) $(BASE_FILES) gen_chi2_type.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_chi2_type
 asymmetry_check:
@@ -247,7 +257,7 @@ uv_map:
 fitter:
 	$(CC) $(FIT_FILES) $(CFLAGS) $(OPT_FLAGS) -DGEN_SMF -o $(FIT_NAME)
 asmf:
-	$(CC) $(ASMF_C_FILES) $(CFLAGS) $(OPT_FLAGS) -DGEN_SMF -o $(ASMF_OBJ_NAME)
+	$(CC) $(ASMF_C_FILES) $(CFLAGS) $(OPT_FLAGS) -o $(ASMF_OBJ_NAME)
 csfr:
 	$(CC) $(CSFR_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(CSFR_NAME)
 ssfr:
@@ -280,6 +290,26 @@ gen_host_smf_quasar_lum:
 	$(CC) $(BASE_FILES) host_smf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_smf_quasar_lum
 gen_host_hmf_quasar_lum:
 	$(CC) $(BASE_FILES) host_hmf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_hmf_quasar_lum
+gen_lx_sfr_mstar_james:
+	$(CC) $(BASE_FILES) lx_sfr_mstar_james.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o lx_sfr_mstar_james
+gen_lx_mstar_james:
+	$(CC) $(BASE_FILES) lx_mstar_james.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o lx_mstar_james
+gen_bhmf_typeI:
+	$(CC) $(BASE_FILES) bhmf_typeI.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_typeI
+qpdf_eta:
+	$(CC) $(BASE_FILES) gen_qpdf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qpdf_eta
+qlf_mbh:
+	$(CC) $(BASE_FILES) gen_qlf_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_mbh
+qlf_eta:
+	$(CC) $(BASE_FILES) gen_qlf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_eta
+qlf:
+	$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
+lum_dist_mbh_obs:
+	$(CC) $(BASE_FILES) gen_lum_dist_mbh_obs.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_obs
+lum_dist_mbh_int:
+	$(CC) $(BASE_FILES) gen_lum_dist_mbh_int.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_int
+bhmf_lum_dist:
+	$(CC) $(BASE_FILES) output_bhmf_lum_dist.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o output_bhmf_lum_dist
 clean:
 	rm -f $(CACHE_OBJ_NAME) $(ASMF_OBJ_NAME) $(SMF_NAME) $(R_NAME) $(SMASS_NAME) $(SM2_NAME) $(FIT_NAME) $(DEC_NAME) $(COSMO_NAME) $(SMASS_CV_NAME) $(FIT2_NAME) $(REMARG_NAME)
 	rm -f *~

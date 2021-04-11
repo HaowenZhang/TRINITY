@@ -108,7 +108,8 @@ void setup_psf_cache(double obs_scatter, double scatter);
 // inline 
 double syst_cache(double dm);
 void init_gauss_cache(void);
-
+double find_Lx_at_Lbol(double Lbol);
+double find_Lbol_at_Lx(double Lx);
 double calc_ssfr(double sm, double z);
 double calc_cosmic_sfr(double z);
 double calc_single_chi2_err_point(struct obs_smf_point *cur_smf);
@@ -140,6 +141,7 @@ double calc_bhar_sfr_mbh(double m, double z);
 double calc_bhar_sfr_mstar(double m, double z);
 double calc_sbhar_ssfr_mbh(double m, double z);
 double calc_sbhar_ssfr_mstar(double m, double z);
+double calc_sbhar_mstar(double m, double z);
 double calc_sfr_mstar(double m, double z);
 
 double calc_qpdf_at_l_m_z(double l, double m, double z);

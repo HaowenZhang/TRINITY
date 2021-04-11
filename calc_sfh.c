@@ -791,10 +791,11 @@ void calc_bh_acc_rate_distribution_full(int n, struct smf_fit *fit) {
       ledd_min = (ledd_min - 0.5 * bh_eta_crit)*2.0;
       ledd_min -= steps[n].bh_eta[i];
       double ledd_eff_min = steps[n].bh_eta[i] + BHER_EFF_MIN;
-      // if (nonlinear_luminosity && ledd_min < -2.0) // This is what Peter has written, which is a bug...
+
       if (nonlinear_luminosity && ledd_eff_min < bh_eta_crit)
       ledd_eff_min = (ledd_eff_min - 0.5 * bh_eta_crit)*2.0;
       ledd_eff_min -= steps[n].bh_eta[i];
+
       double ledd_max = steps[n].bh_eta[i] + BHER_MAX;
       if (nonlinear_luminosity && ledd_max < bh_eta_crit)
       ledd_max = (ledd_max - 0.5 * bh_eta_crit)*2.0;
@@ -852,7 +853,6 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
   for (i=0; i<MBH_BINS; i++)
   {
     double mbh = steps[n].bh_mass_min + (i + 0.5) * mbh_inv_bpdex;
-    //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "#mbh: %f\n", mbh);
     // Given the current code structure, it is easier to fold in the mass-dependent duty cycle here.
     double f_mass = exp((mbh - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
@@ -874,27 +874,18 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
                                               //summation of lum_dist_full along the Mbh direction, with the weight
                                               //being EXACTLY (i.e., including the normalization) the gaussian PDF of Mbh as given by the BHBM.
 
-      // double w_mbh = gauss_norm * exp(-0.5 * dmbh * dmbh); 
 
-      //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) 
-      //{  
-//	//fprintf(stdout, "%f ", 38.1 + mbh + steps[n].bh_eta[j] + steps[n].ledd_max[j]);
-  //      fprintf(stderr, "%f ", steps[n].med_hm_at_a[j]);
-    //  }
       tnd += w_mbh * steps[n].t[j];
-      //if (n == 134) fprintf(stderr, "n=%d, Mh=%f, mbh=%f, w_mbh=%e\n", n, M_MIN + (j + 0.5) * INV_BPDEX, mbh, w_mbh);
-      
+
       for (k=0; k<LBOL_BINS; k++)
-      
       {
         double lbol = LBOL_MIN + (k + 0.5) * LBOL_INV_BPDEX;
         double bh_eta = lbol - 38.1 - mbh;
         double eta_frac = bh_eta - steps[n].bh_eta[j];
         //if (n == 134 && mbh == 7.715) fprintf(stderr, "n=%d, j=%d, mbh=%f, lbol=%f, bh_eta=%f, bh_eta0=%f, eta_frac=%f, ledd_max=%f\n", n, j, mbh, lbol, bh_eta, steps[n].bh_eta[j], eta_frac, steps[n].ledd_max[j]);
         if ((!isfinite(eta_frac)) || eta_frac < steps[n].ledd_min[j] || eta_frac > steps[n].ledd_max[j])
-	{
-     //           if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "0 ");
-                continue;
+	      {  
+          continue;
         } 
 
         double bher_f = (eta_frac-steps[n].ledd_min[j])*steps[n].ledd_bpdex[j];
@@ -904,31 +895,14 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         double p1 = steps[n].bher_dist[j*BHER_BINS+bher_b];
         double p2 = steps[n].bher_dist[j*BHER_BINS+bher_b+1];
         if (bher_b >= BHER_BINS-1) p2 = p1;
-        // double f_CTK = steps[qi->step].f_CTK[mb];
         double nd_l = (p1 + bher_f*(p2-p1)) * w_mbh * steps[n].t[j] * dc; //The number density (Mpc^-3)
                                                                           //of AGN with this luminosity
                                                                           //and this Mbh in this Mh bin.
-        //if (n == 63 && j==19 && lbol >= 46.725 && lbol <= 47.075 && mbh >= 7.075 && mbh <= 7.095)
-	    //fprintf(stderr, "lbol=%f, j=%d, nd_l=%e\n", lbol, j, nd_l);
-	  //  fprintf(stderr, "lbol=%f, j=%d, dmbh=%f-sigma, bher_b=%d, bher_f=%f, p1=%e, p2=%e, w_mbh=%e, dc=%e, nd=%e, nd_l=%e\n", lbol, j, dmbh, bher_b, bher_f, p1, p2, w_mbh, dc, steps[n].t[j], nd_l); 
-        //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "%e ", nd_l);
-        //if (n == 134 && mbh == 7.715) fprintf(stderr, "n=%d, j=%d, mbh=%f, lbol=%f, bh_eta=%f, bh_eta0=%f, eta_frac=%f, ledd_max=%f, nd_l=%e, bher_b=%d, bher_f=%f, p1=%e, p2=%e\n", n, j, mbh, lbol, bh_eta, steps[n].bh_eta[j], eta_frac, steps[n].ledd_max[j], nd_l, bher_b, bher_f, p1, p2);
-	steps[n].lum_func_full[i*LBOL_BINS+k] += nd_l;
-        // steps[n].lum_dist_full[i*MBH_BINS+k] = steps[n].lum_func_full[i*MBH_BINS+k];
-        //if (n == 134) fprintf(stderr, "n=%d, Mh=%f, mbh=%f, w_mbh=%e, lbol=%f, eta_frac=%f, bher_f=%f, bher_b=%d, p1=%e, p2=%e, dc=%e\n", n, M_MIN + (j + 0.5) * INV_BPDEX, mbh, w_mbh, lbol, eta_frac, bher_f, bher_b, p1, p2, dc);
+        steps[n].lum_func_full[i*LBOL_BINS+k] += nd_l;
       }
-     // if (n == 63 && mbh >= 7.075 && mbh <= 7.095)
-       //   fprintf(stderr, "\n");
-      //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) fprintf(stderr, "\n");
-      
     }
     steps[n].bhmf[i] = tnd * mbh_bpdex;
-    
-    //if (n == 134 && fabs(mbh - 8) < 0.3 && mbh_match == 0) 
-    //{
-//	mbh_match = 1;
-  //      fprintf(stdout, "\n");
-    //}
+
     // the distribution of luminosity distributions is simply the luminosity function
     // divided by the total number of black holes of this mass. Note that we already
      // included the duty cycle when calculating the lum_func_full, so it also lies
@@ -966,37 +940,28 @@ void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
   // if (nonlinear_luminosity) bher_prob = &_prob_of_ledd_nonlinear;
 
 
-  if (scatter <= 0) {
-    for (i=0; i<M_BINS; i++) {
-      for (j=0; j<BHER_BINS; j++) {
-  double bher = BHER_MIN+j*BHER_INV_BPDEX;
-  steps[n].bher_dist_kin[i*BHER_BINS+j] = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit)*steps[n].smhm.bh_prob_norm;
-  steps[n].ledd_min[i] = BHER_MIN;
-  steps[n].ledd_max[i] = BHER_MAX;
-  steps[n].ledd_bpdex[i] = BHER_BPDEX;
-  //exp10(bher*steps[n].smhm.bh_alpha)*exp(-exp10(bher));
+  if (scatter <= 0) 
+  {
+    for (i=0; i<M_BINS; i++) 
+    {
+      for (j=0; j<BHER_BINS; j++) 
+      {
+        double bher = BHER_MIN+j*BHER_INV_BPDEX;
+        steps[n].bher_dist_kin[i*BHER_BINS+j] = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit)*steps[n].smhm.bh_prob_norm;
+        steps[n].ledd_min[i] = BHER_MIN;
+        steps[n].ledd_max[i] = BHER_MAX;
+        steps[n].ledd_bpdex[i] = BHER_BPDEX;
       }
     }
-  } else {
+  } 
+  else 
+  {
     const int64_t cmin = -BHER_BINS-6*BHER_BPDEX;
     const int64_t cmax = 6*BHER_BPDEX + BHER_BINS;
-    //    int64_t llim=cmin, ulim = cmax;
     float *ecache = check_realloc(NULL, sizeof(float)*(cmax-cmin+1), "Allocating ecache");
-    /*
-    float *prob_dist = check_realloc(NULL, sizeof(float)*(BHER_BINS*2), "Allocating prob dist");
-    double inv_scatter = 1.0/scatter;
-    for (k=cmin; k<=cmax; k++) {
-      double db = inv_scatter*k*BHER_INV_BPDEX;
-      ecache[k-cmin] = exp(-0.5*db*db);
-      if (ecache[k-cmin] < 1e-7) {
-  if (llim==k-1 || llim==cmin) llim = k;
-  else if (ulim == cmax) ulim = k;
-      }
-    }
-    */
 
-    //fprintf(stderr, "%"PRId64" %"PRId64"\n", llim, ulim);
-    for (i=0; i<M_BINS; i++) {
+    for (i=0; i<M_BINS; i++) 
+    {
       float *bher_dist = steps[n].bher_dist_kin+i*BHER_BINS;
 
 
@@ -1013,93 +978,57 @@ void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
       int64_t kmin = -kmax;
       if (kmax - kmin > cmax - cmin + 1)
       {
-        //fprintf(stderr, "Too large scatters in BH mass!\n");
         for (k=0; k<BHER_BINS; k++) bher_dist[k] = 0;
-        //INVALIDATE(fit, "Too large scatter. INVALIDATE.\n");
         free(ecache);
         return;
       }
       double inv_scatter = 1.0/scatter;
 
-      // steps[n].ledd_min[i] = ledd_min;
-      // steps[n].ledd_max[i] = ledd_max;
-      // steps[n].ledd_bpdex[i] = bpdex;
-
-      for (k=kmin; k<kmax; k++) {
-  double db = inv_scatter*k*inv_bpdex;
-  ecache[k-kmin] = exp(-0.5*db*db);
+      for (k=kmin; k<kmax; k++) 
+      {
+        double db = inv_scatter*k*inv_bpdex;
+        ecache[k-kmin] = exp(-0.5*db*db);
       }
 
       int64_t jmin = (ledd_eff_min-ledd_min)*bpdex;
       int64_t jmax = (ledd_max-ledd_min)*bpdex;
 
-      for (j=jmin; j<jmax; j++) {
-  float bher = ledd_min+j*inv_bpdex;
-  int64_t emin = j+kmin;
-  // if (emin < 0) emin = 0;
-  int64_t emax = j+kmax;
-  // if (emax>BHER_BINS-1) emax = BHER_BINS-1;
+      for (j=jmin; j<jmax; j++) 
+      {
+        float bher = ledd_min+j*inv_bpdex;
+        int64_t emin = j+kmin;
+        int64_t emax = j+kmax;
+        float *ec = ecache - emin;
 
-  // if ((j + kmin < 0))
-  // {
-  //   for (k=0; k<BHER_BINS; k++) bher_dist[k] = 0;
-  //   INVALIDATE(fit, "Not good j + kmin. INVALIDATE.\n");
-  //   free(ecache);
-  //   return;
-  // }
+        float prob = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit);
+        if (prob < 1e-15) 
+        {
+          continue;
+        }
 
-  // float *ec = ecache - (j+kmin);
-  float *ec = ecache - emin;
-
-
-
-  float prob = bher_prob(bher+steps[n].bh_eta[i], steps[n].bh_eta[i], steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, 1.0, bh_eta_crit);
-  //if (steps[n].scale > 0.5 && steps[n].scale < 0.8) 
-  //  fprintf(stderr, "n=%d, scale=%f, Mh=%f, bh_eta_0=%f, bh_eta=%f, prob=%e\n", n, steps[n].scale, M_MIN + (i + 0.5) * INV_BPDEX,
-  //                    steps[n].bh_eta[i], bher+steps[n].bh_eta[i], prob);
-  if (prob < 1e-15) {
-    // if (steps[n].smhm.bh_alpha > 0 && steps[n].smhm.bh_delta > 0) break;
-    // else if (bher+steps[n].bh_eta[i] > 0) break;
-    // else continue;
-    continue;
-  }
-
-  //bher_dist[j] = prob;
 
   
-  for (k=emin; k<emax; k++) {
-    if (k < 0 || k > BHER_BINS - 1) continue;
-    float weight = ec[k]; //exp(-0.5*db*db);
-    bher_dist[k] += weight*prob;
-  } 
+        for (k=emin; k<emax; k++) 
+        {
+          if (k < 0 || k > BHER_BINS - 1) continue;
+          float weight = ec[k]; //exp(-0.5*db*db);
+          bher_dist[k] += weight*prob;
+        } 
       }
 
       //Normalize;
       double total = 0;
       for (k=0; k<BHER_BINS; k++) total += bher_dist[k];
       total *= inv_bpdex;
-      if (!(total>0)) {
-  // fprintf(stderr, "%e %"PRId64" %f %f\n", total, i, steps[n].scale, steps[n].bh_eta[i]);
+      if (!(total>0)) 
+      {
       }
-      // assert(total > 0);
       if (total > 0)
   total = 1.0/total;
       for (k=0; k<BHER_BINS; k++) bher_dist[k] *= total;
     }
     free(ecache);
   }
-
-  // for (i=0; i<M_BINS; i++)
-  //   for (j=0; j<BHER_BINS; j++)
-  //     fprintf(stderr, "n=%d, i=%d, j=%d, bher_dist_kin[%d]=%e\n", n, i, j, j, steps[n].bher_dist_kin[i*BHER_BINS + j]);
-
-  /*  char buffer[1024];
-  sprintf(buffer, "bher_dist/dist_%f.dat\n", steps[n].scale);
-  FILE *out = check_fopen(buffer, "w");
-  fprintf(out, "#ER Prob.\n");
-  for (i=0; i<BHER_BINS; i++) fprintf(out, "%f %e\n", BHER_MIN+i*BHER_INV_BPDEX, steps[n].bher_dist[i]);
-  fclose(out);
-  */
 }
 
 void calc_avg_eta_rad(int n)
@@ -1125,686 +1054,12 @@ void calc_avg_eta_rad(int n)
       double prob = steps[n].bher_dist[i*BHER_BINS + j];
       if isfinite(prob)
       {  
-          //norm += prob;
           tot += prob * exp10(eta0 + ledd_min + (j + 0.5) * ledd_inv_bpdex) * ledd_inv_bpdex * dc;
       }
-      }
-      //if (norm) steps[n].bh_eta_rad_avg[i] = tot / norm;
-      if (isfinite(tot)) steps[n].bh_eta_rad_avg[i] = tot;
-      //fprintf(stderr, "n=%d, z=%f, i=%d, eta0=%e, eta_avg=%e\n", n, 1 / steps[n].scale - 1, i, eta0, steps[n].bh_eta_rad_avg[i]);
+    }
+    if (isfinite(tot)) steps[n].bh_eta_rad_avg[i] = tot;
   }
 }
-
-
-// void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
-//   int64_t i, j;
-//   char buffer[1024];
-//   double m, m2, sm, sm_max=0, sm_min=1000;
-//   int64_t bin_min=-1, bin_max=-1, bin_peak = 0;
-//   gsl_interp_accel ga = {0};
-//   steps[n].smhm.sm_max = 0;
-//   int64_t count_falling = 0;
-//   steps[n].alloc2smf = 0;
-//   if (INVALID(*fit)) 
-//   {
-// 	  // printf("invalid!\n");
-// 	  return;
-//   }
-//   //if (steps[n].scale < 0.1) return;
-
-//   for (i=0; i<M_BINS; i++) {
-    
-     
-//     // INPLEMENTAION 2: bin_max - bin_min + 1 < M_BINS
-
-//     if (steps[n].log_sm[i]>steps[n].smhm.sm_max) {
-//       sm_max = steps[n].smhm.sm_max = steps[n].log_sm[i];
-//       bin_max = i;
-//     }
-//     // if (steps[n].log_sm[i]>-1000 && bin_min < 0) {
-//     if (steps[n].log_sm[i]>0 && bin_min < 0) {
-//       bin_min = i;
-//       sm_min = steps[n].smhm.sm_min = steps[n].log_sm[i];
-//     }
-
-//     if (i && (steps[n].log_sm[i] <= steps[n].log_sm[i-1])) {
-//       // if (steps[n].log_sm[i]==0) { steps[n].log_sm[i]=0; } // I totally don't understand why you would do this.
-//       //                                                           // In this case at the very massive end of the SMF,
-//       //                                                           // the corresponding halo mass would be very difficult
-//       //                                                           // to determine, and cause the crazy behavior there.
-//       //                                                           // For now I just put an empty block here.
-//       // if (steps[n].log_sm[i]==0 && steps[n].t[i]) 
-//       if (steps[n].log_sm[i]==0) 
-//         { 
-//           // if (bin_min >= 0) steps[n].log_sm[i] = steps[n].log_sm[i-1]+0.001; 
-//           // steps[n].log_sm[i] = steps[n].log_sm[i-1]+0.001; 
-//           // if (i > bin_max) bin_max = i; //Even if we don't need this artificial massive end, we still
-//           //                                                       // need to maintain the bin_max to keep the size consistency between
-//           //                                                       // the interpolated data and the gsl_spline object.
-//           if (M_MIN+i*INV_BPDEX < 12) 
-//           {
-//             ;
-//             // steps[n].log_sm[i] = steps[n].log_sm[i-1]+0.001;
-//           } 
-//           else //at the high mass end, we do a constant SM/HM ratio extrapolation.
-//           {
-//             steps[n].log_sm[i] = steps[n].log_sm[i-1]+INV_BPDEX;
-//           }
-//           //bin_max = i;
-//           if (steps[n].smhm.sm_max < steps[n].log_sm[i]) 
-// 	  {
-// 		  sm_max = steps[n].smhm.sm_max = steps[n].log_sm[i];
-// 		  bin_max = i;
-// 	  }
-//         }
-//       else
-//       {
-//         if (!count_falling)
-//         {
-//           count_falling = 1;
-//           bin_peak = i - 1;
-//         }
-//       }
-      
-//     }
-
-//   }
-
-
-//     if (bin_min < 0 || bin_max - bin_min + 1 < 10 || (count_falling && bin_peak <= bin_min + 1))
-//     {
-//             //sprintf(buffer, "All the stellar masses are zero.\n");
-//             //fprintf(stderr, "All the stellar masses are zero at z=%f.\n", 1.0 / steps[n].scale - 1);
-//             if (n > 0) 
-// 		{
-// 		fprintf(stderr, "All the stellar masses are zero at z=%f.\n", 1.0 / steps[n].scale - 1);
-// 		INVALIDATE(fit, buffer);
-//             }
-// 	return;
-//     }
-
-
-  
-//   double *log_sm_tmp = NULL;
-//   double  *hm_tmp = NULL;
-//   double  *sfr_tmp = NULL;
-
-//   if (!count_falling)
-//   {
-//     log_sm_tmp = malloc(sizeof(double)*(bin_max - bin_min + 1));
-//     hm_tmp = malloc(sizeof(double)*(bin_max - bin_min + 1));
-//     sfr_tmp = malloc(sizeof(double)*(bin_max - bin_min + 1));
-//     for (j=bin_min; j <= bin_max; j++)
-//     {
-//       // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//       log_sm_tmp[j - bin_min] = steps[n].log_sm[j];
-//       hm_tmp[j - bin_min] = steps[n].med_hm_at_a[j];
-//       // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_min, hm_tmp[j - bin_min], j, steps[n].med_hm_at_a[j]);
-//       sfr_tmp[j - bin_min] = steps[n].sfr[j];
-//     }
-//     // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     steps[n].spline = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//     steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//     steps[n].flag_alloc = 1;
-//     gsl_spline_init(steps[n].spline, log_sm_tmp, hm_tmp, bin_max - bin_min + 1);
-//     gsl_spline_init(steps[n].spline_sfr, log_sm_tmp, sfr_tmp, bin_max - bin_min + 1);
-//     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-//   }
-
-//   else
-//   {
-//     log_sm_tmp = malloc(sizeof(double)*(bin_peak - bin_min + 1));
-//     hm_tmp = malloc(sizeof(double)*(bin_peak - bin_min + 1));
-//     sfr_tmp = malloc(sizeof(double)*(bin_peak - bin_min + 1));
-//     for (j=bin_min; j <= bin_peak; j++)
-//     {
-//       // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//       log_sm_tmp[j - bin_min] = steps[n].log_sm[j];
-//       hm_tmp[j - bin_min] = steps[n].med_hm_at_a[j];
-//       // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_min, hm_tmp[j - bin_min], j, steps[n].med_hm_at_a[j]);
-//       sfr_tmp[j - bin_min] = steps[n].sfr[j];
-
-//     }
-
-//     // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     steps[n].spline = gsl_spline_alloc(gsl_interp_cspline, bin_peak - bin_min + 1);
-//     steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_cspline, bin_peak - bin_min + 1);
-//     gsl_spline_init(steps[n].spline, log_sm_tmp, hm_tmp, bin_peak - bin_min + 1);
-//     gsl_spline_init(steps[n].spline_sfr, log_sm_tmp, sfr_tmp, bin_peak - bin_min + 1);
-//     steps[n].flag_alloc = 1;
-//     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-
-
-//     int n_seg = M_BINS - bin_peak > 2 ? M_BINS - bin_peak : 3;
-
-//     log_sm_tmp = malloc(sizeof(double)*n_seg);
-//     hm_tmp = malloc(sizeof(double)*n_seg);
-//     sfr_tmp = malloc(sizeof(double)*n_seg);
-
-
-
-//     // log_sm_tmp = (double *)realloc(log_sm_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-//     // hm_tmp = (double *)realloc(hm_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-//     // sfr_tmp = (double *)realloc(sfr_tmp, sizeof(double)*(M_BINS - bin_peak + 1));
-//     if (M_BINS - bin_peak > 2)
-//     {
-//       for (j=bin_peak; j < M_BINS; j++)
-//       {
-//         // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//         log_sm_tmp[j - bin_peak] = steps[n].log_sm[M_BINS - 1 - (j - bin_peak)];
-//         hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[M_BINS - 1 - (j - bin_peak)];
-//         // if (n == 18) printf("hm_tmp[%d]=%f, med_hm_at_a[%d]=%f\n", j - bin_min, hm_tmp[j - bin_min], j, steps[n].med_hm_at_a[j]);
-//         sfr_tmp[j - bin_peak] = steps[n].sfr[M_BINS - 1 - (j - bin_peak)];
-//       }
-//     }
-
-//     else
-//     {
-//       log_sm_tmp[2] = steps[n].log_sm[bin_peak];
-//       log_sm_tmp[1] = steps[n].log_sm[bin_peak + 1];
-//       log_sm_tmp[0] = 2 * log_sm_tmp[1] - log_sm_tmp[2];
-//       hm_tmp[0] = 16.3; hm_tmp[1] = 16.1; hm_tmp[2] = 15.9;
-//     }
-    
-
-//     // if (n_seg > M_BINS - bin_peak)
-//     // {
-//     //   hm_tmp[2] = 16.3;
-//     //   log_sm_tmp[2] = 2 * log_sm_tmp[1] - log_sm_tmp[0];
-//     //   sfr_tmp[2] = 2 * sfr_tmp[1] - sfr_tmp[0];
-//     // }
-
-//     steps[n].spline2 = gsl_spline_alloc(gsl_interp_cspline, n_seg);
-//     steps[n].spline_sfr2 = gsl_spline_alloc(gsl_interp_cspline, n_seg);
-//     int err_spline_init1 = gsl_spline_init(steps[n].spline2, log_sm_tmp, hm_tmp, n_seg);
-//     int err_spline_init2 = gsl_spline_init(steps[n].spline_sfr2, log_sm_tmp, sfr_tmp, n_seg);
-//     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-//     if ((err_spline_init1) || (err_spline_init2))
-//     {
-//       //fprintf(stderr, "More than 1 turning point in the SMHM.\n");
-//       if (1.0 / steps[n].scale - 1 < 5) 
-// 	{
-// 	INVALIDATE(fit, buffer);
-//         fprintf(stderr, "More than 1 turning point in the SMHM.\n");
-// 	}
-// 	gsl_spline_free(steps[n].spline2); gsl_spline_free(steps[n].spline_sfr2);
-//       steps[n].flag_alloc = 1;
-//       return;
-//     }
-//     steps[n].flag_alloc = 1;
-//     steps[n].alloc2smf = 1;
-//     // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-//   }
-
-//   // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-
-//   // // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//   // // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//   // steps[n].spline = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//   // steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//   // steps[n].flag_alloc = 1;
-//   // gsl_spline_init(steps[n].spline, log_sm_tmp, hm_tmp, bin_max - bin_min + 1);
-//   // gsl_spline_init(steps[n].spline_sfr, log_sm_tmp, sfr_tmp, bin_max - bin_min + 1);
-
-//   i = M_BINS-1;
-//   for (j=SM_BINS-1; j>=0; j--) 
-//   {
-//     sm = SM_MIN + (double)j*SM_INV_BPDEX;
-//     if (sm > sm_max || sm < sm_min) 
-//     {
-//       steps[n].sfr_sm[j+SM_EXTRA] = 0;
-//       steps[n].sfr_sm_sf[j+SM_EXTRA] = 0;
-//       steps[n].sfr_sm_q[j+SM_EXTRA] = 0;
-//       steps[n].smf[j+SM_EXTRA] = 0;
-//       //steps[n].smf_sf[j+SM_EXTRA] = 0;
-//       //steps[n].smf_q[j+SM_EXTRA] = 0;
-//     }
-//     else 
-//     {
-
-//       int err = gsl_spline_eval_e(steps[n].spline, sm, &ga, &m);
-//       // fprintf(stdout, "n=%d, z=%f, sm=%f, interpolated m=%f, err=%d\n", n, 1.0 / steps[n].scale - 1, sm, m, err);
-//       if (err || m < 0)
-//       //if (err || m < M_MIN - 1.0 || m > M_MAX + 1.0)
-//       {
-//         // sprintf(buffer, "Error in GSL spline interpolation #2.\n");
-//         fprintf(stderr, "Error in GSL spline interpolation #2. m=%f\n", m);
-//         INVALIDATE(fit, buffer);
-//         // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-//         return;
-//       }
-//       //int64_t b = gsl_interp_accel_find(&ga, steps[n].log_sm+bin_min, (bin_max-bin_min+1), sm)+bin_min;
-//       // find out the sfrac to weight the smf_sf and smf_q.
-      
-//       double f = (m - M_MIN) * BPDEX;
-//       int64_t b;
-//       if (f >= M_BINS - 1)
-//       {
-//         b = M_BINS - 2;
-//         f = 1;
-//       }
-//       else
-//       {
-//         b = f;
-//         f -= b;
-//       }
-
-      
-
-//       double sfrac_tmp = steps[n].sfrac[b] + f * (steps[n].sfrac[b+1] - steps[n].sfrac[b]);
-//       steps[n].sfrac_sm[j+SM_EXTRA] = sfrac_tmp;
-//       steps[n].smf[j+SM_EXTRA] = calc_smf_at_m(m,sm,n, 1, fit,&ga);
-//       gsl_interp_accel_reset(&ga);
-//       err = gsl_spline_eval_e(steps[n].spline_sfr, sm, &ga, &(steps[n].sfr_sm[j + SM_EXTRA]));
-      
-//       steps[n].sfr_sm_q[j + SM_EXTRA] = exp10(sm) * SSFR_AVG_Q;
-//       steps[n].sfr_sm_sf[j + SM_EXTRA] = (steps[n].sfr_sm[j + SM_EXTRA] - (1 - sfrac_tmp) * steps[n].sfr_sm_q[j + SM_EXTRA]) / sfrac_tmp;
-//       steps[n].sfr_sm[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
-//       steps[n].sfr_sm_q[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
-//       steps[n].sfr_sm_sf[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
-// 	// steps[n].sfr_sm[j+SM_EXTRA] = gsl_spline_eval(steps[n].spline_sfr, sm, &ga)*steps[n].smf[j+SM_EXTRA];
-//       if (err)
-// 	//if (err || steps[n].sfr_sm[j + SM_EXTRA] < 0 || !(isfinite(steps[n].sfr_sm[j+SM_EXTRA])))
-//       {
-//         //sprintf(buffer, "Error in GSL spline interpolation #3.\n");
-//         fprintf(stderr, "Error in GSL spline interpolation #3. sfr=%e\n", steps[n].sfr_sm[j+SM_EXTRA]);
-//         INVALIDATE(fit, buffer);
-//         // free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
-//         return;
-//       }
-
-//       if (steps[n].alloc2smf)
-//       {
-//         gsl_interp_accel_reset(&ga);
-//         int err2 = gsl_spline_eval_e(steps[n].spline2, sm, &ga, &m2);
-//         if (!err2)
-//         {
-//           double f2 = (m2 - M_MIN) * BPDEX;
-//           int64_t b2;
-//           if (f2 >= M_BINS - 1)
-//           {
-//             b2 = M_BINS - 2;
-//             f2 = 1;
-//           }
-//           else
-//           {
-//             b2 = f2;
-//             f2 -= b2;
-//           }
-
-// 	  if (b2 < 0) continue;
-
-//           // Given the second branch of the SMHM, we need to modify the sfrac_sm value
-//           // s.t. it is the weighted average of the two HM bins.
-//           steps[n].sfrac_sm[j+SM_EXTRA] *= steps[n].t[b] + f * (steps[n].t[b+1] - steps[n].t[b]);
-//           steps[n].sfrac_sm[j+SM_EXTRA] += (steps[n].sfrac[b2] + f2 * (steps[n].sfrac[b2+1] - steps[n].sfrac[b2])) *
-//                                             (steps[n].t[b2] + f2 * (steps[n].t[b2+1] - steps[n].t[b2]));
-//           steps[n].sfrac_sm[j+SM_EXTRA] /= (steps[n].t[b] + f * (steps[n].t[b+1] - steps[n].t[b]) + 
-//                                             steps[n].t[b2] + f2 * (steps[n].t[b2+1] - steps[n].t[b2]));
-//           sfrac_tmp = steps[n].sfrac[b2] + f2 * (steps[n].sfrac[b2+1] - steps[n].sfrac[b2]);
-//           double smf2 = calc_smf_at_m(m2,sm,n,2,fit,&ga);
-//           steps[n].smf[j+SM_EXTRA] += smf2;
-//     gsl_interp_accel_reset(&ga);
-//           double sfr_sm_tmp;
-//           double err_sfr = gsl_spline_eval_e(steps[n].spline_sfr2, sm, &ga, &(sfr_sm_tmp));
-//           if (!err_sfr)
-//           {
-//             steps[n].sfr_sm[j + SM_EXTRA] += sfr_sm_tmp * smf2;
-//             steps[n].sfr_sm_q[j + SM_EXTRA] += exp10(sm) * SSFR_AVG_Q * smf2;
-//             steps[n].sfr_sm_sf[j + SM_EXTRA] += (sfr_sm_tmp - (1 - sfrac_tmp) * exp10(sm) * SSFR_AVG_Q) / sfrac_tmp * smf2;
-//           }
-//         }
-//       }
-//     }
-//   } 
-
-  
-
-//   //Check status of SMF bins
-//   steps[n].smf_ok[SM_BINS+SM_EXTRA-1] = 0;
-//   for (j=0; j<SM_BINS-1; j++) {
-//     sm = SM_MIN + (double)j*SM_INV_BPDEX;
-//     double avg = 0.5*(steps[n].smf[j+SM_EXTRA-1]+steps[n].smf[j+SM_EXTRA+1]);
-//     if (fabs(avg-steps[n].smf[j+SM_EXTRA]) > steps[n].smf[j+SM_EXTRA]*5e-4) {
-//       steps[n].smf_ok[j+SM_EXTRA] = 0;
-//     } else {
-//       steps[n].smf_ok[j+SM_EXTRA] = 1;
-//     }
-//   }
-// }
-
-
-// void calc_uvlf(int n, struct smf_fit *fit) {
-//   int64_t i, j;
-//   char buffer[1024];
-//   double m, m2, uv, uv_max=-1000, uv_min=1000;
-//   int64_t bin_min=-1, bin_max=-1, bin_peak=0;
-//   gsl_interp_accel ga = {0};
-//   steps[n].smhm.uv_max = -1000;
-//   int64_t count_falling = 0;
-//   steps[n].alloc2uvlf = 0;
-//   if (INVALID(*fit)) 
-//   {
-//     // printf("invalid!\n");
-//     return;
-//   }
-//   //if (steps[n].scale < 0.1) return;
-
-//   for (i=0; i<M_BINS; i++) {
-    
-     
-//     // INPLEMENTAION 2: bin_max - bin_min + 1 < M_BINS
-
-//     if (steps[n].obs_uv[i]>steps[n].smhm.uv_max && steps[n].obs_uv[i] < 1000) {
-//       uv_max = steps[n].smhm.uv_max = steps[n].obs_uv[i];
-//       bin_max = i;
-//     }
-//     // if (steps[n].log_sm[i]>-1000 && bin_min < 0) {
-//     if (steps[n].obs_uv[i]<steps[n].smhm.uv_min) {
-//       bin_min = i;
-//       // if (n == 66) fprintf(stderr, "n=66, bin_min=%d\n", bin_min);
-//       uv_min = steps[n].smhm.uv_min = steps[n].obs_uv[i];
-//     }
-
-//     if (i && (steps[n].obs_uv[i] >= steps[n].obs_uv[i-1])) {
-// 	    //fprintf(stderr, "n=%d, z=%f, m1=%f, m2=%f, uv1=%f, uv2=%f\n", n, 1.0/steps[n].scale - 1, M_MIN + (i + 0.5) * INV_BPDEX, M_MIN + (i - 0.5) * INV_BPDEX, steps[n].obs_uv[i], steps[n].obs_uv[i - 1]);
-//       // if (steps[n].log_sm[i]==0) { steps[n].log_sm[i]=0; } // I totally don't understand why you would do this.
-//       //                                                           // In this case at the very massive end of the SMF,
-//       //                                                           // the corresponding halo mass would be very difficult
-//       //                                                           // to determine, and cause the crazy behavior there.
-//       //                                                           // For now I just put an empty block here.
-//       if (steps[n].obs_uv[i]==10000) 
-//         { 
-//           // if (bin_min >= 0) steps[n].log_sm[i] = steps[n].log_sm[i-1]+0.001; 
-//           // steps[n].log_sm[i] = steps[n].log_sm[i-1]+0.001; 
-//           // if (i > bin_max) bin_max = i; //Even if we don't need this artificial massive end, we still
-//           //                                                       // need to maintain the bin_max to keep the size consistency between
-//           //                                                       // the interpolated data and the gsl_spline object.
-//           if (M_MIN+i*INV_BPDEX < 12) 
-//           {
-//             // steps[n].obs_uv[i] = steps[n].obs_uv[i-1]-0.001;
-//             ;
-//           } 
-//           else //at the high mass end, we do a constant SM/HM ratio extrapolation.
-//           {
-//             steps[n].obs_uv[i] = steps[n].obs_uv[i-1]-INV_BPDEX;
-//           }
-//           if (steps[n].obs_uv[i] < steps[n].smhm.uv_min) 
-// 	  {
-//             uv_min = steps[n].smhm.uv_min = steps[n].obs_uv[i];
-//             bin_min = i;
-// 	  }
-//         }
-//       else {
-//         if (!count_falling)
-//         {
-//           count_falling = 1;
-//           bin_peak = i - 1;
-//         }
-        
-//   // // sprintf(buffer, "Falling SMHM relation: SM(%f) = %f; SM(%f) = %f at scale %f (Mass at z=0: %f)\n", steps[n].med_hm_at_a[i], steps[n].log_sm[i], steps[n].med_hm_at_a[i-1], steps[n].log_sm[i-1], steps[n].scale, i*INV_BPDEX+M_MIN);       
-//   // fprintf(stderr, "Falling UVHM relation: UV(%f) = %f; UV(%f) = %f at scale %f (Mass at z=0: %f)\n", steps[n].med_hm_at_a[i], steps[n].obs_uv[i], steps[n].med_hm_at_a[i-1], steps[n].obs_uv[i-1], steps[n].scale, i*INV_BPDEX+M_MIN);       
-//   // INVALIDATE(fit, buffer);
-//   // steps[n].smhm.valid = 0;
-//   // return;
-//       }
-//     }
-
-//   }
-//   // fprintf(stderr, "count_falling=%d, bin_peak=%d, bin_max=%d\n", count_falling, bin_peak, bin_max); 
-//  // printf("bin_min=%d, bin_max=%d\n", bin_min, bin_max);
-//    //if (n == 1) 
-//    //{
-// //	   fprintf(stderr, "bin_min=%d, bin_max=%d\n", bin_min,  bin_max);
-// //	   for (int j=0; j < M_BINS; j++) fprintf(stderr, "steps[%d].obs_uv[%d]=%f ", n, j, steps[n].obs_uv[j]);
-// //	   fprintf(stderr, "\n");
-	   
-//   // }
-//     if (bin_max < 0 || bin_min - bin_max + 1 < 10 || (count_falling && bin_peak <= bin_max + 1))
-// {
-//         //sprintf(buffer, "All the stellar masses are zero.\n");
-//         //fprintf(stderr, "bin_max=%d, bin_min=%d\n", bin_max, bin_min);
-// 	//fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_min=%d, bin_max=%d\n", 1.0 / steps[n].scale - 1, n, bin_min, bin_max);
-//         if (1.0 / steps[n].scale - 1 >= 7.5) 
-// 	{
-// 	fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_min=%d, bin_max=%d\n", 1.0 / steps[n].scale - 1, n, bin_min, bin_max);
-// 	INVALIDATE(fit, buffer);
-//         }
-// 	return;
-// }
-
-  
-//   double *obs_uv_tmp = NULL;
-//   // double *std_uv_tmp = NULL;
-//   double  *hm_tmp = NULL;
-
-//   if (!count_falling)
-//   {
-//     obs_uv_tmp = malloc(sizeof(double)*(bin_min - bin_max + 1));
-//     // std_uv_tmp = malloc(sizeof(double)*(bin_min - bin_max + 1));
-//     hm_tmp = malloc(sizeof(double)*(bin_min - bin_max + 1));
-
-//     for (j=bin_max; j <= bin_min; j++)
-//     {
-//       // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//       obs_uv_tmp[j - bin_max] = steps[n].obs_uv[bin_min - (j - bin_max)];
-//       // std_uv_tmp[j - bin_max] = steps[n].std_uv[bin_min - (j - bin_max)];
-//       hm_tmp[j - bin_max] = steps[n].med_hm_at_a[bin_min - (j - bin_max)];
-
-//     }
-
-    
-//     // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     steps[n].spline_uv = gsl_spline_alloc(gsl_interp_cspline, bin_min - bin_max + 1);
-//     // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-
-
-
-//     steps[n].flag_alloc = 2;
-//     gsl_spline_init(steps[n].spline_uv, obs_uv_tmp, hm_tmp, bin_min - bin_max + 1);
-//     // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_max - bin_min + 1);
-//     free(obs_uv_tmp); free(hm_tmp);
-//   }
-
-//   else
-//   {
-//     obs_uv_tmp = malloc(sizeof(double)*(bin_peak - bin_max + 1));
-//     // std_uv_tmp = malloc(sizeof(double)*(bin_min - bin_max + 1));
-//     hm_tmp = malloc(sizeof(double)*(bin_peak - bin_max + 1));
-
-//     for (j=bin_max; j <= bin_peak; j++)
-//     {
-//       // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//       obs_uv_tmp[j - bin_max] = steps[n].obs_uv[bin_peak - (j - bin_max)];
-//       // std_uv_tmp[j - bin_max] = steps[n].std_uv[bin_peak - (j - bin_max)];
-//       hm_tmp[j - bin_max] = steps[n].med_hm_at_a[bin_peak - (j - bin_max)];
-//       // fprintf(stderr, "obs_uv[%d]=%f\n", j - bin_max, obs_uv_tmp[j - bin_max]);
-//     }
-
-    
-//     // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     steps[n].spline_uv = gsl_spline_alloc(gsl_interp_cspline, bin_peak - bin_max + 1);
-//     // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//     gsl_spline_init(steps[n].spline_uv, obs_uv_tmp, hm_tmp, bin_peak - bin_max + 1);
-//     // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_max - bin_min + 1);
-    
-//     free(obs_uv_tmp); free(hm_tmp);
-
-//     // Here we need to account for the fact that the segment of UVHM relation after
-//     // the turning over point may be fewer than 2 points. In this case
-//     // cubic spline interpolation won't work. And my solution is to do a linear
-//     // extrapolation out to 10^16.3 Msun to get the third point.
-//     int n_seg = M_BINS - bin_peak > 2 ? M_BINS - bin_peak : 3;
-
-//     obs_uv_tmp = malloc(sizeof(double)*n_seg);
-//     // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_min - bin_max + 1));
-//     hm_tmp = malloc(sizeof(double)*n_seg);
-
-//     // obs_uv_tmp = malloc(sizeof(double)*(M_BINS - bin_peak));
-//     // // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_min - bin_max + 1));
-//     // hm_tmp = malloc(sizeof(double)*(M_BINS - bin_peak));
-
-//     // obs_uv_tmp = (double *)realloc(obs_uv_tmp, sizeof(double)*(M_BINS - bin_peak));
-//     // // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_min - bin_max + 1));
-//     // hm_tmp = (double *)realloc(hm_tmp, sizeof(double)*(M_BINS - bin_peak));
-
-//     for (j=bin_peak; j < M_BINS; j++)
-//     {
-//       // printf("log_sm=%f\n", steps[n].log_sm[j]);
-//       obs_uv_tmp[j - bin_peak] = steps[n].obs_uv[j];
-//       // std_uv_tmp[j - bin_peak] = steps[n].std_uv[j];
-//       hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[j];
-//       fprintf(stderr, "bin_peak=%d, bin_min=%d, obs_uv[%d]=%f\n", bin_peak, bin_min, j - bin_peak, obs_uv_tmp[j - bin_peak]);
-//     }
-    
-    
-
-//     // Linear extrapolation.
-//     if (n_seg > M_BINS - bin_peak)
-//     {
-//       // fprintf(stderr, "n_seg=%d, M_BINS - bin_peak=%d\n", n_seg, M_BINS - bin_peak);
-// 	    hm_tmp[2] = 16.3; obs_uv_tmp[2] = 2 * obs_uv_tmp[1] - obs_uv_tmp[0];
-//     }
-
-//     //for (j=bin_peak; j < M_BINS; j++) fprintf(stderr, "bin_peak=%d, bin_min=%d, obs_uv[%d]=%f\n", bin_peak, bin_min, j - bin_peak, obs_uv_tmp[j - bin_peak]);
-
-//     // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_cspline, n_seg);
-//     // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//     int err_spline_init = gsl_spline_init(steps[n].spline_uv2, obs_uv_tmp, hm_tmp, n_seg);
-//     // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_max - bin_min + 1);
-
-    
-//     // // The spline does not need to be modified. What should be changed is that the dn/dlogm
-//     // // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-//     // steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_cspline, M_BINS - bin_peak);
-//     // // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_max - bin_min + 1);
-//     // int err_spline_init = gsl_spline_init(steps[n].spline_uv2, obs_uv_tmp, hm_tmp, M_BINS - bin_peak);
-//     // // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_max - bin_min + 1);
-//     //for (j=bin_peak; j<M_BINS; j++)
-//       //          fprintf(stderr, "obs_uv_tmp[%d]=%f, hm_tmp[%d]=%f\n", j-bin_peak, obs_uv_tmp[j-bin_peak], j-bin_peak, hm_tmp[j-bin_peak]);
-//     free(obs_uv_tmp); free(hm_tmp);
-//     if (err_spline_init)
-//     {
-//       //fprintf(stderr, "More than 1 turning point in the UVHM at %d-th snapshot.\n", n);
-//       if (1.0/steps[n].scale - 1 > 7.5) 
-// 	{
-// 	fprintf(stderr, "More than 1 turning point in the UVHM at %d-th snapshot.\n", n);
-// 	//for (j=bin_peak; j<M_BINS; j++)
-// 	//	fprintf(stderr, "obs_uv_tmp[%d]=%f, hm_tmp[%d]=%f\n", j-bin_peak, obs_uv_tmp[j-bin_peak], j-bin_peak, hm_tmp[j-bin_peak]); 
-// 	INVALIDATE(fit, buffer);
-// 	}
-//       //free(obs_uv_tmp); free(hm_tmp);
-//       gsl_spline_free(steps[n].spline_uv2);
-//       steps[n].flag_alloc = 2;
-//       return;
-//     }
-//     steps[n].alloc2uvlf = 1;
-//     steps[n].flag_alloc = 2;
-    
-//   }
-
-//   // free(obs_uv_tmp); free(hm_tmp);
-
-  
-//   i = M_BINS-1;
-//   for (j=UV_BINS-1; j>=0; j--) {
-//     uv = UV_MIN + (double)j*UV_INV_BPMAG;
-//     if (uv > uv_max || uv < uv_min) {
-//       steps[n].uvlf[j+UV_EXTRA] = 0;
-//       steps[n].std_uvlf[j+UV_EXTRA] = 0;
-//     }
-//     else {
-
-//       int err = gsl_spline_eval_e(steps[n].spline_uv, uv, &ga, &m);
-//       // fprintf(stdout, "n=%d, z=%f, uv=%f, interpolated m=%f, err=%d\n", n, 1.0 / steps[n].scale - 1, uv, m, err);
-//       if (err || m < 0)
-//       //if (err || m < M_MIN - 1.0 || m > M_MAX + 1.0)
-//       {
-//         // sprintf(buffer, "Error in GSL spline interpolation #2.\n");
-//         fprintf(stderr, "Error in GSL spline interpolation #2. m=%f\n", m);
-//         INVALIDATE(fit, buffer);
-//         // free(obs_uv_tmp); free(hm_tmp);
-//         return;
-//       }
-//       //int64_t b = gsl_interp_accel_find(&ga, steps[n].log_sm+bin_min, (bin_max-bin_min+1), sm)+bin_min;
-//       // find out the sfrac to weight the smf_sf and smf_q.
-//       double f = (m - M_MIN) * BPDEX;
-//       int64_t b;
-//       if (f >= M_BINS - 1)
-//       {
-//         b = M_BINS - 2;
-//         f = 1;
-//       }
-//       else
-//       {
-//         b = f;
-//         f -= b;
-//       }
-//       steps[n].std_uvlf[j+SM_EXTRA] = steps[n].std_uv[b] + f * (steps[n].std_uv[b+1] - steps[n].std_uv[b]);
-//       steps[n].uvlf[j+SM_EXTRA] = calc_uvlf_at_m(m,uv,n,1,fit,&ga);
-
-//       if (steps[n].alloc2uvlf)
-//       {
-//         gsl_interp_accel_reset(&ga);
-//         int err2 = gsl_spline_eval_e(steps[n].spline_uv2, uv, &ga, &m2);
-//         if (!err2)
-//         {
-//           // double f2 = (m2 - M_MIN) * BPDEX;
-//           // int64_t b2;
-//           // if (f2 >= M_BINS - 1)
-//           // {
-//           //   b2 = M_BINS - 2;
-//           //   f2 = 1;
-//           // }
-//           // else
-//           // {
-//           //   b2 = f2;
-//           //   f2 -= b2;
-//           // }
-//           // // I think for the second branch (i.e., massive end) of the UV-HM relation, the scatter there would
-//           // // be much smaller than the one from the less massive end. So here I just ignore them.
-//           // steps[n].std_uvlf[j+SM_EXTRA] = steps[n].std_uv[b] + f * (steps[n].std_uv[b+1] - steps[n].std_uv[b]);
-//           steps[n].uvlf[j+SM_EXTRA] += calc_uvlf_at_m(m2,uv,n,2,fit,&ga);
-//         }
-//       }
-      
-//     }
-//   }
-
-//   // if (n == 18)
-//   // {
-//   //   printf("#sm dNdlgsm\n");
-//   //   printf("#z=%f\n", 1 / steps[n].scale - 1);
-//   //   double sm_tmp = steps[n].smhm.sm_min;
-//   //   for (j = 0; sm <= steps[n].smhm.sm_max; j++)
-//   //   {
-//   //     m = gsl_spline_eval(steps[n].spline, sm, &ga);
-//   //     printf("%f, %f\n", sm, log10(calc_smf_at_m(m,sm,n,fit,&ga)));
-//   //     sm += 0.1;
-//   //   }
-//   // }
-
-  
-
-//   //Check status of SMF bins
-//   steps[n].uvlf_ok[UV_BINS+UV_EXTRA-1] = 0;
-//   for (j=0; j<UV_BINS-1; j++) {
-//     uv = UV_MIN + (double)j*UV_INV_BPMAG;
-//     double avg = 0.5*(steps[n].uvlf[j+UV_EXTRA-1]+steps[n].uvlf[j+UV_EXTRA+1]);
-//     //if (n == 37) fprintf(stderr, "uv=%f, uvlf[%d]=%e\n", uv, j, steps[n].uvlf[j+UV_EXTRA]);
-//     if (fabs(avg-steps[n].uvlf[j+UV_EXTRA]) > steps[n].uvlf[j+UV_EXTRA]*5e-4) {
-//       steps[n].uvlf_ok[j+UV_EXTRA] = 0;
-//     } else {
-//       steps[n].uvlf_ok[j+UV_EXTRA] = 1;
-//     }
-//   }
-// }
 
 
 void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
@@ -1821,7 +1076,6 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit) {
     // printf("invalid!\n");
     return;
   }
-  //if (steps[n].scale < 0.1) return;
 
   for (i=0; i<M_BINS; i++) {
 

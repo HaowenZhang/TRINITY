@@ -31,11 +31,14 @@ extern int no_z_scaling;
 extern float z_max;
 extern float z_min;
 
-static inline double doexp10(double x) {
+static inline double doexp10(double x) 
+{
   double a = exp(M_LN10*x);
   return a;
 }
-static inline double dolog10(double x) {
+
+static inline double dolog10(double x) 
+{
   if (x <= 0) return -1000;
   double a = log10(x);
   return a;
@@ -50,18 +53,14 @@ extern int no_obs_scatter;
 extern double frac_below8[MBH_BINS];
 extern double frac_below11[MBH_BINS];
 
-void calc_sfh(struct smf_fit *f) {
-  //fprintf(stderr, "z_start: %f", 1 / steps[0].scale - 1);
-   int64_t i,j;
-  for (i=0; i<num_outputs; i++) {
+void calc_sfh(struct smf_fit *f) 
+{
+  int64_t i,j;
+  for (i=0; i<num_outputs; i++) 
+  {
     if (!no_z_scaling || ((steps[i].scale < 1.0/(z_min+1.0)) &&
 			  (steps[i].scale > 1.0/(z_max+1.0))))
     calc_sm_hist(i, f);
-    //for (j=0; j<M_BINS; j++)
-    //{
-      //fprintf(stdout, "%d %f %f\n", i, steps[i].med_hm_at_a[j], steps[i].log_sm[j]);
-    //}
-    
   }
 
 #pragma omp for schedule(guided,5)
@@ -233,7 +232,8 @@ void remove_bh_merger()
   }
 }
 
-void calc_total_sfr(int n) {
+void calc_total_sfr(int n) 
+{
   int64_t i;
   double sfr = 0, obs_sfr = 0;
   double mu = steps[n].smhm.mu;

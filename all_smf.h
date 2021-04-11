@@ -37,7 +37,7 @@
 
 #define SMF_CPUS 8
 
-#define BURN_IN_LENGTH (1<<16)
+#define BURN_IN_LENGTH (1<<6)
 #define NUM_PARAMS 70
 
 #define EFF_0_STEP    0.001

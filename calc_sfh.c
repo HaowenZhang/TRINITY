@@ -1357,12 +1357,11 @@ void calc_uvlf(int n, struct smf_fit *fit) {
   steps[n].alloc2uvlf = 0;
   if (INVALID(*fit)) 
   {
-    // printf("invalid!\n");
     return;
   }
-  //if (steps[n].scale < 0.1) return;
 
-  for (i=0; i<M_BINS; i++) {
+  for (i=0; i<M_BINS; i++) 
+  {
 
     if (steps[n].obs_uv[i] > -1000 && steps[n].obs_uv[i] < 1000) 
     {
@@ -1391,97 +1390,60 @@ void calc_uvlf(int n, struct smf_fit *fit) {
       uv_min = steps[n].smhm.uv_min = steps[n].obs_uv[i];
     }
 
-
-    // // if (steps[n].log_sm[i]>-1000 && bin_min < 0) {
-    // if (steps[n].obs_uv[i]<steps[n].smhm.uv_min) {
-    //   bin_min = i;
-    //   // if (n == 66) fprintf(stderr, "n=66, bin_min=%d\n", bin_min);
-    //   uv_min = steps[n].smhm.uv_min = steps[n].obs_uv[i];
-    // }
-
     if (i && (steps[n].obs_uv[i] >= steps[n].obs_uv[i-1])
         && steps[n].obs_uv[i]<1000 && (!count_falling)) 
-      {
+    {
 
-          count_falling = 1;
-          bin_peak = i - 1;
-        
-      }
+        count_falling = 1;
+        bin_peak = i - 1;
+      
     }
-  // fprintf(stderr, "count_falling=%d, bin_peak=%d, bin_max=%d\n", count_falling, bin_peak, bin_max); 
- // printf("bin_min=%d, bin_max=%d\n", bin_min, bin_max);
-   //if (n == 1) 
-   //{
-//     fprintf(stderr, "bin_min=%d, bin_max=%d\n", bin_min,  bin_max);
-//     for (int j=0; j < M_BINS; j++) fprintf(stderr, "steps[%d].obs_uv[%d]=%f ", n, j, steps[n].obs_uv[j]);
-//     fprintf(stderr, "\n");
-     
-  // }
-    if (bin_start < 0 || bin_end - bin_start + 1 < 10 || (count_falling && bin_peak <= bin_start + 1))
-{
-        //sprintf(buffer, "All the stellar masses are zero.\n");
-        //fprintf(stderr, "bin_max=%d, bin_min=%d\n", bin_max, bin_min);
-  //fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_min=%d, bin_max=%d\n", 1.0 / steps[n].scale - 1, n, bin_min, bin_max);
-        if (1.0 / steps[n].scale - 1 >= 7.5) 
+  }
+
+  if (bin_start < 0 || bin_end - bin_start + 1 < 10 || (count_falling && bin_peak <= bin_start + 1))
   {
-  //fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_end=%d, bin_start=%d\n", 1.0 / steps[n].scale - 1, n, bin_end, bin_start);
-  INVALIDATE(fit, buffer);
+    //fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_min=%d, bin_max=%d\n", 1.0 / steps[n].scale - 1, n, bin_min, bin_max);
+    if (1.0 / steps[n].scale - 1 >= 7.5) 
+    {
+      //fprintf(stderr, "All the UV magnitudes are zero at z=%f (%d-th snapshot). bin_end=%d, bin_start=%d\n", 1.0 / steps[n].scale - 1, n, bin_end, bin_start);
+      INVALIDATE(fit, buffer);
+    }
+    return;
+  }
 
-        }
-  return;
-  
-}
-
-//if (n == 1) fprintf(stderr, "uv_min=%f, uv_max=%f\n", uv_min, uv_max);
-
-  
   double *obs_uv_tmp = NULL;
-  // double *std_uv_tmp = NULL;
   double  *hm_tmp = NULL;
 
   if (!count_falling)
   {
     obs_uv_tmp = malloc(sizeof(double)*(bin_end - bin_start + 1));
-    // std_uv_tmp = malloc(sizeof(double)*(bin_min - bin_max + 1));
     hm_tmp = malloc(sizeof(double)*(bin_end - bin_start + 1));
 
     for (j=bin_start; j <= bin_end; j++)
     {
-      // printf("log_sm=%f\n", steps[n].log_sm[j]);
       obs_uv_tmp[j - bin_start] = steps[n].obs_uv[bin_end - (j - bin_start)];
-      // std_uv_tmp[j - bin_start] = steps[n].std_uv[bin_end - (j - bin_start)];
       hm_tmp[j - bin_start] = steps[n].med_hm_at_a[bin_end - (j - bin_start)];
-
     }
 
-    
     // The spline does not need to be modified. What should be changed is that the dn/dlogm
     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
     //steps[n].spline_uv = gsl_spline_alloc(gsl_interp_cspline, bin_end - bin_start + 1);
     steps[n].spline_uv = gsl_spline_alloc(gsl_interp_linear, bin_end - bin_start + 1);
-    // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_start - bin_end + 1);
-
-
 
     steps[n].flag_alloc = 2;
     gsl_spline_init(steps[n].spline_uv, obs_uv_tmp, hm_tmp, bin_end - bin_start + 1);
-    // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_start - bin_end + 1);
     free(obs_uv_tmp); free(hm_tmp);
   }
 
   else
   {
     obs_uv_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
-    // std_uv_tmp = malloc(sizeof(double)*(bin_end - bin_start + 1));
     hm_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
 
     for (j=bin_start; j <= bin_peak; j++)
     {
-      // printf("log_sm=%f\n", steps[n].log_sm[j]);
       obs_uv_tmp[j - bin_start] = steps[n].obs_uv[bin_peak - (j - bin_start)];
-      // std_uv_tmp[j - bin_start] = steps[n].std_uv[bin_peak - (j - bin_start)];
       hm_tmp[j - bin_start] = steps[n].med_hm_at_a[bin_peak - (j - bin_start)];
-      // fprintf(stderr, "obs_uv[%d]=%f\n", j - bin_start, obs_uv_tmp[j - bin_start]);
     }
 
     
@@ -1497,10 +1459,8 @@ void calc_uvlf(int n, struct smf_fit *fit) {
       return;
     }
 
-    // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_start - bin_end + 1);
     gsl_spline_init(steps[n].spline_uv, obs_uv_tmp, hm_tmp, bin_peak - bin_start + 1);
-    // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_start - bin_end + 1);
-    
+
     free(obs_uv_tmp); free(hm_tmp);
 
     // Here we need to account for the fact that the segment of UVHM relation after
@@ -1511,51 +1471,20 @@ void calc_uvlf(int n, struct smf_fit *fit) {
     int n_seg = bin_end - bin_peak + 1;
 
     obs_uv_tmp = malloc(sizeof(double)*n_seg);
-    // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_end - bin_start + 1));
     hm_tmp = malloc(sizeof(double)*n_seg);
-
-    // obs_uv_tmp = malloc(sizeof(double)*(M_BINS - bin_peak));
-    // // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_end - bin_start + 1));
-    // hm_tmp = malloc(sizeof(double)*(M_BINS - bin_peak));
-
-    // obs_uv_tmp = (double *)realloc(obs_uv_tmp, sizeof(double)*(M_BINS - bin_peak));
-    // // std_uv_tmp = malloc(std_uv_tmp, sizeof(double)*(bin_end - bin_start + 1));
-    // hm_tmp = (double *)realloc(hm_tmp, sizeof(double)*(M_BINS - bin_peak));
 
     for (j=bin_peak; j <= bin_end; j++)
     {
-      // printf("log_sm=%f\n", steps[n].log_sm[j]);
       obs_uv_tmp[j - bin_peak] = steps[n].obs_uv[j];
-      // std_uv_tmp[j - bin_peak] = steps[n].std_uv[j];
       hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[j];
-      //if (n == 1) fprintf(stderr, "bin_peak=%d, bin_end=%d, obs_uv[%d]=%f, sfr[%d]=%e\n", bin_peak, bin_end, j - bin_peak, obs_uv_tmp[j - bin_peak], j - bin_peak, steps[n].sfr[j - bin_peak]);
     }
 
-    //for (j=0;j<M_BINS;j++) if (n == 1) fprintf(stderr, "bin_real=%d, bin_peak=%d, bin_end=%d, obs_uv[%d]=%f, sfr[%d]=%e\n", steps[n].smhm.bin_real, bin_peak, bin_end, j, steps[n].obs_uv[j], j, steps[n].sfr[j]);
-
-
-
-    // // Linear extrapolation.
-    // if (n_seg > bin_end - bin_peak + 1)
-    // {
-      // // fprintf(stderr, "n_seg=%d, M_BINS - bin_peak=%d\n", n_seg, M_BINS - bin_peak);
-      // int npt_real = bin_end - bin_peak + 1;
-      // for (int kk = npt_real; kk < n_seg; kk++)
-      // {
-        // hm_tmp[kk] = steps[n].med_hm_at_a[bin_end] + (kk - npt_real + 1) * INV_BPDEX; 
-        // obs_uv_tmp[kk] = 2 * obs_uv_tmp[kk-1] - obs_uv_tmp[kk-2];
-      // }
-    // }
 
     // The spline does not need to be modified. What should be changed is that the dn/dlogm
     // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-    //steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_cspline, n_seg);
     steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_linear, n_seg);
-    // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_start - bin_end + 1);
     int err_spline_init = gsl_spline_init(steps[n].spline_uv2, obs_uv_tmp, hm_tmp, n_seg);
-    // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_start - bin_end + 1);
-
-    
+        
     // // The spline does not need to be modified. What should be changed is that the dn/dlogm
     // // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
     // steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_cspline, M_BINS - bin_peak);
@@ -1567,31 +1496,31 @@ void calc_uvlf(int n, struct smf_fit *fit) {
     {
       //fprintf(stderr, "More than 1 turning point in the UVHM at %d-th snapshot.\n", n);
       if (1.0/steps[n].scale - 1 > 7.5) 
-  {
-  //fprintf(stderr, "More than 1 turning point in the UVHM at %d-th snapshot.\n", n);
-  INVALIDATE(fit, buffer);
-  }
-      //free(obs_uv_tmp); free(hm_tmp);
+      {
+        //fprintf(stderr, "More than 1 turning point in the UVHM at %d-th snapshot.\n", n);
+        INVALIDATE(fit, buffer);
+      }
       gsl_spline_free(steps[n].spline_uv2);
       steps[n].flag_alloc = 2;
       return;
     }
     steps[n].alloc2uvlf = 1;
-    steps[n].flag_alloc = 2;
-    
+    steps[n].flag_alloc = 2;   
   }
 
-  // free(obs_uv_tmp); free(hm_tmp);
 
   
   i = M_BINS-1;
-  for (j=UV_BINS-1; j>=0; j--) {
+  for (j=UV_BINS-1; j>=0; j--) 
+  {
     uv = UV_MIN + (double)j*UV_INV_BPMAG;
-    if (uv > uv_max || uv < uv_min) {
+    if (uv > uv_max || uv < uv_min) 
+    {
       steps[n].uvlf[j+UV_EXTRA] = 0;
       steps[n].std_uvlf[j+UV_EXTRA] = 0;
     }
-    else {
+    else 
+    {
       gsl_interp_accel_reset(&ga);
       int err = gsl_spline_eval_e(steps[n].spline_uv, uv, &ga, &m);
       // fprintf(stdout, "n=%d, z=%f, uv=%f, interpolated m=%f, err=%d\n", n, 1.0 / steps[n].scale - 1, uv, m, err);
@@ -1628,52 +1557,25 @@ void calc_uvlf(int n, struct smf_fit *fit) {
         int err2 = gsl_spline_eval_e(steps[n].spline_uv2, uv, &ga, &m2);
         if (!err2 && isfinite(m2))
         {
-          // double f2 = (m2 - M_MIN) * BPDEX;
-          // int64_t b2;
-          // if (f2 >= M_BINS - 1)
-          // {
-          //   b2 = M_BINS - 2;
-          //   f2 = 1;
-          // }
-          // else
-          // {
-          //   b2 = f2;
-          //   f2 -= b2;
-          // }
-          // // I think for the second branch (i.e., massive end) of the UV-HM relation, the scatter there would
-          // // be much smaller than the one from the less massive end. So here I just ignore them.
-          // steps[n].std_uvlf[j+SM_EXTRA] = steps[n].std_uv[b] + f * (steps[n].std_uv[b+1] - steps[n].std_uv[b]);
           steps[n].uvlf[j+SM_EXTRA] += calc_uvlf_at_m(m2,uv,n,2,fit,&ga);
         }
       }
-      
     }
   }
 
-  // if (n == 18)
-  // {
-  //   printf("#sm dNdlgsm\n");
-  //   printf("#z=%f\n", 1 / steps[n].scale - 1);
-  //   double sm_tmp = steps[n].smhm.sm_min;
-  //   for (j = 0; sm <= steps[n].smhm.sm_max; j++)
-  //   {
-  //     m = gsl_spline_eval(steps[n].spline, sm, &ga);
-  //     printf("%f, %f\n", sm, log10(calc_smf_at_m(m,sm,n,fit,&ga)));
-  //     sm += 0.1;
-  //   }
-  // }
-
-  
-
   //Check status of SMF bins
   steps[n].uvlf_ok[UV_BINS+UV_EXTRA-1] = 0;
-  for (j=0; j<UV_BINS-1; j++) {
+  for (j=0; j<UV_BINS-1; j++) 
+  {
     uv = UV_MIN + (double)j*UV_INV_BPMAG;
     double avg = 0.5*(steps[n].uvlf[j+UV_EXTRA-1]+steps[n].uvlf[j+UV_EXTRA+1]);
     //if (n == 32) fprintf(stderr, "uv=%f, uvlf[%d]=%e, std_uvlf[%d]=%f\n", uv, j, steps[n].uvlf[j+UV_EXTRA], j, steps[n].std_uvlf[j+UV_EXTRA]);
-    if (fabs(avg-steps[n].uvlf[j+UV_EXTRA]) > steps[n].uvlf[j+UV_EXTRA]*5e-4) {
+    if (fabs(avg-steps[n].uvlf[j+UV_EXTRA]) > steps[n].uvlf[j+UV_EXTRA]*5e-4) 
+    {
       steps[n].uvlf_ok[j+UV_EXTRA] = 0;
-    } else {
+    } 
+    else 
+    {
       steps[n].uvlf_ok[j+UV_EXTRA] = 1;
     }
   }
@@ -1683,12 +1585,7 @@ void create_fake_sfr_hist(int n, int i) {
   double frac_lost = 0, weight = 0;
   double sm, total_time, time, prev_scale;
   int k;
-  //if (n == 0)
-  //{
-//	  steps[n].sm[i] = 0;
-//	  steps[n].sm_hist[i*num_outputs] = 0;
-//	  return;
-  //}
+
   for (k=0; k<=n; k++) {
     frac_lost += steps[n].smloss[k]*steps[k].dt;
     weight += steps[k].dt;
@@ -1702,16 +1599,11 @@ void create_fake_sfr_hist(int n, int i) {
     steps[n].sm_hist[i*num_outputs + k] = sm*time/total_time;
   }
   steps[n].new_sm[i] = steps[n].sm_hist[i*num_outputs + n];
-  //if (n == 0)
-  //{
-        //  steps[n].sm[i] = 0;
-      //    steps[n].sm_hist[i*num_outputs] = 0;
-    //      return;
-  //}
+
 }
 
-//inline 
-double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO) {
+double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO) 
+{
   //double icl_frac;
   /*if (j>i) icl_frac = 1;
     else icl_frac = 1.0 - (2.0)/(1.0+doexp10((i-j+0.25)*INV_BPDEX*ICL_RATIO));*/
@@ -1726,7 +1618,7 @@ double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO) {
 
 void calc_sm_hist(int n, struct smf_fit *fit) {
   int64_t i, j, k, bin;
-  double t; //, ICL_FRACTION_E = ICL_FRAC_E(*fit);
+  double t;
   double *sm_hist_i, *sm_hist_j, sm_inc, sm_mmp;
   double ICL_RATIO = doexp10(ICL_FRAC(*fit));
   double *icl_hist_i, *icl_hist_j;
@@ -1771,10 +1663,10 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
   double v200 = log10(200);
   
 #pragma omp for schedule(dynamic,5) private(j,k,sm_hist_i,sm_hist_j,bin,t)
-  for (i=0; i<M_BINS; i++) {
+  for (i=0; i<M_BINS; i++) 
+  {
     double lv = v200 + (steps[n].med_hm_at_a[i]-m200)/3.0;
     steps[n].lv[i] = lv;
-    // if (n == 150) fprintf(stderr, "Mh=%f, lv=%f\n",steps[n].med_hm_at_a[i], steps[n].lv[i]); 
     // Here the SFR only includes the star-forming ones, which is not complete.
     // The reason why we should also account for the SFR in the quenched galaxies
     // is that they may have high enough merger fraction and thus even a small SFR
@@ -1787,17 +1679,8 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     // steps[n].sfrac[i] = calc_sfrac_at_lv(lv, steps[n].smhm);
     steps[n].sfrac[i] = calc_sfrac_at_m(steps[n].lv[i], steps[n].smhm);
     steps[n].sfr[i] = calc_sfr_at_lv(steps[n].med_hm_at_a[i], lv, steps[n].smhm)*exp(pow(0.30*log(10), 2)/2.0);
-    
 
     if (n == 0) steps[n].sfr[i] = 0;
-     //if (i == 0) fprintf(stderr, "z=%f, sfr=%e, before dilution; ", 1 / steps[n].scale - 1, steps[n].sfr[i]);
-    //if (steps[n].t[i]) steps[n].sfr[i] *= steps[n].n[i] / steps[n].t[i]; //account only for the SF from existing halos.
-    //fprintf(stderr, "z=%f, sfr=%e, after dilution.\n", 1 / steps[n].scale - 1, steps[n].sfr[i]);
-    //fprintf(stderr, "z=%f, Mh=%f, n/t=%e\n", 1 / steps[n].scale - 1, M_MIN + (i + 0.5) * INV_BPDEX, steps[n].n[i] / steps[n].t[i]);
-
-    //steps[n].log_sm[i] = calc_sm_at_m(steps[n].med_hm_at_a[i], steps[n].smhm);
-    //steps[n].sm[i] = doexp10(steps[n].log_sm[i]);
-    //steps[n].sm_avg[i] = steps[n].sm[i]*scatter_corr;
     
     // Note that we shouldn't calculate the BH mass here, as the real stellar mass will not
     // be calculated until calc_new_sm_and_ssfr().
@@ -1805,89 +1688,86 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     steps[n].sm_from_icl[i] = 0;
     steps[n].old_bh_mass[i] = 0;
     steps[n].bh_unmerged[i] = 0;
-    // steps[n].bh_merged[i] = 0;
-    // for (k=0; k < MBH_BINS; k++) steps[n].bh_unmerged_dist[i*MBH_BINS+k] = 0;
     if (no_z_scaling) continue;
 
-    if (!steps[n].n[i]) {
-      if (steps[n].c[i]) {
-	create_fake_sfr_hist(n, i);
+    if (!steps[n].n[i]) 
+    {
+      if (steps[n].c[i]) 
+      {
+	      create_fake_sfr_hist(n, i);
       }
     }
-    else {
+    else 
+    {
       sm_hist_i = &(steps[n].sm_hist[i*num_outputs]);
       memset(sm_hist_i, 0, sizeof(double)*num_outputs);
       icl_hist_i = &(steps[n].icl_stars[i*num_outputs]);
       memset(icl_hist_i, 0, sizeof(double)*num_outputs);
       sm_inc_hist_i = &(steps[n].sm_inc_hist[i*num_outputs]);
       memset(sm_inc_hist_i, 0, sizeof(double)*num_outputs);
-      if (n>0) {
-	sm_inc = sm_mmp = 0;
-	for (j=0; j<M_BINS; j++) {
-	  bin = j*M_BINS + i;
-    steps[n].old_bh_mass[i] += steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
-    // if (j == i - 1) steps[n].old_bh_mass_next[i] = steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
-    // else if (j == i) steps[n].old_bh_mass_self[i] = steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
-	  steps[n].bh_unmerged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j] + 
-                              steps[n-1].bh_unmerged[j]) + steps[n].mmp[bin]*steps[n-1].bh_unmerged[j];
-    // steps[n].bh_merged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j]);
-    // // The following lines are used to calculate the mass distributions of unmerged BHs for the i-th mass bin
-    // // in the n-th snapshot.
-    // for (k=0; k < MBH_BINS; k++)
-    // {
-    //   // Just take over all the distributions from the merged BHs, up to a transfer fraction that is the fraction of 
-    //   // the j-th mass bin halos that got merged/become MMP
-    //   if (steps[n-1].t[j] && isfinite(steps[n-1].t[j]) && isfinite(steps[n].merged[bin]) && isfinite(steps[n].mmp[bin]))
-    //     steps[n].bh_unmerged_dist[i*MBH_BINS+k] += steps[n].merged[bin] / steps[n-1].t[j] * steps[n-1].bh_unmerged_dist[j*MBH_BINS+k] 
-    //                                             + steps[n].mmp[bin] / steps[n-1].t[j] * steps[n-1].bh_unmerged_dist[j*MBH_BINS+k];
-    // }
+      if (n>0) 
+      {
+      	sm_inc = sm_mmp = 0;
+      	for (j=0; j<M_BINS; j++) 
+        {
+      	  bin = j*M_BINS + i;
+          steps[n].old_bh_mass[i] += steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
+      	  steps[n].bh_unmerged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j] + 
+                                    steps[n-1].bh_unmerged[j]) + steps[n].mmp[bin]*steps[n-1].bh_unmerged[j];
+          // steps[n].bh_merged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j]);
+          // // The following lines are used to calculate the mass distributions of unmerged BHs for the i-th mass bin
+          // // in the n-th snapshot.
+          // for (k=0; k < MBH_BINS; k++)
+          // {
+          //   // Just take over all the distributions from the merged BHs, up to a transfer fraction that is the fraction of 
+          //   // the j-th mass bin halos that got merged/become MMP
+          //   if (steps[n-1].t[j] && isfinite(steps[n-1].t[j]) && isfinite(steps[n].merged[bin]) && isfinite(steps[n].mmp[bin]))
+          //     steps[n].bh_unmerged_dist[i*MBH_BINS+k] += steps[n].merged[bin] / steps[n-1].t[j] * steps[n-1].bh_unmerged_dist[j*MBH_BINS+k] 
+          //                                             + steps[n].mmp[bin] / steps[n-1].t[j] * steps[n-1].bh_unmerged_dist[j*MBH_BINS+k];
+          // }
 
-    // // Another part is the average BH mass from the merged BHs.
-    // // Here we assume that the mass distribution ***within each BH mass bin*** is flat.
-    // // double f_bh = (steps[n-1].log_bh_mass[j] - MBH_MIN) / MBH_INV_BPDEX;
-    // double mbh = log10(steps[n-1].bh_mass_avg[j]);
-    // cloud_in_cell(mbh, steps[n].merged[bin], steps[n].bh_unmerged_dist+i*MBH_BINS, MBH_MIN, MBH_BPDEX, MBH_BINS);
-    
+          // // Another part is the average BH mass from the merged BHs.
+          // // Here we assume that the mass distribution ***within each BH mass bin*** is flat.
+          // // double f_bh = (steps[n-1].log_bh_mass[j] - MBH_MIN) / MBH_INV_BPDEX;
+          // double mbh = log10(steps[n-1].bh_mass_avg[j]);
+          // cloud_in_cell(mbh, steps[n].merged[bin], steps[n].bh_unmerged_dist+i*MBH_BINS, MBH_MIN, MBH_BPDEX, MBH_BINS);
+          
+          icl_frac = icl_fract(i,j,n,ICL_RATIO);
+      	  sm_inc += steps[n].merged[bin]*steps[n-1].sm_avg[j];
+      	  if (icl_frac > 0.999) continue;
+      	  sm_mmp += steps[n].mmp[bin]*steps[n-1].sm_avg[j];
+      	}
 
+      	steps[n].sm_inc[i] = sm_inc;
+      	sm_inc = 0;
+      	ejec_frac = 0;
 
-    icl_frac = icl_fract(i,j,n,ICL_RATIO);
-	  sm_inc += steps[n].merged[bin]*steps[n-1].sm_avg[j];
-	  if (icl_frac > 0.999) continue;
-	  sm_mmp += steps[n].mmp[bin]*steps[n-1].sm_avg[j];
-	}
-	steps[n].sm_inc[i] = sm_inc;
-	sm_inc = 0;
-	//if (sm_mmp) ejec_frac = (ICL_FRACTION_E-1.0) * sm_inc / sm_mmp;
-	//else ejec_frac = 0;
-	ejec_frac = 0;
-	//if (ICL_FRACTION_E>1.0) steps[n].sm_from_icl[i] -= (ICL_FRACTION_E-1.0)*sm_inc;
-
-	if (ejec_frac > 1) ejec_frac = 1;
-	if (ejec_frac < 0) ejec_frac = 0;
-	for (j=0; j<M_BINS; j++) {
-	  bin = j*M_BINS + i;
-	  icl_frac = icl_fract(i,j,n,ICL_RATIO);
-	  double incoming_frac = 0; //(1.0-icl_frac)*(1.0-ICL_FRACTION_E);
-	  //if (incoming_frac < 0) incoming_frac = 0;
-	  t = steps[n].mmp[bin]*(1.0-ejec_frac) + 
-	    incoming_frac*steps[n].merged[bin];
-	  double iclt1 = (ejec_frac*steps[n].mmp[bin]+
-			 (1.0-incoming_frac)*steps[n].merged[bin]);
-	  //double iclt2 = (steps[n].mmp[bin]+steps[n].merged[bin]);
-	  double iclt2 = (steps[n].mmp[bin]);
-	  if (!t && !iclt1 && !iclt2) continue;
-	  steps[n].sm_from_icl[i] += steps[n-1].sm_from_icl[j]*steps[n].mmp[bin];
-	  sm_hist_j = &(steps[n-1].sm_hist[j*num_outputs]);
-	  icl_hist_j = &(steps[n-1].icl_stars[j*num_outputs]);
-	  for (k=0; k<n; k++) {
-	    sm_hist_i[k] += t*sm_hist_j[k];
-	    icl_hist_i[k] += iclt1*sm_hist_j[k];
-	    icl_hist_i[k] += iclt2*icl_hist_j[k];
-      // sm_inc_hist stores the ICL that come from the stars of satellite galaxies,
-      // excluding the ICL from satellites.
-      sm_inc_hist_i[k] += steps[n].merged[bin] * sm_hist_j[k];
-	  }
-	}
+      	if (ejec_frac > 1) ejec_frac = 1;
+      	if (ejec_frac < 0) ejec_frac = 0;
+      	for (j=0; j<M_BINS; j++) 
+        {
+      	  bin = j*M_BINS + i;
+      	  icl_frac = icl_fract(i,j,n,ICL_RATIO);
+      	  double incoming_frac = 0;
+      	  t = steps[n].mmp[bin]*(1.0-ejec_frac) + 
+      	    incoming_frac*steps[n].merged[bin];
+      	  double iclt1 = (ejec_frac*steps[n].mmp[bin]+
+      			 (1.0-incoming_frac)*steps[n].merged[bin]);
+      	  double iclt2 = (steps[n].mmp[bin]);
+      	  if (!t && !iclt1 && !iclt2) continue;
+      	  steps[n].sm_from_icl[i] += steps[n-1].sm_from_icl[j]*steps[n].mmp[bin];
+      	  sm_hist_j = &(steps[n-1].sm_hist[j*num_outputs]);
+      	  icl_hist_j = &(steps[n-1].icl_stars[j*num_outputs]);
+      	  for (k=0; k<n; k++) 
+          {
+      	    sm_hist_i[k] += t*sm_hist_j[k];
+      	    icl_hist_i[k] += iclt1*sm_hist_j[k];
+      	    icl_hist_i[k] += iclt2*icl_hist_j[k];
+            // sm_inc_hist stores the ICL that come from the stars of satellite galaxies,
+            // excluding the ICL from satellites.
+            sm_inc_hist_i[k] += steps[n].merged[bin] * sm_hist_j[k];
+      	  }
+      	}
       }
       for (k=0; k<n; k++) sm_hist_i[k] /= steps[n].t[i];
       for (k=0; k<n; k++) icl_hist_i[k] /= steps[n].t[i];
@@ -1916,15 +1796,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     // Calculate observed UV magnitudes.
     // double z, a1, mh, k_uv, b_uv, k_std_uv, b_std_uv, a_k, b_k, c_k, a_b, b_b, c_b;
     double k_uv, b_uv, std_uv;
-    // double a_k_std, b_k_std, a_b_std, b_b_std;
-    // z = 1.0 / steps[n].scale - 1;
-    // a1 = steps[n].scale - 1;
-    // a_k = 0.15367887; b_k = -2.87608013; c_k = 9.4778494 + (-2.37851257) * a1;
-    // a_b = -0.34749622; b_b = 6.85270974; c_b = -50.34457998 + 1.99341162 * a1;
-
     mh = steps[n].med_hm_at_a[i];
-    
-
     k_uv = a_k * mh * mh + b_k * mh;
     b_uv = a_b * mh * mh + b_b * mh;
     k_uv = mh < - 0.5 * b_k / a_k ? -0.25 * b_k * b_k / a_k + c_k : k_uv + c_k;
@@ -1932,31 +1804,15 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
 
     std_uv = k_std_uv * mh + b_std_uv;
 
-    // k_std_uv = 0.04724224 * mh + (-0.17632334) + 0.49534345 * a1;
-    // b_std_uv = 0.03879428 * mh + (-0.53377296) + (-0.50621441) * a1;
-
-    // steps[n].k_uv[i] = k_uv;
-    // steps[n].b_uv[i] = b_uv;
     if (i > steps[n].smhm.bin_real)
     {
       k_uv = k_uv_real;
       b_uv = b_uv_real;
       std_uv = std_uv_real;
-      // k_std_uv = k_std_uv_real;
-      // b_std_uv = b_std_uv_real;
     }
 
     steps[n].k_uv[i] = k_uv;
     steps[n].b_uv[i] = b_uv;
-    // steps[n].k_std_uv[i] = k_std_uv;
-    // steps[n].b_std_uv[i] = b_std_uv;
-
-
-    //k_std_uv = 0.04724224 * mh + (-0.17632334) + 0.49534345 * a1;
-    //b_std_uv = 0.03879428 * mh + (-0.53377296) + (-0.50621441) * a1;
-
-
-    
 
     double lgSFR = log10(steps[n].sfr[i]);
     steps[n].obs_uv[i] = k_uv * lgSFR + b_uv;
@@ -1967,30 +1823,11 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     if (steps[n].std_uv[i] < 0) steps[n].std_uv[i] = 0.001; 
     if (steps[n].std_uv[i] > 1) steps[n].std_uv[i] = 1.000; 
 
-
-
-
-    //if (i == 0) fprintf(stderr, "z=%f, sfr=%e, after adding QFGs.\n", 1 / steps[n].scale - 1, steps[n].sfr[i]);
     calc_new_sm_and_sfr(n,i,fit);
-    //steps[n].sfr[i] -= (1 - steps[n].sfrac[i]) * steps[n].old_sm[i] * SSFR_AVG_Q;
-    // // Moved to the calc_new_sm_and_sfr().
-    // steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
-    // steps[n].log_bh_mass[i] = (vel_dispersion) ? 
-    //     calc_bh_at_vdisp(steps[n].vdisp[i], steps[n].smhm)
-    //   : calc_bh_at_bm(steps[n].log_bm[i], steps[n].smhm);
-    // steps[n].bh_mass_avg[i] = doexp10(steps[n].log_bh_mass[i])*bh_scatter_corr;
-
-    //if (n==32)
-  //  {
-//	fprintf(stderr, "n=32, Mh=%f, k_uv=%f, b_uv=%f, k_std_uv=%f, b_std_uv=%f, lgSFR=%f, obs_uv=%f\n", steps[n].med_hm_at_a[i], steps[n].k_uv[i], steps[n].b_uv[i], steps[n].k_std_uv[i], steps[n].b_std_uv[i], lgSFR, steps[n].obs_uv[i]);
-//	fprintf(stderr, "n=31, Mh=%f, k_uv=%f, b_uv=%f, k_std_uv=%f, b_std_uv=%f, lgSFR=%f, obs_uv=%f\n\n\n", steps[n-1].med_hm_at_a[i], steps[n-1].k_uv[i], steps[n-1].b_uv[i], steps[n-1].k_std_uv[i], steps[n-1].b_std_uv[i], log10(steps[n-1].sfr[i]), steps[n-1].obs_uv[i]);
-
-    //}
 
   }
 }
 
-//inline 
 void calc_old_sm(int n, int j) {
   int k;
   steps[n].old_sm[j] = 0;
@@ -2026,30 +1863,20 @@ double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, doub
     double z_max = 0.5 * (1.0 / steps[n-1].scale + 1.0 / steps[n].scale - 2);
     double z_min = 0.5 * (1.0 / steps[n+1].scale + 1.0 / steps[n].scale - 2);
     double V_comoving = comoving_volume(z_max) - comoving_volume(z_min);
-    //fprintf(stderr, "z_min=%.6f, z_max=%.6f, Vcom=%.6e\n", z_min, z_max, V_comoving);
     // traverse every MBH bin.
     for (i=0; i<MBH_BINS; i++)
     {
       double n_qso_mbh = (1 - lbol_f) * steps[n].lum_func_full[i*LBOL_BINS+lbol_b];
-      // fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
-      //        n, steps[n].scale,i, lbol_b, steps[n].lum_func_full[i*LBOL_BINS+lbol_b]);
       for (j=lbol_b+1; j<LBOL_BINS; j++)
       {
         n_qso_mbh += steps[n].lum_func_full[i*LBOL_BINS+j];
-       // fprintf(stderr, "a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
-       //       steps[n].scale,i, j, steps[n].lum_func_full[i*LBOL_BINS+j]);
       }
       // weight every MBH bin by the fraction that BHs in this bin get scattered
       // below 10^8 Msun due to virial estimate. This gives the number ***density***,
       // i.e., the Mpc^-3
-      // n_qso_mbh *= frac_below8[i];
-      //fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, n_qso_mbh=%e, frac_below8=%e\n", 
-      //       n, steps[n].scale,i, n_qso_mbh, frac_below8[i]);
       n_qso_n += n_qso_mbh * frac_below8[i];
     }
     // Multiply the numeber density with comoving volume.
-    // n_qso_n *= V_comoving;
-    //fprintf(stderr, "n=%d, n_qso_n * V_comoving = %e\n", n, n_qso_n * V_comoving);
     n_qso += n_qso_n * V_comoving;
     // Stop if the redshift is lower than the threshold.
     if (steps[n].scale > a_max) break;
@@ -2092,29 +1919,20 @@ double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_ar
     double z_max = 0.5 * (1.0 / steps[n-1].scale + 1.0 / steps[n].scale - 2);
     double z_min = 0.5 * (1.0 / steps[n+1].scale + 1.0 / steps[n].scale - 2);
     double V_comoving = comoving_volume(z_max) - comoving_volume(z_min);
-    //fprintf(stderr, "z_min=%.6f, z_max=%.6f, Vcom=%.6e\n", z_min, z_max, V_comoving);
-    // traverse every MBH bin.
     for (i=0; i<MBH_BINS; i++)
     {
       double n_qso_mbh = (1 - lbol_f) * steps[n].lum_func_full[i*LBOL_BINS+lbol_b];
-      //fprintf(stderr, "n=%d, a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
-        //      n, steps[n].scale,i, lbol_b, steps[n].lum_func_full[i*LBOL_BINS+lbol_b]);
       for (j=lbol_b+1; j<LBOL_BINS; j++)
       {
         n_qso_mbh += steps[n].lum_func_full[i*LBOL_BINS+j];
-       // fprintf(stderr, "a=%.6f, i_MBH=%d, i_lbol=%d, lum_func_full=%e\n", 
-         //     steps[n].scale,i, j, steps[n].lum_func_full[i*LBOL_BINS+j]);
       }
       // weight every MBH bin by the fraction that BHs in this bin get scattered
       // below 10^8 Msun due to virial estimate. This gives the number ***density***,
       // i.e., the Mpc^-3
-      // n_qso_n += n_qso_mbh * frac_below8[i];
       n_qso_n_below += n_qso_mbh * frac_below8[i];
       n_qso_n_above += n_qso_mbh * (frac_below11[i] - frac_below8[i]);
     }
     // Multiply the numeber density with comoving volume.
-    // n_qso_n *= V_comoving;
-    // n_qso += n_qso_n * V_comoving;
     n_qso_below += n_qso_n_below * V_comoving;
     n_qso_above += n_qso_n_above * V_comoving;
     // Stop if the redshift is lower than the threshold.
@@ -2204,19 +2022,10 @@ double recent_kinetic_power_in_massive_halos(void) {
       {
           L_tmp += exp10(38.1 + steps[n].log_bh_mass[j] + BHER_MIN + k*BHER_INV_BPDEX + steps[n].bh_eta[j])
                                             * steps[n].bher_dist_kin[j * BHER_BINS + k];
-          // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, eta=%f, Prob(eta)=%e, L=%f, duty=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-          //         steps[n].log_bh_mass[j], steps[n].ledd_min[j] + k * BHER_INV_BPDEX + steps[n].bh_eta[j], 
-          //         steps[n].bher_dist_kin[j * BHER_BINS + k],
-          //         38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k * BHER_INV_BPDEX + steps[n].bh_eta[j], dc);
-          // norm += steps[n].bher_dist_kin[j * BHER_BINS + k];
-          // fprintf(stderr, "n=%d, j=%d, k=%d, bher_dist=%f, L_tmp=%e, L=%e\n", n, j, k, 
-          //                                                               log10(steps[n].bher_dist_kin[j * BHER_BINS + k]), exp10(38.1 + steps[n].log_bh_mass[j] + BHER_MIN + k*BHER_INV_BPDEX + steps[n].bh_eta[j]) * steps[n].bher_dist_kin[j * BHER_BINS + k],
-          //                                                               exp10(38.1 + steps[n].log_bh_mass[j] + BHER_MIN + k*BHER_INV_BPDEX + steps[n].bh_eta[j]));
       }
       // From the calculation of bher_dist, we know that the normalization of bher_dist turns out to be bher_bpdex.
       L_tmp /= norm;
-      // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, L=%e, norm=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-      //             steps[n].log_bh_mass[j], L_tmp, norm);
+
       L_kin += L_tmp * dc * steps[n].t[j];
 
       nd_tot += steps[n].t[j];
@@ -2245,7 +2054,6 @@ void calc_bh_eta_avg(int n)
     double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
-    // f_mass = f_mass < 1? f_mass : 1;
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4;
 
@@ -2253,12 +2061,10 @@ void calc_bh_eta_avg(int n)
     {
       eta_avg += exp10(bher_min + k * inv_bpdex) * steps[n].bher_dist_full[i * BHER_BINS + k];
       norm += steps[n].bher_dist_full[i * BHER_BINS + k];
-      //fprintf(stderr, "n=%d, i=%d, k=%d, bher_dist_full=%e\n", n, i, k, steps[n].bher_dist_full[i * BHER_BINS + k]);
     }
     eta_avg /= norm;
     eta_avg *= dc;
     steps[n].bh_eta_avg[i] = log10(eta_avg);
-    // fprintf(stderr, "n=%d, i=%d, bh_eta_avg=%f\n", n, i, steps[n].bh_eta_avg[i]); 
   }
 }
 
@@ -2278,7 +2084,6 @@ void calc_bh_eta_kin_avg(int n)
     double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
-    // f_mass = f_mass < 1? f_mass : 1;
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4;
 
@@ -2286,9 +2091,7 @@ void calc_bh_eta_kin_avg(int n)
     {
       eta_avg += exp10(bher_min + k * inv_bpdex) * steps[n].bher_dist_kin[i * BHER_BINS + k];
       norm += steps[n].bher_dist_kin[i * BHER_BINS + k];
-      // fprintf(stderr, "n=%d, i=%d, eta_kin=%f, prob=%f\n", n, i, bher_min + k * inv_bpdex, steps[n].bher_dist_kin[i * BHER_BINS + k]);
     }
-    // fprintf(stderr, "n=%d, i=%d, bh_eta_avg=%f, norm=%f\n", n, i, eta_avg, norm); 
     eta_avg /= norm;
     eta_avg *= dc;
     steps[n].bh_eta_kin_avg[i] = log10(eta_avg);
@@ -2325,7 +2128,6 @@ double recent_kinetic_frac_in_massive_halos(void) {
       double dc = steps[n].smhm.bh_duty;
       double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
       f_mass = f_mass / (1 + f_mass);
-      // f_mass = f_mass < 1? f_mass : 1;
       dc *= f_mass;
       if (dc < 1e-4) dc = 1e-4;
 
@@ -2345,96 +2147,21 @@ double recent_kinetic_frac_in_massive_halos(void) {
       {
         f_eta -= b_eta;
         frac += (1 - f_eta) * steps[n].bher_dist_kin[j * BHER_BINS + b_eta];
-        // for (k = b_eta + 1; k < BHER_BINS; k++)
         for (k = 0; k < BHER_BINS; k++) 
           {
-            
-
-            // fprintf(stderr, "n=%d, j=%d, k=%d, eta_frac=%f, bher_dist=%e\n", n, j, k, BHER_MIN + k * BHER_INV_BPDEX, 
-            //                                                             steps[n].bher_dist_kin[j * BHER_BINS + k]);
             if (k < b_eta + 1) continue;
             frac += steps[n].bher_dist_kin[j * BHER_BINS + k];
-            
           }
         frac /= norm;
       }
 
-
-      // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, eta_crit=%f, f_eta=%f, b_eta=%d, frac=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-      //             steps[n].log_bh_mass[j], eta_crit, f_eta, b_eta, frac);
-
-
       frac_tot += frac * dc * steps[n].t[j];
-
-
       nd_tot += steps[n].t[j];
-    
     }
-
   }
-
   frac_tot /= nd_tot;
   return frac_tot;
 }
-
-
-
-// // Calculate the recent AGN radiative power in massive halos.
-// double recent_radiative_power_in_massive_halos(void) {
-//   int64_t n, j, k, count=0;
-//   double L_rad = 0;
-//   double nd_tot = 0;
-
-//   // Find the smallest scale factor that enters the window
-//   for (n=0; n<num_outputs; n++) if (steps[n].scale > RAD_POWER_A_CONSTRAINT_LOW) break;
-//   for (; n<num_outputs; n++) 
-//   {
-//     // If the scale factor is bigger than the upper limit, stop.
-//     if (steps[n].scale > RAD_POWER_A_CONSTRAINT_HIGH) break;
-
-
-//     // Only count the kinetic powers in massive halos.
-//     for (j=(RAD_POWER_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
-//     {
-//       double L_tmp = 0;
-//       //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
-//       if (steps[n].t[j] <= 0) continue;
-
-//       double dc = steps[n].smhm.bh_duty;
-//       double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-//       f_mass = f_mass / (1 + f_mass);
-//       // f_mass = f_mass < 1? f_mass : 1;
-//       dc *= f_mass;
-//       if (dc < 1e-4) dc = 1e-4;
-//       double norm = 0;
-//       for (k=0; k<BHER_BINS; k++) 
-//         {
-//           L_tmp += exp10(38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j])
-//                                               * steps[n].bher_dist_full[j * BHER_BINS + k];
-//           // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, eta=%f, Prob(eta)=%e, L=%f, duty=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-//           //         steps[n].log_bh_mass[j], steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], 
-//           //         steps[n].bher_dist_full[j * BHER_BINS + k],
-//           //         38.1 + steps[n].log_bh_mass[j] + steps[n].ledd_min[j] + k / steps[n].ledd_bpdex[j] + steps[n].bh_eta[j], dc);
-//           norm += steps[n].bher_dist_full[j * BHER_BINS + k];
-//         }
-//       // From the calculation of bher_dist, we know that the normalization of bher_dist turns out to be bher_bpdex.
-//       // L_rad *= dc * steps[n].t[j] / steps[n].ledd_bpdex[j];
-//       L_tmp /= norm;
-//       // fprintf(stderr, "n=%d, scale=%f, Mh=%f, Mbh=%f, L=%e, norm=%e\n", n, steps[n].scale, M_MIN + (j + 0.5) * INV_BPDEX,
-//       //             steps[n].log_bh_mass[j], L_tmp, norm);
-//       // L_tmp *= dc * steps[n].t[j];
-//       L_rad += L_tmp * dc * steps[n].t[j];
-
-//       nd_tot += steps[n].t[j];
-    
-//     }
-
-//   }
-
-//   L_rad /= nd_tot;
-//   return log10(L_rad);
-// }
-
 
 // Calculate the recent AGN radiative power in massive halos.
 double recent_radiative_power_in_massive_halos(void) {
@@ -2459,7 +2186,6 @@ double recent_radiative_power_in_massive_halos(void) {
 
       L_tmp = 5.66e46 * steps[n].smhm.bh_efficiency_rad * steps[n].bh_acc_rate[j];
       L_rad += L_tmp * steps[n].t[j];
-
       nd_tot += steps[n].t[j];
     
     }
@@ -2470,15 +2196,16 @@ double recent_radiative_power_in_massive_halos(void) {
   return log10(L_rad);
 }
 
-double recent_sfh_in_massive_halos_nocorr(void) {
+double recent_sfh_in_massive_halos_nocorr(void) 
+{
   int64_t n, j, count=0;
   double sfr = 0;
   for (n=0; n<num_outputs; n++) if (steps[n].scale > SFR_A_CONSTRAINT) break;
-  for (; n<num_outputs; n++) {
-    for (j=(SFR_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) {
+  for (; n<num_outputs; n++) 
+  {
+    for (j=(SFR_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
+    {
       if (steps[n].t[j] <= 0) continue;
-      //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
-      //sfr += steps[num_outputs-1].sm_hist[j*num_outputs + n]/steps[n].dt;
       sfr += steps[n].sfr[j];
       count++;
     }
@@ -2487,25 +2214,24 @@ double recent_sfh_in_massive_halos_nocorr(void) {
   return sfr;
 }
 
-double recent_Micl_Mstar_ratio_in_massive_halos(void) {
+double recent_Micl_Mstar_ratio_in_massive_halos(void) 
+{
   int64_t n, j, count=0;
   double Mstar_tot = 0;
   double Micl_tot = 0;
   double ND_tot = 0;
   for (n=0; n<num_outputs; n++) if (steps[n].scale > ICL_RATIO_A_CONSTRAINT) break;
-  for (; n<num_outputs; n++) {
-    // double corr = doexp10(steps[n].smhm.mu);
-    for (j=(ICL_RATIO_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) {
-      //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
+  for (; n<num_outputs; n++) 
+  {
+    for (j=(ICL_RATIO_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
+    {
       Mstar_tot += steps[n].sm_avg[j] * steps[n].t[j];
       Micl_tot += steps[n].sm_icl[j] * steps[n].t[j];
       ND_tot += steps[n].t[j];
-      // count++;
     }
   }
   Mstar_tot /= ND_tot;
   Micl_tot /= ND_tot;
-  //fprintf(stderr, "Total Mstar: %e, total Micl: %e\n", Mstar_tot, Micl_tot);
   return log10(Micl_tot / Mstar_tot);
 }
 
@@ -2516,10 +2242,8 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   char buffer[1024];
   dt = steps[n].dt;
 
-  if (!steps[n].t[i]) {
-    //steps[n].log_sm[i] = 0;
-    //steps[n].new_sm[i] = 0;
-    //steps[n].sm[i] = 0;
+  if (!steps[n].t[i]) 
+  {
     return;
   }
 
@@ -2532,7 +2256,6 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   double sm_from_icl = steps[n].smhm.icl_frac * steps[n].sm_inc[i] * steps[n].smloss[n];
   steps[n].mr[i] = sm_from_icl / steps[n].smloss[n] / dt;
   steps[n].new_sm[i] += sm_from_icl;
-  //if (n == 0) fprintf(stderr, "after ICL addition, new_sm[%d]=%e\n", i, steps[n].new_sm[i]);
   steps[n].sm_avg[i] = steps[n].old_sm[i] + steps[n].new_sm[i];
   steps[n].sm[i] = steps[n].sm_avg[i] / steps[n].smhm.scatter_corr;
   steps[n].log_sm[i] = (steps[n].sm[i] > 1) ? log10(steps[n].sm[i]) : 0;
@@ -2554,49 +2277,23 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
 
 
   float new_bh_mass = steps[n].bh_mass_avg[i] - steps[n].old_bh_mass[i];
-  //float bh_m_dsm = (steps[n].log_sm[i] + steps[n].smhm.mu - steps[n].smhm.bh_merge) / steps[n].smhm.bh_merge_width;
-  //float bh_m_dsm = ((M_MIN+(i+0.5)*INV_BPDEX) - steps[n].smhm.bh_merge) / steps[n].smhm.bh_merge_width;
-  //float mfrac = 1.0 - 1.0/(1.0+exp(bh_m_dsm));
   float mfrac = n ? steps[n].smhm.f_merge_bh * sm_from_icl / steps[n].new_sm[i] : 0; // Note that the new_sm now includes the merger contribution.
                                                   // here we use this fraction as the BH merger fraction.
-
-  //steps[n].bh_merge_rate[i] = new_bh_mass*mfrac/dt;
-  //steps[n].bh_acc_rate[i] = (new_bh_mass*(1.0-mfrac))/dt;
 
   steps[n].new_bh_mass[i] = new_bh_mass;
   steps[n].bh_merge_rate[i] = mfrac * new_bh_mass / dt;
   steps[n].bh_acc_rate[i] = (1 - mfrac) * new_bh_mass /dt;
-  //steps[n].bh_acc_rate[i] = (new_bh_mass)/dt;
-  //if (new_bh_mass <= steps[n].bh_merged[i]) steps[n].bh_acc_rate[i] = new_bh_mass / dt;
 
-
-  
-  //  if ((!(new_bh_mass>=0) && steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH)){
-  // if ((!(new_bh_mass>=0) && steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH) || (steps[n].bh_acc_rate[i] < 0 && steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH)) {
-  //   fprintf(stderr, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e, unmerged BH mass: %e, new BH mass: %e!\n",
-  //       sprintf(buffer, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e!\n",
-  //          steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i], steps[n].bh_unmerged[i], new_bh_mass);
-  //              INVALIDATE(fit, buffer); 
-  //  }
-
-  //if (!(new_bh_mass>=0) && steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH)
   if ((!(new_bh_mass>=0) || !(steps[n].bh_acc_rate[i]>0)) && (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11)))
-  //if (!(new_bh_mass>=0) && steps[n].scale > 0.08 && i < steps[n].smhm.bin_real && steps[n].med_hm_at_a[i] > 11) 
   {
-    //fprintf(stderr, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e!\n",
-    //sprintf(buffer, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e!\n",
-    //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i]);
     INVALIDATE(fit, buffer); 
   }
 
   if (steps[n].bh_unmerged[i] < mfrac*new_bh_mass) 
   {
     if (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11))
-    //if (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH && steps[n].scale > 0.08 && i>BPDEX && i < steps[n].smhm.bin_real && steps[n].med_hm_at_a[i] > 11)
-    //if (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH && steps[n].scale > 0.15 && i>BPDEX && steps[n].t[i] > 1e-8) 
     {
       //fprintf(stderr, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
-        // sprintf(buffer, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
       //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i], new_bh_mass, new_bh_mass*mfrac, steps[n].bh_unmerged[i]);
        INVALIDATE(fit, buffer); 
     } 
@@ -2605,315 +2302,49 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
       steps[n].bh_merge_rate[i] = steps[n].bh_unmerged[i] / dt;
       steps[n].bh_acc_rate[i] = (new_bh_mass - steps[n].bh_unmerged[i]) / dt;
       steps[n].bh_unmerged[i] = 0;
-
       //for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] = 0;
-   } 
- }
- else 
+    } 
+  }
+  else 
   {
-   steps[n].bh_unmerged[i] -= mfrac*new_bh_mass;
+    steps[n].bh_unmerged[i] -= mfrac*new_bh_mass;
     // for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] *= steps[n].bh_unmerged[i] / (steps[n].bh_unmerged[i] + mfrac*new_bh_mass);
- }
+  }
   double bhar_tmp = steps[n].bh_acc_rate[i] > 0 ? steps[n].bh_acc_rate[i] : 1e-8;
-  //if (steps[n].bh_acc_rate[i] <= 0) steps[n].bh_acc_rate[i] = 1e-8;
-  steps[n].bh_eta[i] = 
-    log10(//schechter_inv_avg(steps[n].smhm.bh_alpha, BHER_MIN, BHER_EFF_MAX)*
-    bhar_tmp/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency_rad));
-
- 
-
+  steps[n].bh_eta[i] = log10(bhar_tmp/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency_rad));
 
   steps[n].merged_frac[i] = 0;
 
 
   if (steps[n].smhm.icl_frac && steps[n].sm_icl[i]) 
   {
-    // double frac_from_icl = steps[n].smhm.icl_frac; //Since steps[n].icl_frac is the fraction
-    //                                           //of the ICL mass that got into the descendant,
-    //                                           //***NOT*** the fraction of the new SM that come
-    //                                           //from mergers.
-    // if (steps[n].sm_inc[i]>0) 
-    // {
-    //   steps[n].merged_frac[i] = steps[n].sm_icl[i]*frac_from_icl/steps[n].sm_inc[i];
-    //   if (steps[n].merged_frac[i]>1) steps[n].merged_frac[i] = 1;
-    // }
-
     steps[n].merged_frac[i] = steps[n].smhm.icl_frac; //merged_frac is the fraction of the incoming satellite stellar mass
                                                       //that merge into the central galaxies, which under this parametrization
                                                       //is simply icl_frac.
-
-    // if (frac_from_icl) 
-    // {
     for (j=0; j<n; j++) 
     {
-      // steps[n].sm_hist[i*num_outputs + j] += frac_from_icl*steps[n].icl_stars[i*num_outputs + j];
-      // steps[n].icl_stars[i*num_outputs + j] *= (1.0-frac_from_icl);
       steps[n].sm_hist[i*num_outputs + j] += steps[n].smhm.icl_frac*steps[n].sm_inc_hist[i*num_outputs + j];
       steps[n].icl_stars[i*num_outputs + j] -= steps[n].smhm.icl_frac*steps[n].sm_inc_hist[i*num_outputs + j];
     }
-    // }
     steps[n].new_sm[i] -= (steps[n].smhm.icl_frac * steps[n].sm_inc[i] * steps[n].smloss[n]);
   }
 
-
   steps[n].new_sm[i] /= steps[n].smloss[n];
   steps[n].sm_hist[i*num_outputs + n] = steps[n].new_sm[i];
-  //steps[n].sfr[i] = steps[n].new_sm[i] / dt;
 
   if ((steps[n].t[i] > REAL_ND_CUTOFF) && (steps[n].sm_avg[i] > 0.17*exp10(steps[n].med_hm_at_a[i])) && (!no_z_scaling) && n>2) 
   {
-    /*sprintf(buffer, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-      steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-      INVALIDATE(fit, buffer);*/
-    // Why did we comment that??? This should be an important constraint.
     //fprintf(stderr, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-      //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-    // sprintf(buffer, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-    //   steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-      INVALIDATE(fit, buffer);
+    //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
+    INVALIDATE(fit, buffer);
   }
 
-  //if (steps[n].t[i]<REAL_ND_CUTOFF)
-  //  steps[n].sfr[i] = 0;
   if ((!no_z_scaling) && (steps[n].sfr[i] < 0 || !isfinite(steps[n].sfr[i]))) 
   {
     char buffer[1024];
-    // sprintf(buffer, "Negative SFR at a = %f and m = %f (ND=%g)! (ICL m=%f; ICL frac=%f)\n", steps[n].scale, 
-     // i*INV_BPDEX + M_MIN, steps[n].t[i], steps[n].smhm.icl_m, steps[n].icl_frac[i]);
     //fprintf(stderr, "Negative SFR at a = %f and m = %f (ND=%g)! (ICL m=%f; ICL frac=%f)\n", steps[n].scale, 
-      //i*INV_BPDEX + M_MIN, steps[n].t[i], steps[n].smhm.icl_frac, steps[n].smhm.icl_frac);
+    //i*INV_BPDEX + M_MIN, steps[n].t[i], steps[n].smhm.icl_frac, steps[n].smhm.icl_frac);
     INVALIDATE(fit, buffer);
   }
 }
-
-
-
-// void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit) 
-// {
-//   double dt;
-//   int64_t j, k;
-//   char buffer[1024];
-//   dt = steps[n].dt;
-
-//   if (!steps[n].t[i]) {
-//     //steps[n].log_sm[i] = 0;
-//     //steps[n].new_sm[i] = 0;
-//     //steps[n].sm[i] = 0;
-//     return;
-//   }
-
-//   steps[n].new_sm[i] = steps[n].sfr[i] * dt * steps[n].smloss[n];
-
-//   //  steps[n].new_sm[i] = (steps[n].sm_avg[i] - steps[n].old_sm[i]);
-//   float dm = (i+0.5)*INV_BPDEX+M_MIN-steps[n].smhm.icl_m;
-//   float w = 16.0-steps[n].smhm.icl_m;
-//   //if (steps[n].smhm.beta>0) { w = 4.0 / (steps[n].smhm.beta * M_LN10); }
-//   if (w < 0.1) w = 0.1;
-//   steps[n].icl_frac[i] = 1.0 - 1.0/(1.0+exp(4.0*dm/w));
-//   if (steps[n].icl_frac[i] > 0.99) steps[n].icl_frac[i] = 0.99;
-//   steps[n].new_sm[i] *= 1.0/(1.0 - steps[n].icl_frac[i]);
-
-//   steps[n].sm_avg[i] = steps[n].old_sm[i] + steps[n].new_sm[i];
-//   steps[n].sm[i] = steps[n].sm_avg[i] / steps[n].smhm.scatter_corr;
-//   steps[n].log_sm[i] = (steps[n].sm[i] > 1) ? log10(steps[n].sm[i]) : 0;
-
-//   double bh_sm_scatter = steps[n].smhm.scatter*steps[n].smhm.bh_gamma;
-//   double bh_vdisp_scatter = 0.3; //for the time being, use 0.3 dex as the vdisp scatter
-//   double combined_scatter = (vel_dispersion) ? sqrt(bh_vdisp_scatter  * bh_vdisp_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter) : sqrt(bh_sm_scatter  * bh_sm_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter);
-//   double bh_scatter_corr = exp(pow(combined_scatter*log(10), 2)/2.0);
-
-//   steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
-  
-//   steps[n].log_bh_mass[i] = (vel_dispersion) ? 
-//       calc_bh_at_vdisp(steps[n].vdisp[i], steps[n].smhm)
-//     : calc_bh_at_bm(steps[n].log_bm[i], steps[n].smhm);
-//   steps[n].bh_mass_avg[i] = doexp10(steps[n].log_bh_mass[i])*bh_scatter_corr;
-
-//   steps[n].log_sm_obs[i] = steps[n].log_sm[i]+steps[n].smhm.mu;
-
-//   float new_bh_mass = steps[n].bh_mass_avg[i] - steps[n].old_bh_mass[i];
-//   //float bh_m_dsm = (steps[n].log_sm[i] + steps[n].smhm.mu - steps[n].smhm.bh_merge) / steps[n].smhm.bh_merge_width;
-//   float bh_m_dsm = ((M_MIN+(i+0.5)*INV_BPDEX) - steps[n].smhm.bh_merge) / steps[n].smhm.bh_merge_width;
-//   float mfrac = 1.0 - 1.0/(1.0+exp(bh_m_dsm));
-
-//   steps[n].bh_merge_rate[i] = new_bh_mass*mfrac/dt;
-//   steps[n].bh_acc_rate[i] = (new_bh_mass*(1.0-mfrac))/dt;
-
-//   if (i >= 2 && steps[n].bh_acc_rate[i] >= steps[n].bh_acc_rate[i-1] 
-//               && steps[n].bh_acc_rate[i-2] >= steps[n].bh_acc_rate[i-1]
-//               && log10(steps[n].sm_avg[i]) >= 10)
-//   {
-//     // double slope = (log10(steps[n].bh_acc_rate[i-1]) - log10(steps[n].bh_acc_rate[i-2]))
-//     //                 / (steps[n].log_sm[i-1] - steps[n].log_sm[i-2]);
-//      //steps[n].bh_acc_rate[i] = exp10(log10(steps[n].bh_acc_rate[i-1]) + slope * (steps[n].log_sm[i] - steps[n].log_sm[i-1]));
-//     //steps[n].bh_acc_rate[i] = steps[n].bh_acc_rate[i-1];
-//     if (!isfinite(steps[n].bh_acc_rate[i])) steps[n].bh_acc_rate[i] = 0;
-//   }
-
-//   if (!(new_bh_mass>=0) && steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH) 
-//   {
-//     //fprintf(stderr, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e!\n",
-//     //sprintf(buffer, "Negative BH accretion rate! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e!\n",
-//     //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i]);
-//     //INVALIDATE(fit, buffer); 
-//   }
-
-//   if (steps[n].bh_unmerged[i] < mfrac*new_bh_mass) 
-//   {
-//     if (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH && steps[n].scale > 0.15 && i>BPDEX && steps[n].t[i] > 1e-8) {
-//       //fprintf(stderr, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
-//       // sprintf(buffer, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
-//         //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i], new_bh_mass, new_bh_mass*mfrac, steps[n].bh_unmerged[i]);
-//       //INVALIDATE(fit, buffer); 
-//     } 
-//     else 
-//     {
-//       steps[n].bh_unmerged[i] = 0;
-//       // for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] = 0;
-//     }
-//   } 
-//   else 
-//   {
-//     steps[n].bh_unmerged[i] -= mfrac*new_bh_mass;
-//     // for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] *= steps[n].bh_unmerged[i] / (steps[n].bh_unmerged[i] + mfrac*new_bh_mass);
-//   }
-
-//   // // The fraction of the new BH mass that come from mergers relative to the 
-//   // // **remaining** unmerged BH mass. 
-//   // double frac_from_unmerged = mfrac * new_bh_mass / steps[n].bh_unmerged[i];
-
-//   // steps[n].n_merge10[i] = 0;
-//   // steps[n].n_merge100[i] = 0;
-
-//   // // Count the # of mergers with two different mass ratio thresholds
-//   // if (n)
-//   // {
-
-//   //   // calculate the threshold BH mass and the corresponding bin numbers f10, b10, f100, b100.
-//   //   double mbh_thres10 = log10(steps[n].bh_mass_avg[i]) - 1;
-//   //   double mbh_thres100 = mbh_thres10 - 2;
-//   //   double f10 = (mbh_thres10 - MBH_MIN) * MBH_BPDEX;
-//   //   int64_t b10 = f10;
-//   //   f10 -= b10;
-//   //   double f100 = (mbh_thres100 - MBH_MIN) * MBH_BPDEX;
-//   //   int64_t b100 = f100;
-//   //   f100 -= b100;
-
-//   //   // make summations over the unmerged BH mass bins above the threshold bin numbers.
-//   //   if (b10 >= MBH_BINS) 
-//   //     steps[n].n_merge10[i] = 0;
-//   //   else
-//   //   {
-//   //     steps[n].n_merge10[i] += steps[n].bh_unmerged_dist[i*MBH_BINS+b10] * (1 - f10) * frac_from_unmerged;
-//   //     for (j=b10+1; j<MBH_BINS; j++) steps[n].n_merge10[i] += steps[n].bh_unmerged_dist[i*MBH_BINS+b10] * frac_from_unmerged;
-//   //   }
-    
-//   //   if (b100 >= MBH_BINS) 
-//   //     steps[n].n_merge100[i] = 0;
-//   //   else
-//   //   {
-//   //     steps[n].n_merge100[i] += steps[n].bh_unmerged_dist[i*MBH_BINS+b100] * (1 - f100) * frac_from_unmerged;
-//   //     for (j=b100+1; j<MBH_BINS; j++) steps[n].n_merge100[i] += steps[n].bh_unmerged_dist[i*MBH_BINS+b100] * frac_from_unmerged;
-//   //   }
-
-//     //steps[n].n_merge10[i] /= steps[n].t[i];
-//     //steps[n].n_merge100[i] /= steps[n].t[i];
-
-//   // }
-
-//   // // Count the # of mergers with two different mass ratio thresholds
-//   // if (n)
-//   // {
-//   //   for (j = 0; j < M_BINS; j++)
-//   //   {
-//   //     int bin = j * M_BINS + i
-//   //     // The new unmerged BH mass that come from the average central SMBH of the merged galaxies
-//   //     double m_merger_j = steps[n-1].merged[bin] * steps[n-1].bh_mass_avg[j];
-//   //     // The fraction that m_merger_j takes up in the total available unmerged BH mass
-//   //     double f_merger_j = m_merger_j / steps[n].bh_unmerged_avail[i];
-//   //     // If we think that the mergers happen equally likely to the three parts of the available unmerged BHs,
-//   //     // then the total merged SMBH mass that come from the average central SMBH of the merged galaxies should
-//   //     // be the total merged mass weighted by f_merger_j. The number of mergers would simply be this total
-//   //     // merged mass divided by the average BH mass in this bin at the last snapshot.
-//   //     double n_merger_j = mfrac * new_bh_mass * f_merger_j / steps[n-1].bh_mass_avg[j];
-//   //     if (steps[n-1].bh_mass_avg[j] / steps[n-1].bh_mass_avg[i] > 0.1)
-//   //       steps[n].n_merge10[i] += n_merger_j;
-//   //     else if (steps[n-1].bh_mass_avg[j] / steps[n-1].bh_mass_avg[i] > 0.01)
-//   //       steps[n].n_merge100[i] += n_merger_j;
-//   //   }
-//   // }
-
-//   // if (steps[n].bh_acc_rate[i] <= 0) steps[n].bh_acc_rate[i] = 1e-8;
-//   // steps[n].bh_eta[i] = 
-//   //   log10(//schechter_inv_avg(steps[n].smhm.bh_alpha, BHER_MIN, BHER_EFF_MAX)*
-//   //   steps[n].bh_acc_rate[i]/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency_rad));
-//   //   //steps[n].bh_acc_rate[i]/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency/(1.0)));
-//   // // steps[n].bh_Lbol[i] = steps[n].smhm.bh_efficiency_rad * steps[n].bh_acc_rate[i] * 1.5e46;
-//   // // steps[n].bh_sBHAR[i] = steps[n].bh_Lbol[i] / steps[n].sm_avg[i] / 2.6e35;
-  
-
-//   if (steps[n].sm_icl[i] < steps[n].icl_frac[i]*steps[n].new_sm[i]) 
-//   {
-//     if (steps[n].new_sm[i] > 0 && steps[n].scale > 0.15 && i>BPDEX) 
-//     {
-//       // sprintf(buffer, "ICL depleted (hm: %f; a: %f; sm: %e, new sm: %e, icl needed: %e, icl available: %e)\n",(i+0.5)*INV_BPDEX+M_MIN, steps[n].scale,  steps[n].sm_avg[i], steps[n].new_sm[i], steps[n].new_sm[i] * steps[n].icl_frac[i], steps[n].sm_icl[i]);
-//       //fprintf(stderr, "ICL depleted (hm: %f; a: %f; sm: %e, new sm: %e, icl needed: %e, icl available: %e)\n",(i+0.5)*INV_BPDEX+M_MIN, steps[n].scale,  steps[n].sm_avg[i], steps[n].new_sm[i], steps[n].new_sm[i] * steps[n].icl_frac[i], steps[n].sm_icl[i]);
-//       INVALIDATE(fit, buffer);
-//       steps[n].icl_frac[i] = steps[n].sm_icl[i]/steps[n].new_sm[i];
-//     }
-//     else 
-//       steps[n].icl_frac[i] = 0;
-//   }
-
-//   steps[n].merged_frac[i] = 0;
-
-//   if (steps[n].icl_frac[i] && steps[n].sm_icl[i]) 
-//   {
-//     double frac_from_icl = steps[n].new_sm[i]*steps[n].icl_frac[i] / steps[n].sm_icl[i];
-//     if (steps[n].sm_inc[i]>0) 
-//     {
-//       steps[n].merged_frac[i] = steps[n].new_sm[i]*steps[n].icl_frac[i]/steps[n].sm_inc[i];
-//       if (steps[n].merged_frac[i]>1) steps[n].merged_frac[i] = 1;
-//     }
-//     if (frac_from_icl) 
-//     {
-//       for (j=0; j<n; j++) 
-//       {
-//       	steps[n].sm_hist[i*num_outputs + j] += frac_from_icl*steps[n].icl_stars[i*num_outputs + j];
-//       	steps[n].icl_stars[i*num_outputs + j] *= (1.0-frac_from_icl);
-//       }
-//     }
-//     steps[n].new_sm[i] *= (1.0-steps[n].icl_frac[i]);
-//   }
-
-
-//   steps[n].new_sm[i] /= steps[n].smloss[n];
-//   steps[n].sm_hist[i*num_outputs + n] = steps[n].new_sm[i];
-//   //steps[n].sfr[i] = steps[n].new_sm[i] / dt;
-
-//   if ((steps[n].t[i] > REAL_ND_CUTOFF) && (steps[n].sm_avg[i] > 0.17*exp10(steps[n].med_hm_at_a[i])) && (!no_z_scaling) && n>2) 
-//   {
-//     /*sprintf(buffer, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-// 	    steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-// 	    INVALIDATE(fit, buffer);*/
-//     // Why did we comment that??? This should be an important constraint.
-//     //fprintf(stderr, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-//       //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-//     // sprintf(buffer, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
-//     //   steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)*INV_BPDEX), steps[n].scale);
-//       INVALIDATE(fit, buffer);
-//   }
-
-//   //if (steps[n].t[i]<REAL_ND_CUTOFF)
-//   //  steps[n].sfr[i] = 0;
-//   if ((!no_z_scaling) && (steps[n].sfr[i] < 0 || !isfinite(steps[n].sfr[i]))) 
-//   {
-//     char buffer[1024];
-//     // sprintf(buffer, "Negative SFR at a = %f and m = %f (ND=%g)! (ICL m=%f; ICL frac=%f)\n", steps[n].scale, 
-// 	   // i*INV_BPDEX + M_MIN, steps[n].t[i], steps[n].smhm.icl_m, steps[n].icl_frac[i]);
-//     //fprintf(stderr, "Negative SFR at a = %f and m = %f (ND=%g)! (ICL m=%f; ICL frac=%f)\n", steps[n].scale, 
-//       //i*INV_BPDEX + M_MIN, steps[n].t[i], steps[n].smhm.icl_m, steps[n].icl_frac[i]);
-//     INVALIDATE(fit, buffer);
-//   }
-// }
 

@@ -80,22 +80,27 @@ double gauss_cache[GAUSS_CACHE_SIZE];
 
 int output_smf = 0;
 
-void init_gauss_cache(void) {
+void init_gauss_cache(void) 
+{
   int i;
   double m;
-  for (i=0; i<GAUSS_CACHE_SIZE; i++) {
+  for (i=0; i<GAUSS_CACHE_SIZE; i++) 
+  {
     m = (double)i*GAUSS_CACHE_STEP + GAUSS_CACHE_MIN;
     gauss_cache[i] = exp(-0.5*m*m)/sqrt(2.0*M_PI);
   }
 }
 
-double schechter_norm(double alpha, double lower, double upper, struct smf_fit *fit) {
+double schechter_norm(double alpha, double lower, double upper, struct smf_fit *fit) 
+{
   lower = exp10fc(lower);
   upper = exp10fc(upper);
   gsl_sf_result rl, rh;
-  if (gsl_sf_gamma_inc_e(alpha, lower, &rl) || gsl_sf_gamma_inc_e(alpha, upper, &rh)) {
+  if (gsl_sf_gamma_inc_e(alpha, lower, &rl) || gsl_sf_gamma_inc_e(alpha, upper, &rh)) 
+  {
     //error happened...
-    if (fit) {
+    if (fit) 
+    {
       INVALIDATE(fit, "Invalid arguments to incomplete gamma function.");
     }
     return 1;
@@ -135,7 +140,8 @@ double hyperg_gt1(double a, double b, double c, double z, struct smf_fit* fit)
   return coef1 * F1_1 + coef2 * F1_2;
 }
 
-double doublePL_norm(double a, double b, double lower, double upper, struct smf_fit *fit) { 
+double doublePL_norm(double a, double b, double lower, double upper, struct smf_fit *fit) 
+{ 
   if (a < b)
   {
     double tmp = a;
@@ -165,13 +171,8 @@ double doublePL_norm(double a, double b, double lower, double upper, struct smf_
   double scale_b = pow(scale, b);
 
   for (int i = 0; i < n_pts; i++)
-  {
-    
-    // printf("x_left=%.3e, x_right=%.3e, x_center=%.3e, scale=%.3e\n", x_left, x_right, x_center, scale);
+  {    
     val += 1 / (x_center_a + x_center_b) * dx;
-    // x_left = x_right;
-    // x_right *= scale;
-    // x_center *= scale;
     dx *= scale;
     x_center_a *= scale_a;
     x_center_b *= scale_b;
@@ -179,70 +180,80 @@ double doublePL_norm(double a, double b, double lower, double upper, struct smf_
   
   // Also we need a 1/(ln10) in the normalization.
   return val / log(10.0);
-  //return val;
-  // return((rl.val-rh.val)/log(10.0));
 }
 
 
 
-double schechter_inv_avg(double alpha, double lower, double upper, struct smf_fit *fit) {
+double schechter_inv_avg(double alpha, double lower, double upper, struct smf_fit *fit) 
+{
   double norm = schechter_norm(alpha, lower, upper, fit);
   double norm2 = schechter_norm(alpha+1, lower, upper, fit);
   return norm/norm2;
 }
 
-double schechter_frac_above_thresh(double thresh, double alpha, double norm, struct smf_fit *fit) {
+double schechter_frac_above_thresh(double thresh, double alpha, double norm, struct smf_fit *fit) 
+{
   if (thresh < BHER_EFF_MIN) thresh = BHER_EFF_MIN;
-  //if (nonlinear_luminosity && thresh < (BHER_MIN-2.0)/2.0)
-  //thresh = (BHER_MIN-2.0)/2.0;
   if (thresh >= BHER_EFF_MAX) return 0;
   return (schechter_norm(alpha, thresh, BHER_EFF_MAX, fit)*norm);
 }
 
-double doublePL_frac_above_thresh(double thresh, double alpha, double delta, double norm, struct smf_fit *fit) {
+double doublePL_frac_above_thresh(double thresh, double alpha, double delta, double norm, struct smf_fit *fit) 
+{
   if (thresh < BHER_EFF_MIN) thresh = BHER_EFF_MIN;
-  //if (nonlinear_luminosity && thresh < (BHER_MIN-2.0)/2.0)
-  //thresh = (BHER_MIN-2.0)/2.0;
   if (thresh >= BHER_EFF_MAX) return 0;
   return (doublePL_norm(alpha, delta, thresh, BHER_EFF_MAX, fit)*norm);
 }
 
-
-//inline 
-double syst_cache(double dm) {
+double syst_cache(double dm) 
+{
   return (exp(-0.5*dm*dm)*(0.5*M_2_SQRTPI*M_SQRT1_2));
 }
 
 
-double gen_inv_sigma(double obs_scatter, double scatter) {
+double gen_inv_sigma(double obs_scatter, double scatter) 
+{
   if (!scatter && (!use_obs_psf || !obs_scatter)) return 0;
   double gauss_sigma = sqrt(obs_scatter*obs_scatter + scatter*scatter);
   return 1.0/gauss_sigma;
 }
 
-//inline 
-double evaluate_psf(double delta_m, double gauss_inv_sigma) {
+double evaluate_psf(double delta_m, double gauss_inv_sigma) 
+{
   if (!gauss_inv_sigma) return (delta_m ? 0 : 1);
   return(gauss_inv_sigma*syst_cache(delta_m*gauss_inv_sigma));
 }
 
-
-//inline 
-double _interp_from_sm(double sm, double *list, int64_t n, char *ok) {
+double _interp_from_sm(double sm, double *list, int64_t n, char *ok) 
+{
   double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
   int64_t b = f;
   if (b >= SM_EXTRA+SM_BINS-1) 
-    {
-      // printf("the sm=%f value exceeded the bin number. \n", sm);
-      return 1e-17;
-    }
+  {
+    // printf("the sm=%f value exceeded the bin number. \n", sm);
+    return 1e-17;
+  }
   if (f < 0) return 1e-17;
   f-=b;
   if (n>-1 && !(ok[b] && ok[b+1])) return calc_smf_at_sm(n, sm);
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
-double _interp_from_sfr(double sm, double *list, int64_t n) {
+double _interp_from_sfr(double sm, double *list, int64_t n) 
+{
+  double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
+  int64_t b = f;
+  if (b >= SM_EXTRA+SM_BINS-1) 
+    {
+      return 1e-17;
+    }
+  if (f < 0) return 1e-17;
+  f-=b;
+  return (list[b] + f*(list[b+1]-list[b]));
+}
+
+double _interp_from_sfrac(double sm, double *list, int64_t n) 
+{
   double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
   int64_t b = f;
   if (b >= SM_EXTRA+SM_BINS-1) 
@@ -256,34 +267,21 @@ double _interp_from_sfr(double sm, double *list, int64_t n) {
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
-double _interp_from_sfrac(double sm, double *list, int64_t n) {
-  double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
-  int64_t b = f;
-  if (b >= SM_EXTRA+SM_BINS-1) 
-    {
-      // printf("the sm=%f value exceeded the bin number. \n", sm);
-      return 1e-17;
-    }
-  if (f < 0) return 1e-17;
-  f-=b;
-  // if (n>-1 && !(ok[b] && ok[b+1])) return calc_smf_at_sm(n, sm);
-  return (list[b] + f*(list[b+1]-list[b]));
-}
-
-double _interp_from_uv(double uv, double *list, int64_t n, char *ok) {
+double _interp_from_uv(double uv, double *list, int64_t n, char *ok) 
+{
   double f = (uv-UV_MIN)*((double)UV_BPMAG)+UV_EXTRA;
   int64_t b = f;
   if (b >= UV_EXTRA+UV_BINS-1) 
-    {
-      // printf("the sm=%f value exceeded the bin number. \n", sm);
-      return 1e-17;
-    }
+  {
+    // printf("the sm=%f value exceeded the bin number. \n", sm);
+    return 1e-17;
+  }
   if (f < 0) return 1e-17;
   f-=b;
   if (n>-1 && !(ok[b] && ok[b+1])) 
   {
   	double result = calc_uvlf_at_uv(n, uv);
-	return result;
+	  return result;
   }
   return (list[b] + f*(list[b+1]-list[b]));
 }

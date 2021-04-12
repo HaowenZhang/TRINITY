@@ -1894,26 +1894,42 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
           // double mbh = log10(steps[n-1].bh_mass_avg[j]);
           // cloud_in_cell(mbh, steps[n].merged[bin], steps[n].bh_unmerged_dist+i*MBH_BINS, MBH_MIN, MBH_BPDEX, MBH_BINS);
           
-          // icl_frac 
-          icl_frac = icl_fract(i,j,n,ICL_RATIO);
       	  sm_inc += steps[n].merged[bin]*steps[n-1].sm_avg[j];
-      	  if (icl_frac > 0.999) continue;
-      	  sm_mmp += steps[n].mmp[bin]*steps[n-1].sm_avg[j];
       	}
 
       	steps[n].sm_inc[i] = sm_inc;
       	sm_inc = 0;
       	ejec_frac = 0;
 
+        // ejec_frac is the fraction of the stellar mass from the
+        // most-massive progenitors that is ejected into ICL during 
+        // mergers. In the current model, we assume ejec_frac = 0.0,
+        // i.e., stellar masses in the most-massive progenitors are
+        // not ejected at all during mergers.
       	if (ejec_frac > 1) ejec_frac = 1;
       	if (ejec_frac < 0) ejec_frac = 0;
+
+        // Transfer the stellar mass from the j-th halo mass bin 
+        // (the most-massive progenitor) to the i-th halo mass bin.
       	for (j=0; j<M_BINS; j++) 
         {
       	  bin = j*M_BINS + i;
       	  icl_frac = icl_fract(i,j,n,ICL_RATIO);
+          // incoming_frac is the fraction of incoming satellite
+          // stellar masses that is merged into galaxy mergers.
+          // This is set to zero here, i.e., all the incoming
+          // satellite stellar masses firstly go into the
+          // intracluster light (ICL). We will take care of 
+          // the merging of incoming satellite mass into cenral
+          // galaxies later.
       	  double incoming_frac = 0;
+          // t is the number density of most-massive progenitors (MMPs),
+          // which determines the amount of stellar masses inherited
+          // from MMPs.
       	  t = steps[n].mmp[bin]*(1.0-ejec_frac) + 
       	    incoming_frac*steps[n].merged[bin];
+          // iclt1 and iclt2 are the contributions to ICL from MMPs
+          // and satellites, respectively.
       	  double iclt1 = (ejec_frac*steps[n].mmp[bin]+
       			 (1.0-incoming_frac)*steps[n].merged[bin]);
       	  double iclt2 = (steps[n].mmp[bin]);
@@ -1921,6 +1937,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
       	  steps[n].sm_from_icl[i] += steps[n-1].sm_from_icl[j]*steps[n].mmp[bin];
       	  sm_hist_j = &(steps[n-1].sm_hist[j*num_outputs]);
       	  icl_hist_j = &(steps[n-1].icl_stars[j*num_outputs]);
+          // transfer stellar mass, ICL mass, and incoming satellite mass histories.
       	  for (k=0; k<n; k++) 
           {
       	    sm_hist_i[k] += t*sm_hist_j[k];
@@ -1932,6 +1949,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
       	  }
       	}
       }
+      // We want the average mass, so dividing by the halo number density is needed.
       for (k=0; k<n; k++) sm_hist_i[k] /= steps[n].t[i];
       for (k=0; k<n; k++) icl_hist_i[k] /= steps[n].t[i];
       for (k=0; k<n; k++) sm_inc_hist_i[k] /= steps[n].t[i];
@@ -1949,15 +1967,18 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     //             combined_scatter, MBH_MIN, MBH_BPDEX, MBH_BINS,
     //                               MBH_MIN, MBH_BPDEX, MBH_BINS, 0, 0);
 
+    // Calculate the old stellar masses by integrating over the star formation histories.
     calc_old_sm(n,i);
+
     // correct the SFR by accounting for the contribution from quenched galaxies.
-    //double ratio = steps[n].t[i] ? steps[n].n[i] / steps[n].t[i] : 1;
     steps[n].sfr[i] += (1 - steps[n].sfrac[i]) * steps[n].old_sm[i] * SSFR_AVG_Q;
     if (n == 0) steps[n].sfr[i] = 0;
 
 
-    // Calculate observed UV magnitudes.
-    // double z, a1, mh, k_uv, b_uv, k_std_uv, b_std_uv, a_k, b_k, c_k, a_b, b_b, c_b;
+    // Calculate observed UV magnitudes. UV magnitudes are found to have a linear
+    // relation with log10(SFR), with redshift and halo mass dependent slope (k_uv) and
+    // intercept (b_uv). The log-normal scatter around this relation (std_uv) is 
+    // also a function of redshift and halo mass.
     double k_uv, b_uv, std_uv;
     mh = steps[n].med_hm_at_a[i];
     k_uv = a_k * mh * mh + b_k * mh;
@@ -1979,18 +2000,21 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
 
     double lgSFR = log10(steps[n].sfr[i]);
     steps[n].obs_uv[i] = k_uv * lgSFR + b_uv;
-    //if (n == 1) fprintf(stderr, "k_uv=%f, b_uv=%f, lgSFR=%f, steps[%d].obs_uv[%d]=%f\n", k_uv, b_uv, lgSFR, n, i, steps[n].obs_uv[i]);
     steps[n].std_uv[i] = std_uv;
-    // steps[n].std_uv[i] = k_std_uv * lgSFR + b_std_uv;
     if (steps[n].obs_uv[i] > 0) steps[n].obs_uv[i] = 10000;
     if (steps[n].std_uv[i] < 0) steps[n].std_uv[i] = 0.001; 
     if (steps[n].std_uv[i] > 1) steps[n].std_uv[i] = 1.000; 
 
+    // Calculate the newly formed stellar masses, SFRs, new BH masses,
+    // and BH accretion and merger rates.
     calc_new_sm_and_sfr(n,i,fit);
 
   }
 }
 
+// Calculate the old stellar masses by integrating over the star formation histories.
+// Note that steps[n].smloss[k] is the fraction of ***remaining*** stellar mass that
+// has formed in the k-th snapshot by the n-th snapshot.
 void calc_old_sm(int n, int j) {
   int k;
   steps[n].old_sm[j] = 0;
@@ -2003,7 +2027,8 @@ void calc_old_sm(int n, int j) {
 
 // Calculate the number of quasars that exist between (z_low, z_high), and
 // above a certain luminosity threshold, lbol, from a survey that covers 
-// frac_area of the WHOLE SKY.
+// frac_area of the WHOLE SKY. For example, SDSS has an area of ~14000 deg^2,
+// so frac_area = 14000 / 41252.
 double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, double frac_area)
 {
   int n, i, j;
@@ -2029,6 +2054,7 @@ double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, doub
     // traverse every MBH bin.
     for (i=0; i<MBH_BINS; i++)
     {
+      // Only count BHs that are above the luminosity cut.
       double n_qso_mbh = (1 - lbol_f) * steps[n].lum_func_full[i*LBOL_BINS+lbol_b];
       for (j=lbol_b+1; j<LBOL_BINS; j++)
       {
@@ -2052,16 +2078,15 @@ double number_high_z_low_mass_qso(double z_low, double z_high, double lbol, doub
   return n_qso;
 }
 
-// Calculate the number ratio of quasars that exist between (z_low, z_high), and
-// above/below a certain luminosity threshold, lbol, from a survey that covers 
-// frac_area of the WHOLE SKY.
+// Calculate the number ratio of low-mass (below 10^8 Msun) vs. massive (above 10^8 Msun)
+// bright quasars between (z_low, z_high).
 double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_area)
 {
   int n, i, j;
   // Find out the relevant snapshots
   double a_max = 1.0 / (1 + z_low);
   double a_min = 1.0 / (1 + z_high);
-  // double n_qso = 0;
+
   double n_qso_above = 0;
   double n_qso_below = 0;
 
@@ -2090,7 +2115,7 @@ double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_ar
         n_qso_mbh += steps[n].lum_func_full[i*LBOL_BINS+j];
       }
       // weight every MBH bin by the fraction that BHs in this bin get scattered
-      // below 10^8 Msun due to virial estimate. This gives the number ***density***,
+      // below and above 10^8 Msun due to virial estimate. This gives the number ***density***,
       // i.e., the Mpc^-3
       n_qso_n_below += n_qso_mbh * frac_below8[i];
       n_qso_n_above += n_qso_mbh * (frac_below11[i] - frac_below8[i]);
@@ -2101,17 +2126,14 @@ double ratio_high_z_qso(double z_low, double z_high, double lbol, double frac_ar
     // Stop if the redshift is lower than the threshold.
     if (steps[n].scale > a_max) break;
   }
-  // The calculated comoving volume is for the 4pi surface area, so we have to
-  // multiply it by the fractional survey area relative to the whole sky.
-  // Also, the luminosity functions are in the unit of dex^-1, we have to convert
-  // them back by multiplying LBOL_INV_BPDEX.
-  // n_qso *= frac_area * LBOL_INV_BPDEX;
-  // return n_qso;
 
+  // The calculated comoving volume is for the 4pi survey area, but
+  // we are calculating the number ratio, so the area does not matter.
   double ratio = n_qso_below / n_qso_above;
   return ratio;
 }
 
+// Penalize the rising SFH histories among massive halos.
 double rising_sfh_penalty(void)
 {
   double penalty = 0.0;
@@ -2132,18 +2154,23 @@ double rising_sfh_penalty(void)
   }
   return penalty;
 }
-double recent_sfh_in_massive_halos(void) {
+
+// Calculate the average SFR among massive halos
+double recent_sfh_in_massive_halos(void) 
+{
   int64_t n, j, count=0;
   double sfr = 0;
+  // find the redshift below which the SFRs should be counted.
   for (n=0; n<num_outputs; n++) if (steps[n].scale > SFR_A_CONSTRAINT) break;
-  for (; n<num_outputs; n++) {
+  for (; n<num_outputs; n++) 
+  {
     double z = 1.0 / steps[n].scale - 1;
+    // offset between the observed and true SFRs.
     double corr = doexp10(steps[n].smhm.mu + steps[n].smhm.kappa * exp(-0.5 * (z - 2) * (z - 2)));
-    for (j=(SFR_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) {
-      //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
+    for (j=(SFR_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
+    {
       if (steps[n].t[j] <= 0) continue;
       sfr += steps[n].sfr[j]*corr;
-      //sfr += steps[num_outputs-1].sm_hist[j*num_outputs + n]*corr/steps[n].dt;
       count++;
     }
   }
@@ -2166,35 +2193,29 @@ double recent_kinetic_power_in_massive_halos(void) {
     // If the scale factor is bigger than the upper limit, stop.
     if (steps[n].scale > KIN_POWER_A_CONSTRAINT_HIGH) break;
 
-
     // Only count the kinetic powers in massive halos.
     for (j=(KIN_POWER_M_CONSTRAINT-M_MIN)*BPDEX; j<M_BINS; j++) 
     {
       double L_tmp = 0;
-      //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
       if (steps[n].t[j] <= 0) continue;
 
+      // mass- and redshift-dependent AGN duty cycle.
       double dc = steps[n].smhm.bh_duty;
       double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
       f_mass = f_mass / (1 + f_mass);
-      // f_mass = f_mass < 1? f_mass : 1;
       dc *= f_mass;
       if (dc < 1e-4) dc = 1e-4;
-      // double norm = 0;
+
       for (k=0; k<BHER_BINS; k++) 
       {
           L_tmp += exp10(38.1 + steps[n].log_bh_mass[j] + BHER_MIN + k*BHER_INV_BPDEX + steps[n].bh_eta[j])
                                             * steps[n].bher_dist_kin[j * BHER_BINS + k];
       }
-      // From the calculation of bher_dist, we know that the normalization of bher_dist turns out to be bher_bpdex.
+      
       L_tmp /= norm;
-
       L_kin += L_tmp * dc * steps[n].t[j];
-
       nd_tot += steps[n].t[j];
-    
     }
-
   }
 
   L_kin /= nd_tot;
@@ -2222,8 +2243,8 @@ void calc_bh_eta_avg(int n)
 
     for (k = 0; k < BHER_BINS; k++) 
     {
-      eta_avg += exp10(bher_min + k * inv_bpdex) * steps[n].bher_dist_full[i * BHER_BINS + k];
-      norm += steps[n].bher_dist_full[i * BHER_BINS + k];
+      eta_avg += exp10(bher_min + k * inv_bpdex) * steps[n].bher_dist[i * BHER_BINS + k];
+      norm += steps[n].bher_dist[i * BHER_BINS + k];
     }
     eta_avg /= norm;
     eta_avg *= dc;
@@ -2294,7 +2315,8 @@ double recent_kinetic_frac_in_massive_halos(void) {
       dc *= f_mass;
       if (dc < 1e-4) dc = 1e-4;
 
-
+      // The critical Eddington ratio is calculated from the kinetic power limit,
+      // and further scaled relative to the typical Eddington ratio.
       double eta_crit = KIN_POWER_CONSTRAINT_LOW - (38.1 + steps[n].log_bh_mass[j]) - steps[n].bh_eta[j];
       double f_eta = (eta_crit - BHER_MIN) * BHER_BPDEX;
       int64_t b_eta = f_eta;
@@ -2359,6 +2381,8 @@ double recent_radiative_power_in_massive_halos(void) {
   return log10(L_rad);
 }
 
+// same as recent_sfh_in_massive_halos, but without the correction
+// on the SFR.
 double recent_sfh_in_massive_halos_nocorr(void) 
 {
   int64_t n, j, count=0;
@@ -2398,6 +2422,8 @@ double recent_Micl_Mstar_ratio_in_massive_halos(void)
   return log10(Micl_tot / Mstar_tot);
 }
 
+// Calculate the newly formed stellar masses, SFRs, new BH masses,
+// and BH accretion and merger rates.
 void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit) 
 {
   double dt;
@@ -2405,53 +2431,97 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   char buffer[1024];
   dt = steps[n].dt;
 
+  // Ignore the halo mass bins that are too rare.
   if (!steps[n].t[i]) 
   {
     return;
   }
 
+  // New stellar mass is calculated by multiplying SFR by the time interval,
+  // with the mass loss due to stellar evolution. Aside from star formation,
+  // we also add the merger contribution to it in the lines below.
   steps[n].new_sm[i] = steps[n].sfr[i] * dt * steps[n].smloss[n];
-  // double sm_from_icl = steps[n].smhm.icl_frac * steps[n].sm_icl[i];
+
+  // // double sm_from_icl = steps[n].smhm.icl_frac * steps[n].sm_icl[i];
   // Instead of having a certain fraction of all the ICL merge into the central galaxy,
+  // (the commented line above),
   // we only merge a fraction of ICL that comes from ***the stellar mass*** of incoming
   // satellite galaxies, i.e., steps[n].sm_inc[i]. Here we also fix the small bug that
   // the merged stellar mass does not shrink with time.
   double sm_from_icl = steps[n].smhm.icl_frac * steps[n].sm_inc[i] * steps[n].smloss[n];
   steps[n].mr[i] = sm_from_icl / steps[n].smloss[n] / dt;
+
+  // Add the merged stellar mass.
   steps[n].new_sm[i] += sm_from_icl;
+
+  // The current average stellar mass is simply the sum of old and new stellar masses.
   steps[n].sm_avg[i] = steps[n].old_sm[i] + steps[n].new_sm[i];
+
+  // Assuming a log-normal scatter around the stellar mass--halo mass relation,
+  // the median stellar mass is divided by a scatter correction.
   steps[n].sm[i] = steps[n].sm_avg[i] / steps[n].smhm.scatter_corr;
   steps[n].log_sm[i] = (steps[n].sm[i] > 1) ? log10(steps[n].sm[i]) : 0;
 
+  // Calculate the bulge mass with the bulge mass--total stellar mass relation (BMSM).
+  // Note that the stellar mass here should be corrected for the systematic offset,
+  // since the BMSM is based on ***observed*** data.
   steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
   steps[n].log_sm_obs[i] = steps[n].log_sm[i]+steps[n].smhm.mu;
 
 
-
+  // We are calculating the average and median BH mass at fixed ***halo mass*** bins.
+  // So we also need to calculate the scatter in BH mass at fixed halo mass.
+  // This scatter is the quadratic sum of the scatter around the black hole mass--
+  // bulge mass (BHBM) relation, and that around the stellar mass--halo mass relation,
+  // scaled by the slope of the BHBM relation.
   double bh_sm_scatter = steps[n].smhm.scatter*steps[n].smhm.bh_gamma;
+
+  // bh_vdisp_scatter is deprecated for now, since we do not find a good
+  // way to use the black hole mass--velocity dispersion (M-sigma) relation.
   double bh_vdisp_scatter = 0.3; //for the time being, use 0.3 dex as the vdisp scatter
+  
+  // Actual quadratic sum.
   double combined_scatter = (vel_dispersion) ? sqrt(bh_vdisp_scatter  * bh_vdisp_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter) : sqrt(bh_sm_scatter  * bh_sm_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter);
+  // The correction between the average and median BH masses assuming a log-normal scatter.
   double bh_scatter_corr = exp(pow(combined_scatter*log(10), 2)/2.0);
 
+  // Calculate median BH mass based on the black hole mass--bulge mass relation.
+  // the M-sigma option is deprecated for now.
   steps[n].log_bh_mass[i] = (vel_dispersion) ? 
       calc_bh_at_vdisp(steps[n].vdisp[i], steps[n].smhm)
     : calc_bh_at_bm(steps[n].log_bm[i], steps[n].smhm);
+
+  // the average BH mass is offset from the median by a factor of bh_scatter_corr.
   steps[n].bh_mass_avg[i] = doexp10(steps[n].log_bh_mass[i])*bh_scatter_corr;
 
 
+  // The new BH mass is the difference between the current and old BH masses.
   float new_bh_mass = steps[n].bh_mass_avg[i] - steps[n].old_bh_mass[i];
-  float mfrac = n ? steps[n].smhm.f_merge_bh * sm_from_icl / steps[n].new_sm[i] : 0; // Note that the new_sm now includes the merger contribution.
-                                                  // here we use this fraction as the BH merger fraction.
 
+  // mfrac is the fraction of merger contribution to the total BH mass growth,
+  // which is proportional to the fractional merger contribution to ***galaxy*** growth.
+  // The proportionality factor is parametrized as steps[n].smhm.f_merge_bh.
+  // See smhm_at_z() for the redshift scaling of steps[n].smhm.f_merge_bh.
+  float mfrac = n ? steps[n].smhm.f_merge_bh * sm_from_icl / steps[n].new_sm[i] : 0; 
+
+  // Calculate the accretion and merger rates based on the total BH mass growth
+  // and merger contributions.
   steps[n].new_bh_mass[i] = new_bh_mass;
   steps[n].bh_merge_rate[i] = mfrac * new_bh_mass / dt;
   steps[n].bh_acc_rate[i] = (1 - mfrac) * new_bh_mass /dt;
 
+  // Since our parametrization cannot guarantee that the new BH mass is positive,
+  // ill-behaved parameter sets are discarded if they produce negative BH mass
+  // growth (or accretion rates), and the problematic BHs exist at z < 11.5, with
+  // masses above BH_MASS_TO_REQUIRE_GROWTH.
   if ((!(new_bh_mass>=0) || !(steps[n].bh_acc_rate[i]>0)) && (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11)))
   {
     INVALIDATE(fit, buffer); 
   }
 
+  // There's a finite amount of unmerged BH masses for central black holes to sonsume
+  // during mergers. If the merger fraction is so big that these unmerged BHs cannot
+  // cover the merger rate, then we need to invalidate the model.
   if (steps[n].bh_unmerged[i] < mfrac*new_bh_mass) 
   {
     if (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11))
@@ -2468,33 +2538,44 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
       //for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] = 0;
     } 
   }
+
+  // Remove the merged BH masses from the unmerged (or wandering) reservoir of BHs.
   else 
   {
     steps[n].bh_unmerged[i] -= mfrac*new_bh_mass;
     // for (j=0; j<MBH_BINS; j++) steps[n].bh_unmerged_dist[i*MBH_BINS+j] *= steps[n].bh_unmerged[i] / (steps[n].bh_unmerged[i] + mfrac*new_bh_mass);
   }
+
+  // Calculate the ***average*** Eddington ratio for this halo mass bin.
   double bhar_tmp = steps[n].bh_acc_rate[i] > 0 ? steps[n].bh_acc_rate[i] : 1e-8;
   steps[n].bh_eta[i] = log10(bhar_tmp/steps[n].bh_mass_avg[i]*4.5e8*(steps[n].smhm.bh_efficiency_rad));
 
+
+
   steps[n].merged_frac[i] = 0;
-
-
   if (steps[n].smhm.icl_frac && steps[n].sm_icl[i]) 
   {
     steps[n].merged_frac[i] = steps[n].smhm.icl_frac; //merged_frac is the fraction of the incoming satellite stellar mass
                                                       //that merge into the central galaxies, which under this parametrization
                                                       //is simply icl_frac.
+    // Since galaxy mergers involve the transfer from ICL to central stellar mass,
+    // we need to transfer the mass histories as well.
     for (j=0; j<n; j++) 
     {
       steps[n].sm_hist[i*num_outputs + j] += steps[n].smhm.icl_frac*steps[n].sm_inc_hist[i*num_outputs + j];
       steps[n].icl_stars[i*num_outputs + j] -= steps[n].smhm.icl_frac*steps[n].sm_inc_hist[i*num_outputs + j];
     }
+    // Give back the merger contributions in the new_sm, so that we can use it
+    // to calculate the latest stellar mass history (see below)
     steps[n].new_sm[i] -= (steps[n].smhm.icl_frac * steps[n].sm_inc[i] * steps[n].smloss[n]);
   }
 
+  // Calculate the latest stellar mass history.
   steps[n].new_sm[i] /= steps[n].smloss[n];
   steps[n].sm_hist[i*num_outputs + n] = steps[n].new_sm[i];
 
+  // If the average stellar mass is higher than the overall baryonic fraction in the halo,
+  // we should invalidate the model.
   if ((steps[n].t[i] > REAL_ND_CUTOFF) && (steps[n].sm_avg[i] > 0.17*exp10(steps[n].med_hm_at_a[i])) && (!no_z_scaling) && n>2) 
   {
     //fprintf(stderr, "SM exceeds baryon fraction (sm: %e, m: %e, scale: %f!\n",
@@ -2502,6 +2583,12 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
     INVALIDATE(fit, buffer);
   }
 
+  // If we have a negative SFR, also invalidate the model.
+  // However, this is not gonna happen in the current parametrization,
+  // since SFRs are calculated from the SFR--Vmax relation and won't be
+  // negative. In previous parametrizations (see Behroozi et al. 2013),
+  // stellar masses are determined and the SFRs are calculated by differentiation.
+  // Only in that case this unphysical situation could occur.
   if ((!no_z_scaling) && (steps[n].sfr[i] < 0 || !isfinite(steps[n].sfr[i]))) 
   {
     char buffer[1024];

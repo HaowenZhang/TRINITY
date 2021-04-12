@@ -879,6 +879,7 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit)
   steps[n].bh_mass_max = 11;
 }
 
+// Calculate the luminosity functions/distributions for all ***BH mass*** bins.
 void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
 {
   int64_t i, j, k;
@@ -887,25 +888,34 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
   double l_min = 36; double l_max = 50;
   double mbh_bpdex = MBH_BINS / (steps[n].bh_mass_max - steps[n].bh_mass_min);
   double mbh_inv_bpdex = 1.0 / mbh_bpdex;
+
+  // The total scatter in BH mass at fixed ***halo mass*** is a quadratic sum
+  // of the scatter in BH mass at fixed ***stellar mass*** and that in stellar mass
+  // at fixed halo mass, scaled by the slope of the black hole mass--bulge mass relation.
   double sm_scatter = steps[n].smhm.scatter*steps[n].smhm.bh_gamma;
   double scatter = sqrt(sm_scatter*sm_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter);
+  // Pre-calculate the normalization factor before the exponential in Gaussian distribution.
   double gauss_norm = 1 / sqrt(2 * M_PI) / scatter;
-  
-  int mbh_match = 0; 
   
   for (i=0; i<MBH_BINS; i++)
   {
     double mbh = steps[n].bh_mass_min + (i + 0.5) * mbh_inv_bpdex;
-    // Given the current code structure, it is easier to fold in the mass-dependent duty cycle here.
+    // The mass-dependent component of AGN duty cycle.
     double f_mass = exp((mbh - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
     double dc = steps[n].smhm.bh_duty * f_mass;
     if (dc < 1e-4) dc = 1e-4;
     double tnd = 0; //Total ND of BHs with this mass, including dormant and active BHs.
+                    //This is gonna be used to calculate the luminosity distributions 
+                    //(not functions) of active BHs, and also the total BH mass functions.
+    // Traverse all the halo mass bins to count their contribution to each BH mass bin.
     for (j=0; j < M_BINS; j++)
     {
+      // The difference between the median BH mass of the halo mass bin
+      // and the BH mass we're interested in.
       double dmbh = (mbh - steps[n].log_bh_mass[j]) / scatter;
-      //if (fabs(dmbh) > 5) continue;
+      
+      // w_mbh is the fraction of the halos that host BHs of mass mbh.
       double w_mbh = gauss_norm * exp(-0.5 * dmbh * dmbh) * mbh_inv_bpdex; //Here I chose not to include
                                                             //mbh_inv_bpdex, which is "dlogMbh"
                                                           //in the integral of QLF/QPDF.
@@ -917,20 +927,26 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
                                               //summation of lum_dist_full along the Mbh direction, with the weight
                                               //being EXACTLY (i.e., including the normalization) the gaussian PDF of Mbh as given by the BHBM.
 
-
+      // So the contribution to the BH mass functions from this halo mass bin
+      // is simply w_mbh * halo number density (steps[n].t[j])
       tnd += w_mbh * steps[n].t[j];
 
+      // Calculate the halo mass bin's contribution to every bolometric luminosity bin.
       for (k=0; k<LBOL_BINS; k++)
       {
         double lbol = LBOL_MIN + (k + 0.5) * LBOL_INV_BPDEX;
+        // Convert the luminosity into Eddington ratio...
         double bh_eta = lbol - 38.1 - mbh;
+        // ... and scale it with the typical Eddington ratio.
         double eta_frac = bh_eta - steps[n].bh_eta[j];
-        //if (n == 134 && mbh == 7.715) fprintf(stderr, "n=%d, j=%d, mbh=%f, lbol=%f, bh_eta=%f, bh_eta0=%f, eta_frac=%f, ledd_max=%f\n", n, j, mbh, lbol, bh_eta, steps[n].bh_eta[j], eta_frac, steps[n].ledd_max[j]);
+        // If the fractional (or scaled) Eddington ratio is too small/big or even
+        // not a finite number, just skip.
         if ((!isfinite(eta_frac)) || eta_frac < steps[n].ledd_min[j] || eta_frac > steps[n].ledd_max[j])
 	      {  
           continue;
         } 
 
+        // Otherwise we just do linear interpolations.
         double bher_f = (eta_frac-steps[n].ledd_min[j])*steps[n].ledd_bpdex[j];
         int64_t bher_b = bher_f;
         bher_f -= bher_b;
@@ -938,12 +954,16 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         double p1 = steps[n].bher_dist[j*BHER_BINS+bher_b];
         double p2 = steps[n].bher_dist[j*BHER_BINS+bher_b+1];
         if (bher_b >= BHER_BINS-1) p2 = p1;
+        // Note that the steps[n].bher_dist is not normalized to match the duty cycle,
+        // so we need to put the duty cycle (dc) into the calculation of nd_l below.
         double nd_l = (p1 + bher_f*(p2-p1)) * w_mbh * steps[n].t[j] * dc; //The number density (Mpc^-3)
                                                                           //of AGN with this luminosity
                                                                           //and this Mbh in this Mh bin.
         steps[n].lum_func_full[i*LBOL_BINS+k] += nd_l;
       }
     }
+
+    // Count the total BH mass function here.
     steps[n].bhmf[i] = tnd * mbh_bpdex;
 
     // the distribution of luminosity distributions is simply the luminosity function
@@ -963,16 +983,27 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
 
 
 // The new function to calculate the kinetic Eddington ratio distributions.
-void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
+// This implementation is outdated since it still uses the scatter to smooth
+// the kinetic Eddington ratio distributions.
+void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) 
+{
+  // No matter whether we need to calculate the kinetic Eddington ratio distribution,
+  // the distributions must be initialized with zeros in the first place.
+  memset(steps[n].bher_dist_kin, 0, sizeof(float)*BHER_BINS*M_BINS);
 
   if (!nonlinear_luminosity) return; //The linear luminosity ansatz implies that all the
                                       //gravitational energy from accretion gets converted
                                       //into radiative energy, so no kinetic energy.
 
   int64_t i, j, k;
-  memset(steps[n].bher_dist_kin, 0, sizeof(float)*BHER_BINS*M_BINS);
+  
 
   double bh_eta_crit = steps[n].smhm.bh_eta_crit;
+  
+  // The total scatter in BH mass at fixed ***halo mass*** is the quadratic 
+  // sum of the scatter in the stellar mass--halo mass relation (scaled by the slope
+  // of the BH mass--bulge mass relation), and that around the bulge mass--BH 
+  // mass relation.
   double sm_scatter = steps[n].smhm.scatter*steps[n].smhm.bh_gamma;
   double scatter = sqrt(sm_scatter*sm_scatter + steps[n].smhm.bh_scatter*steps[n].smhm.bh_scatter);
 
@@ -980,7 +1011,7 @@ void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
   // Since this calculation only occurs when the luminosity is nonlinear, there is no
   // need to differentiate between linear and non-linear cases.
   double (*bher_prob)(double, double, double, double, double, double) = &_prob_of_ledd_kinetic;
-  // if (nonlinear_luminosity) bher_prob = &_prob_of_ledd_nonlinear;
+
 
 
   if (scatter <= 0) 
@@ -1074,6 +1105,8 @@ void calc_bh_acc_rate_distribution_kinetic(int n, struct smf_fit *fit) {
   }
 }
 
+// Calculate average radiative Eddington ratios for all halo
+// mass bins in a certain snapshot.
 void calc_avg_eta_rad(int n)
 {
   int64_t i, j;
@@ -1085,13 +1118,16 @@ void calc_avg_eta_rad(int n)
     double ledd_inv_bpdex = 1 / ledd_bpdex;
     double norm = 0; 
     double tot = 0;
+
+    // mass- and redshift-dependent AGN duty cycle.
     double dc = steps[n].smhm.bh_duty;
-    //double dc = steps[n].smhm.bh_duty;
     double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
     f_mass = f_mass < 1? f_mass : 1;
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4; 
+
+    // Count the contribution from all radiative Eddington ratio bins.
     for (j = 0; j < BHER_BINS; j++)
     {
       double prob = steps[n].bher_dist[i*BHER_BINS + j];
@@ -1100,21 +1136,33 @@ void calc_avg_eta_rad(int n)
           tot += prob * exp10(eta0 + ledd_min + (j + 0.5) * ledd_inv_bpdex) * ledd_inv_bpdex * dc;
       }
     }
+    // If we have a well-behaved Eddington ratio distribution, then
+    // we adopt the calculation result.
     if (isfinite(tot)) steps[n].bh_eta_rad_avg[i] = tot;
   }
 }
 
-
+// Make the GSL interpolation objects for the calculation of 
+// galaxy stellar mass functions (SMFs) and average specific
+// star formation rates.
 void calc_smf_and_ssfr(int n, struct smf_fit *fit) 
 {
   int64_t i, j;
   char buffer[1024];
   double m, m2, sm, sm_max=0, sm_min=1000;
+  // bin_start and bin_end are the bin # where we should do interpolations.
+  // bin_peak is the bin # where the stellar mass--halo mass (SMHM) relation shows
+  // a turnover. This is allowed to happen once because the Universe Machine (UM)
+  // produces such turnovers at high-z, and we try to have this flexibility
+  // to keep consistency with UM. 
   int64_t bin_start=-1, bin_end=-1, bin_peak = 0;
   gsl_interp_accel ga = {0};
   steps[n].smhm.sm_max = 0;
-  int64_t count_falling = 0;
-  steps[n].alloc2smf = 0;
+  // count_falling is the flag indicating whether we have already encountered
+  // a turnover in the SMHM relation before. 
+  int64_t count_falling = 0; //
+  steps[n].alloc2smf = 0; //Flag that indicates whether we have a 
+                          //2-segment stellar mass--halo mass relation.
   if (INVALID(*fit)) 
   {
     // printf("invalid!\n");
@@ -1123,13 +1171,12 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
 
   for (i=0; i<M_BINS; i++) 
   {
-
+    // bin_start/bin_end is the first/last bin where stellar mass is positive.
     if (steps[n].log_sm[i]>0) 
     {
       bin_end = i;
       if (bin_start < 0) bin_start = i;
     }
-
 
     if (count_falling && i >= bin_peak 
         && steps[n].log_sm[i] > 0
@@ -1142,19 +1189,20 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
     }
     
      
-    // INPLEMENTAION 2: bin_max - bin_min + 1 < M_BINS
-
+    // Update the maximum and minium stellar masses for the snapshot, as needed.
     if (steps[n].log_sm[i]>steps[n].smhm.sm_max) 
     {
       sm_max = steps[n].smhm.sm_max = steps[n].log_sm[i];
       // bin_max = i;
     }
-
     if (steps[n].log_sm[i]>0 && steps[n].log_sm[i]<sm_min) 
     {
       sm_min = steps[n].smhm.sm_min = steps[n].log_sm[i];
     }
 
+    // If we see a falling in the SMHM relation, and have not had this situation
+    // before (count_falling == 0), we set count_falling = 1 and record the bin #
+    // in bin_peak.
     if (i && (steps[n].log_sm[i] <= steps[n].log_sm[i-1]) && steps[n].log_sm[i] > 0 && (!count_falling)) 
     {
           count_falling = 1;
@@ -1163,7 +1211,9 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
 
   }
 
-
+  // If all the stellar masses are zero, there are too few positive stellar masses, or 
+  // the SMHM relation starts to fall in the very beginning, we label the model
+  // as invalid.
   if (bin_start < 0 || bin_end - bin_start + 1 < 10 || (count_falling && bin_peak <= bin_start + 1))
   {
     //sprintf(buffer, "All the stellar masses are zero.\n");
@@ -1177,11 +1227,13 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
   }
 
 
-  
+  // The helper arrays to do interpolations.
   double *log_sm_tmp = NULL;
   double  *hm_tmp = NULL;
   double  *sfr_tmp = NULL;
 
+  // If the SMHM relation is monotonically rising, the interpolation
+  // is very simple. We only need to do a 1-segment interpolation.
   if (!count_falling)
   {
     log_sm_tmp = malloc(sizeof(double)*(bin_end - bin_start + 1));
@@ -1193,8 +1245,7 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
       hm_tmp[j - bin_start] = steps[n].med_hm_at_a[j];
       sfr_tmp[j - bin_start] = steps[n].sfr[j];
     }
-    // The spline does not need to be modified. What should be changed is that the dn/dlogm
-    // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
+    
     steps[n].spline = gsl_spline_alloc(gsl_interp_linear, bin_end - bin_start + 1);
     steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_linear, bin_end - bin_start + 1);
     steps[n].flag_alloc = 1;
@@ -1203,8 +1254,14 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
   }
 
+  // If we see a turnover in the SMHM relation, segmented interpolations have to 
+  // be done, because GSL interpolations require rigorously increasing independent
+  // variables, which are, in this case, stellar masses.
   else
   {
+    
+    // For the first segment, we do interpolations as in the 1-segment 
+    // interpolation case.
     log_sm_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
     hm_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
     sfr_tmp = malloc(sizeof(double)*(bin_peak - bin_start + 1));
@@ -1215,11 +1272,10 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
       sfr_tmp[j - bin_start] = steps[n].sfr[j];
     }
 
-    // The spline does not need to be modified. What should be changed is that the dn/dlogm
-    // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
     steps[n].spline = gsl_spline_alloc(gsl_interp_linear, bin_peak - bin_start + 1);
     steps[n].spline_sfr = gsl_spline_alloc(gsl_interp_linear, bin_peak - bin_start + 1);
     
+    // Invalidate the model if GSL fails to make the interpolation.
     if ((!steps[n].spline) || (!steps[n].spline_sfr))
     {
       //fprintf(stderr, "Too few data points to do akima interpolation for the SMHM, segment 1. scale=%f\n", steps[n].scale);
@@ -1227,7 +1283,9 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
       return;
     }
 
-
+    // For the second segment, things are slightly trickier because we need to
+    // reverse the order of stellar masses (and also halo masses) on this segment, 
+    // to ensure that the stellar masses are increasing.
     gsl_spline_init(steps[n].spline, log_sm_tmp, hm_tmp, bin_peak - bin_start + 1);
     gsl_spline_init(steps[n].spline_sfr, log_sm_tmp, sfr_tmp, bin_peak - bin_start + 1);
     steps[n].flag_alloc = 1;
@@ -1251,6 +1309,8 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
     int err_spline_init1 = gsl_spline_init(steps[n].spline2, log_sm_tmp, hm_tmp, n_seg);
     int err_spline_init2 = gsl_spline_init(steps[n].spline_sfr2, log_sm_tmp, sfr_tmp, n_seg);
     free(log_sm_tmp); free(hm_tmp); free(sfr_tmp);
+
+    // Again, invalidate the model in case interpolation creation fails.
     if ((err_spline_init1) || (err_spline_init2))
     {
       //fprintf(stderr, "More than 1 turning point in the SMHM.\n");
@@ -1264,13 +1324,19 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
       steps[n].flag_alloc = 1;
       return;
     }
+    // In this case, we should set these flags as 1 to indicate that
+    // we have allocated and made 2-segment interpolations.
     steps[n].flag_alloc = 1;
     steps[n].alloc2smf = 1;
   }
 
+  // Calculate the intrinsic stellar mass function and average
+  // star formation rate (as a function of stellar mass) based
+  // on the interpolations built above.
   i = M_BINS-1;
   for (j=SM_BINS-1; j>=0; j--) 
   {
+    // Skip too big/small stellar masses
     sm = SM_MIN + (double)j*SM_INV_BPDEX;
     if (sm > sm_max || sm < sm_min) 
     {
@@ -1281,6 +1347,7 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
     }
     else 
     {
+      // Calculate the corresponding halo mass from the interpolation
       gsl_interp_accel_reset(&ga);
       int err = gsl_spline_eval_e(steps[n].spline, sm, &ga, &m);
       if (err || !isfinite(m))
@@ -1288,8 +1355,8 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
         INVALIDATE(fit, buffer);
         return;
       }
+
       // find out the sfrac to weight the smf_sf and smf_q.
-      
       double f = (m - M_MIN) * BPDEX;
       int64_t b;
       if (f >= M_BINS - 1)
@@ -1305,15 +1372,28 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
 
       double sfrac_tmp = steps[n].sfrac[b] + f * (steps[n].sfrac[b+1] - steps[n].sfrac[b]);
       steps[n].sfrac_sm[j+SM_EXTRA] = sfrac_tmp;
+
+      // The intrinsic SMF is calculated by converting the halo mass function with the Jacobian.
       steps[n].smf[j+SM_EXTRA] = calc_smf_at_m(m,sm,n, 1, fit,&ga);
       gsl_interp_accel_reset(&ga);
+
+      // And also calculate the average SFR.
       err = gsl_spline_eval_e(steps[n].spline_sfr, sm, &ga, &(steps[n].sfr_sm[j + SM_EXTRA]));
       
+      // We need to calculate the average SFR for both quenched and star-forming galaxies.
+      // Things are easier for quenched galaxies, because they (are assumed to) have
+      // a fixed average specific SFR, SSFR_AVG_Q.
       steps[n].sfr_sm_q[j + SM_EXTRA] = exp10(sm) * SSFR_AVG_Q;
+      // For the average SFR for star-forming galaxies, we simply need to subtract
+      // quenched populations' contribution from the total value.
       steps[n].sfr_sm_sf[j + SM_EXTRA] = (steps[n].sfr_sm[j + SM_EXTRA] - (1 - sfrac_tmp) * steps[n].sfr_sm_q[j + SM_EXTRA]) / sfrac_tmp;
+      // Don't forget to multiply these with stellar mass functions, as this form
+      // will be easier to use in the comparisons with observations (see observations.c).
       steps[n].sfr_sm[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
       steps[n].sfr_sm_q[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
       steps[n].sfr_sm_sf[j + SM_EXTRA] *= steps[n].smf[j+SM_EXTRA];
+
+      // Invalidate the model if the interpolation goes wrong.
       if (err || !isfinite(steps[n].sfr_sm[j + SM_EXTRA]))
       {
         //sprintf(buffer, "Error in GSL spline interpolation #3.\n");
@@ -1322,6 +1402,8 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
         return;
       }
 
+      // If we made 2-segment interpolations, simply repeat the process above for
+      // the second segment.
       if (steps[n].alloc2smf)
       {
         gsl_interp_accel_reset(&ga);
@@ -1371,7 +1453,9 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
 
   
 
-  //Check status of SMF bins
+  //Check status of SMF bins. If the intrinsic SMFs from interpolations do
+  // vary smoothly, we will directly use these pre-calculated values when
+  // comparing with observations (see _interp_from_sm() in observations.c).
   steps[n].smf_ok[SM_BINS+SM_EXTRA-1] = 0;
   for (j=0; j<SM_BINS-1; j++) 
   {
@@ -1388,7 +1472,13 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
   }
 }
 
-
+// Calculate the observed UV luminosity functions.
+// The logic is very similar to calc_smf_and_ssfr().
+// The only major difference is that the UV magnitude
+// (M_UV) generally falls with increasing halo mass. So when
+// building GSL interpolation objects, we by default
+// need to reverse the order of M_UV for the first segment,
+// and keep the second segment as it is, if needed.
 void calc_uvlf(int n, struct smf_fit *fit) {
   int64_t i, j;
   char buffer[1024];
@@ -1522,18 +1612,9 @@ void calc_uvlf(int n, struct smf_fit *fit) {
       hm_tmp[j - bin_peak] = steps[n].med_hm_at_a[j];
     }
 
-
-    // The spline does not need to be modified. What should be changed is that the dn/dlogm
-    // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
     steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_linear, n_seg);
     int err_spline_init = gsl_spline_init(steps[n].spline_uv2, obs_uv_tmp, hm_tmp, n_seg);
         
-    // // The spline does not need to be modified. What should be changed is that the dn/dlogm
-    // // should be weighted by sfrac and 1 - sfrac for smf_sf and smf_q, respectively.
-    // steps[n].spline_uv2 = gsl_spline_alloc(gsl_interp_cspline, M_BINS - bin_peak);
-    // // steps[n].spline_std_uv = gsl_spline_alloc(gsl_interp_cspline, bin_start - bin_end + 1);
-    // int err_spline_init = gsl_spline_init(steps[n].spline_uv2, obs_uv_tmp, hm_tmp, M_BINS - bin_peak);
-    // // gsl_spline_init(steps[n].spline_std_uv, obs_uv_tmp, std_uv_tmp, bin_start - bin_end + 1);
     free(obs_uv_tmp); free(hm_tmp);
     if (err_spline_init)
     {
@@ -1577,7 +1658,6 @@ void calc_uvlf(int n, struct smf_fit *fit) {
         // free(obs_uv_tmp); free(hm_tmp);
         return;
       }
-      //int64_t b = gsl_interp_accel_find(&ga, steps[n].log_sm+bin_end, (bin_start-bin_end+1), sm)+bin_end;
       // find out the sfrac to weight the smf_sf and smf_q.
       double f = (m - M_MIN) * BPDEX;
       int64_t b;
@@ -1593,7 +1673,6 @@ void calc_uvlf(int n, struct smf_fit *fit) {
       }
       steps[n].std_uvlf[j+SM_EXTRA] = steps[n].std_uv[b] + f * (steps[n].std_uv[b+1] - steps[n].std_uv[b]);
       steps[n].uvlf[j+SM_EXTRA] = calc_uvlf_at_m(m,uv,n,1,fit,&ga);
-      //if (n == 32) fprintf(stderr, "uv=%f, m=%f, interpolated uvlf=%e\n", uv, m, steps[n].uvlf[j+SM_EXTRA]);
       if (steps[n].alloc2uvlf)
       {
         gsl_interp_accel_reset(&ga);
@@ -1606,13 +1685,12 @@ void calc_uvlf(int n, struct smf_fit *fit) {
     }
   }
 
-  //Check status of SMF bins
+  //Check status of UVLF bins
   steps[n].uvlf_ok[UV_BINS+UV_EXTRA-1] = 0;
   for (j=0; j<UV_BINS-1; j++) 
   {
     uv = UV_MIN + (double)j*UV_INV_BPMAG;
     double avg = 0.5*(steps[n].uvlf[j+UV_EXTRA-1]+steps[n].uvlf[j+UV_EXTRA+1]);
-    //if (n == 32) fprintf(stderr, "uv=%f, uvlf[%d]=%e, std_uvlf[%d]=%f\n", uv, j, steps[n].uvlf[j+UV_EXTRA], j, steps[n].std_uvlf[j+UV_EXTRA]);
     if (fabs(avg-steps[n].uvlf[j+UV_EXTRA]) > steps[n].uvlf[j+UV_EXTRA]*5e-4) 
     {
       steps[n].uvlf_ok[j+UV_EXTRA] = 0;
@@ -1624,27 +1702,38 @@ void calc_uvlf(int n, struct smf_fit *fit) {
   }
 }
 
+// Create fake star formation rate histories
+// for halos that only emerge after some time
+// in the simulation.
 void create_fake_sfr_hist(int n, int i) {
   double frac_lost = 0, weight = 0;
   double sm, total_time, time, prev_scale;
   int k;
 
-  for (k=0; k<=n; k++) {
+  for (k=0; k<=n; k++) 
+  {
     frac_lost += steps[n].smloss[k]*steps[k].dt;
     weight += steps[k].dt;
   }
   frac_lost /= weight; //Average frac lost for constant sfr
+
+  // Apply the stellar mass loss.
   sm = steps[n].sm[i] / frac_lost;
+
+  // allocate the star formation uniformly over time.
   total_time = scale_to_years(steps[n].scale)-scale_to_years(0);
-  for (k=0; k<=n; k++) {
+  for (k=0; k<=n; k++) 
+  {
     prev_scale = (n) ? steps[n-1].scale : 0;
     time = scale_to_years(steps[n].scale) - scale_to_years(prev_scale);
     steps[n].sm_hist[i*num_outputs + k] = sm*time/total_time;
   }
+  // And the new stellar mass is naturally the latest star formation history.
   steps[n].new_sm[i] = steps[n].sm_hist[i*num_outputs + n];
 
 }
 
+// Deprecated.
 double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO) 
 {
   //double icl_frac;
@@ -1658,25 +1747,37 @@ double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO)
   return 1.0;
 }
 
-
+// Calculate the star formation histories for a certain snapshot.
 void calc_sm_hist(int n, struct smf_fit *fit) {
   int64_t i, j, k, bin;
   double t;
+  // sm_hist_i/j is the stellar mass histories of the i/j-th halo mass bin.
+  // sm_inc is the amount of stellar mass coming from infalling galaxies,
+  // and sm_mmp is the stellar mass inherited from the most-massive progenitors.
   double *sm_hist_i, *sm_hist_j, sm_inc, sm_mmp;
-  double ICL_RATIO = doexp10(ICL_FRAC(*fit));
+
+  double ICL_RATIO = 1; //Deprecated.
+
+  // The intracluster light (ICL) mass histories of the i/j-th halo mass bin.
   double *icl_hist_i, *icl_hist_j;
+  // The incoming stellar mass histories of the i/j-th halo mass bin.
   double *sm_inc_hist_i, *sm_inc_hist_j;
   double icl_frac, ejec_frac;
   steps[n].smhm = smhm_at_z((1.0/steps[n].scale)-1.0, *fit);
+
+  // Invalidate the model if the fraction that the incoming satellite galaxies
+  // get merged into central galaxies is too big or too small.
   if (steps[n].smhm.icl_frac < 1e-20 || steps[n].smhm.icl_frac > 1)
   {
         //fprintf(stderr, "Bad ICL fraction: %e at z=%f\n", steps[n].smhm.icl_frac, 1/steps[n].scale-1);
         INVALIDATE(fit, "Bad ICL fraction");
   }
 
-  // Calculate the k_uv and b_uv at the bin "bin_real" before OMP takes effect,
-  // otherwise for some mass bins both of these values could be zero and cause 
-  // errors.
+  // Calculate the scaling relation between SFR and UV magnitudes, based on the
+  // fitting results shown in Appendix D of Zhang et al. (2021).
+  // We calculate the k_uv and b_uv at the bin "bin_real", k_uv_real and b_uv_real,
+  // before OMP takes effect, otherwise for some mass bins both of these 
+  // values could be zero and cause errors.
 
   double z, a1, mh, k_uv_real, b_uv_real, std_uv_real, k_std_uv, b_std_uv, a_k, b_k, c_k, a_b, b_b, c_b;
   // double a_k_std, b_k_std, a_b_std, b_b_std;
@@ -1700,7 +1801,8 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
   steps[n].flag_alloc = 0;
   double scatter_corr = steps[n].smhm.scatter_corr; 
   
-
+  // a200, m200, and v200 are necessary for converting between halo mass and maximum
+  // rotational velocity.
   double a200 = steps[n].scale/0.3782;
   double m200 = log10(1.115e12/0.68 / (pow(a200, -0.142441) + pow(a200, -1.78959)));
   double v200 = log10(200);
@@ -1723,6 +1825,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     steps[n].sfrac[i] = calc_sfrac_at_m(steps[n].lv[i], steps[n].smhm);
     steps[n].sfr[i] = calc_sfr_at_lv(steps[n].med_hm_at_a[i], lv, steps[n].smhm)*exp(pow(0.30*log(10), 2)/2.0);
 
+    // Ignore the SFR in the first snapshot.
     if (n == 0) steps[n].sfr[i] = 0;
     
     // Note that we shouldn't calculate the BH mass here, as the real stellar mass will not
@@ -1733,6 +1836,12 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     steps[n].bh_unmerged[i] = 0;
     if (no_z_scaling) continue;
 
+    // steps[n].n[i] is the number density of the halos in the i-th
+    // bin that are inherited from their most-massive progenitors.
+    // steps[n].c[i] is the number density of the halos in the i-th
+    // bin that emerge in the n-th snapshot. So if steps[n].n[i] == 0 
+    // but steps[n].c[i] > 0, we need to take care of these emerging
+    // halos by creating fake star formation histories for them.
     if (!steps[n].n[i]) 
     {
       if (steps[n].c[i]) 
@@ -1740,6 +1849,10 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
 	      create_fake_sfr_hist(n, i);
       }
     }
+
+    // If this is not the case, we should have these halos
+    // inherit the stellar mass, ICL, and incoming satellite
+    // galaxy mass histories from their most-massive progenitors (MMPs).
     else 
     {
       sm_hist_i = &(steps[n].sm_hist[i*num_outputs]);
@@ -1754,9 +1867,15 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
       	for (j=0; j<M_BINS; j++) 
         {
       	  bin = j*M_BINS + i;
+
+          // Calculate the old BH mass inherited from their MMPs.
           steps[n].old_bh_mass[i] += steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
+          // Unmerged (or wandering) BH masses come from: 1) unmerged BH masses
+          // that have not been used up by the MMPs; 2) the BH masses from incoming
+          // satellite galaxies.
       	  steps[n].bh_unmerged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j] + 
                                     steps[n-1].bh_unmerged[j]) + steps[n].mmp[bin]*steps[n-1].bh_unmerged[j];
+          
           // steps[n].bh_merged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j]);
           // // The following lines are used to calculate the mass distributions of unmerged BHs for the i-th mass bin
           // // in the n-th snapshot.
@@ -1775,6 +1894,7 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
           // double mbh = log10(steps[n-1].bh_mass_avg[j]);
           // cloud_in_cell(mbh, steps[n].merged[bin], steps[n].bh_unmerged_dist+i*MBH_BINS, MBH_MIN, MBH_BPDEX, MBH_BINS);
           
+          // icl_frac 
           icl_frac = icl_fract(i,j,n,ICL_RATIO);
       	  sm_inc += steps[n].merged[bin]*steps[n-1].sm_avg[j];
       	  if (icl_frac > 0.999) continue;

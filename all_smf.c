@@ -40,8 +40,9 @@ double frac_below8[MBH_BINS] = {0};
 double frac_below11[MBH_BINS] = {0};
 
 void init_frac_below8(void)
-// Calculate the frac_below8, i.e., the fractional probability that BH in each mass bin
-// get scattered below 10^8 Msun.
+// Calculate the frac_below8 and frac_below11, i.e., 
+// the fractional probability that BH in each mass bin
+// get scattered below 10^8 and 10^11 Msun, respectively
 {
   for (int i=0; i<MBH_BINS; i++)
   {
@@ -59,8 +60,12 @@ float z_min = 100;
 float inv_temperature = 1;
 struct smf_fit initial_smf_fit, smf_sum;
 double identity_portion = 3e-5;
+// Covariance matrix for all the model parameters.
 double cov_matrix[NUM_PARAMS][NUM_PARAMS];
+// orth_matrix is the correlation coefficient matrix for all parameters.
 double orth_matrix[NUM_PARAMS][NUM_PARAMS];
+
+// Eigenvalues vector.
 double eigenvalues[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_STEP, 
 				   EFF_0_A3_STEP, EXPSCALE_STEP, M_1_STEP,
 				   M_1_A_STEP, M_1_A2_STEP, M_1_A3_STEP,
@@ -92,6 +97,8 @@ double eigenvalues[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_STEP,
            BH_GAMMA_0_STEP, BH_GAMMA_1_STEP, BH_GAMMA_2_STEP,
            1e-9 };
 
+// A backup eigenvalue vector, in case we need to use them
+// when the vector above has been updated.
 double eigenvalues_original[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_STEP, 
            EFF_0_A3_STEP, EXPSCALE_STEP, M_1_STEP,
            M_1_A_STEP, M_1_A2_STEP, M_1_A3_STEP,
@@ -123,8 +130,8 @@ double eigenvalues_original[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_S
            BH_GAMMA_0_STEP, BH_GAMMA_1_STEP, BH_GAMMA_2_STEP,
            1e-9 };
 
-int ind_var[4] = {17, 29, 33, 37};
-
+// Read model parameters from buffer and store them
+// in data. Repeat for at most max_n times.
 static void read_params(char *buffer, double *data, int max_n) 
 {
   int num_entries = 0;
@@ -140,38 +147,43 @@ static void read_params(char *buffer, double *data, int max_n)
   }
 }
 
-
+// Read the initial model parameters and calculate the initial chi2.
 void initial_conditions(void) 
 {
   char buffer[2048];
   fgets(buffer, 2048, stdin);
   read_params(buffer, initial_smf_fit.params, NUM_PARAMS);
-  if (no_matching_scatter) SCATTER(initial_smf_fit) = 0;
+
+  // set some parameters to predefined values if needed.
   assert_model(&initial_smf_fit);
 
-  //fprintf(stderr, "Initial Chi2: %e\n", calc_chi2(initial_smf_fit.params));
   fprintf(stderr, "Initial params:\n");
   int i;
   for (i=0; i<NUM_PARAMS-1; i++) fprintf(stderr, "%.12f ", initial_smf_fit.params[i]);
   printf("%.12f\n", initial_smf_fit.params[NUM_PARAMS-1]);
 
   CHI2(initial_smf_fit) = all_smf_chi2_err(initial_smf_fit);
-  double chi22;
-  chi2_type(initial_smf_fit);
 
+  // Calculate the chi2's contributed by each type of observational data.
+  chi2_type(initial_smf_fit);
+  // Initialize the orth_matrix that specifies how well the model parameters
+  // are correlated to each other.
   init_orth_matrix();
   fprintf(stderr, "Initial Chi2 fit: %f\n", CHI2(initial_smf_fit));
 }
 
+// The function to calculate chi2 given the parameter set.
 float all_smf_chi2_err(struct smf_fit test) 
 {
   float chi2 = 0;
   double chi2_bhmf = 0;
   int i;
+
+  // Two limiting cases for the smhm model.
   z_limit = 8.5;
   struct smf smf_limit = smhm_at_z(z_limit, test);
   struct smf smf_mid = smhm_at_z(2, test);
-  struct smf smf_z4 = smhm_at_z(4.0, test);
+  // struct smf smf_z4 = smhm_at_z(4.0, test);
   INVALID(test) = 0;
   if (no_z_scaling) 
   {
@@ -180,6 +192,7 @@ float all_smf_chi2_err(struct smf_fit test)
     if (GAMMA(test) > 1.05) return -1;
   }
 
+  // exclude model parameters that lie outside of physical ranges.
   if (fabs(KAPPA(test))>KAPPA_PRIOR*2.5 || 
       ALPHA(test) >= -1 || smf_limit.alpha >= -1 || smf_mid.alpha >= -1 ||
       ALPHA(test) <= -15 || smf_limit.alpha <= -15 || smf_mid.alpha <= -15 ||
@@ -290,7 +303,8 @@ float all_smf_chi2_err(struct smf_fit test)
 
   //fprintf(stderr, "Before adding priors, chi2=%f\n", chi2);
 
-
+  // Apply the priors on several model parameters. See the table of priors
+  // in Zhang et al. (2021)
   chi2 += pow(MU(test)/MU_PRIOR, 2) + pow(KAPPA(test)/KAPPA_PRIOR, 2)
     + pow(MU_A(test)/MU_PRIOR, 2) + pow(KAPPA_A(test)/KAPPA_PRIOR, 2)
     + pow(SCATTER_A(test)/MU_PRIOR, 2)
@@ -310,6 +324,7 @@ float all_smf_chi2_err(struct smf_fit test)
 
   //fprintf(stderr, "after adding priors on parameters, chi2=%f\n", chi2);
 
+  // Priors on stellar mass--halo mass relations and against a hole in BHARs.
   double chi2_smhm = 0;
   double chi2_bhar = 0;
    for (i = 1; i < num_outputs; i++)
@@ -328,6 +343,7 @@ float all_smf_chi2_err(struct smf_fit test)
     		}
       }
    }
+
    chi2 += chi2_smhm;
    chi2 += chi2_bhar;
 
@@ -342,22 +358,25 @@ float all_smf_chi2_err(struct smf_fit test)
     double penalty_rising_sfh = rising_sfh_penalty();
     // fprintf(stderr, "The chi2 penalty for rising SFH in massive halos at low-z: %f\n", penalty_rising_sfh); 
 
+    // priors on high-z bright quasars
     double ratio_z6_qso = ratio_high_z_qso(5.7, 6.5, 47, area_sdss);
-    // fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
-
+    fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
 
     double n_z6_qso = number_high_z_low_mass_qso(5.7, 6.5, 47, area_sdss);
-    // fprintf(stderr, "The number of quasars with Lbol>10^47, Mbh<10^8, and 5.7 < z < 6.5 is %e\n", n_z6_qso);
+    fprintf(stderr, "The number of quasars with Lbol>10^47, Mbh<10^8, and 5.7 < z < 6.5 is %e\n", n_z6_qso);
 
     if (n_z6_qso > 0) chi2_qso = 2 * n_z6_qso;
     chi2_qso += log10(ratio_z6_qso) * 10;
 
+    // Prior on recent SFR histories among massive halos
     double recent_sfr = recent_sfh_in_massive_halos();
 
     if (recent_sfr > SFR_CONSTRAINT)
       chi2_sfr = pow((recent_sfr-SFR_CONSTRAINT)/(SFR_CONSTRAINT_WIDTH), 2);
 
+    // Prior on intra-cluster light to stellar mass ratios
     double recent_icl_star_ratio = recent_Micl_Mstar_ratio_in_massive_halos();
+    // Prior on recent (low redshift) radiative luminosities among massive halos.
     double recent_radiative_power = recent_radiative_power_in_massive_halos();
 
     if (recent_icl_star_ratio > ICL_RATIO_CONSTRAINT)
@@ -398,6 +417,9 @@ float all_smf_chi2_err(struct smf_fit test)
   return (chi2);
 }
 
+// Calculate the chi2's for each different type of observations.
+// This function is very similar to all_smf_chi2_err(), except 
+// that we gather chi2's for different types of data.
 float chi2_type(struct smf_fit test) 
 {
   float chi2 = 0;
@@ -406,7 +428,7 @@ float chi2_type(struct smf_fit test)
   z_limit = 8.5;
   struct smf smf_limit = smhm_at_z(z_limit, test);
   struct smf smf_mid = smhm_at_z(2, test);
-  struct smf smf_z4 = smhm_at_z(4.0, test);
+
   INVALID(test) = 0;
   if (no_z_scaling) 
   {
@@ -479,12 +501,13 @@ float chi2_type(struct smf_fit test)
       
     }
 
+  // the array to store chi2's of different observations.
   double chi2_type[11] = {0};
-  double chi2_qpdf_z[5] = {0};
-  double zlows[5] = {0.1, 0.5, 1.0, 1.5, 2.0};
+
   for (i=0; i<num_obs_smfs; i++) 
   {
     chi2 += obs_smfs[i].chi2;
+    // Add up the contribution from each type.
     chi2_type[obs_smfs[i].type] += obs_smfs[i].chi2;
   }
 
@@ -605,20 +628,33 @@ float chi2_type(struct smf_fit test)
   return (chi2);
 }
 
+// MCMC execution function.
+// length is the number of steps for MCMC,
+// and run is an identifier to tell if 
+// the MCMC is still in the burn-in phase,
+// which determines where the MCMC steps are
+// output to.
+// run == 0 for burn-in phase, otherwise for
+// final MCMC.
 int mcmc_smf_fit(int length, int run) 
 {
   int i, j, dups=0;
   float last_chi2, chi2, first_chi2;
   struct smf_fit last_smf_fit=initial_smf_fit, cur_smf_fit=initial_smf_fit;
+  // Determine which file stream to save data, based on the running mode.
   FILE *out_fh = (run > 1) ? stdout : stderr;
   first_chi2 = last_chi2 = all_smf_chi2_err(initial_smf_fit);
   double chi2_repeat = last_chi2;
+
+  // the counter and flag to monitor the repetition of model parameters in MCMC
   int64_t count_repeat = 0;
   int64_t repeated = 0;
 
   for (i=1; i<length; i++) 
   {
     repeated = 0;
+    // Restart the MCMC process if we're still in the burn-in phase
+    // and there are already more than 100 repeated steps in the chain.
     if (((count_repeat >= 100) && !run)) 
     {
       fprintf(stderr, "before resetting, i=%d\n", i);
@@ -632,8 +668,9 @@ int mcmc_smf_fit(int length, int run)
       set_identity_portion();
       continue;
     }
-    random_step(&cur_smf_fit);
-    CHI2(cur_smf_fit) = chi2 = all_smf_chi2_err(cur_smf_fit);
+    random_step(&cur_smf_fit); // Propose new parameter set
+    CHI2(cur_smf_fit) = chi2 = all_smf_chi2_err(cur_smf_fit); // Calculate the new chi2
+    // Determine if the new step should be accepted.
     if (!isfinite(chi2) || chi2<0 ||
 	  (chi2>last_chi2 && drand48()>exp(0.5*inv_temperature*(last_chi2-chi2))))
     {
@@ -644,10 +681,15 @@ int mcmc_smf_fit(int length, int run)
     }
     chi2_repeat = last_chi2 = chi2;
     last_smf_fit = cur_smf_fit;
+
+    // Add the step (either repeated or not) to the chain and recalculate the
+    // statistics, including the mean parameter values and covariance matrix.
     add_to_stats(&cur_smf_fit);
     num_points++;
+    // If repeated, add 1 to count_repeat.
     count_repeat = repeated ? count_repeat + 1 : 0;
-    //fprintf(stderr, "Number of repetitions? %d\n", count_repeat);
+    // If not in the burn-in phase, we update the input_matrix, eigenvalues, and 
+    // orth_matrix after adding the new step.
     if (run > 0) stats_to_step(num_points);
     for (j=0; j<NUM_PARAMS+1; j++) fprintf(out_fh, "%.10f ", cur_smf_fit.params[j]);
     fprintf(out_fh, "%f\n", CHI2(cur_smf_fit));
@@ -656,6 +698,7 @@ int mcmc_smf_fit(int length, int run)
   return dups;
 }
 
+// Initialize the MCMC process with input arguments.
 void init_mcmc_from_args(int argc, char **argv)
 {
   int i;
@@ -669,29 +712,48 @@ void init_mcmc_from_args(int argc, char **argv)
 
 
   i = atol(argv[1]);
-  if (i == 0) no_z_scaling = 1;
-  if (i == 2) no_sfr_constraint = 1;
-  if (i == 3) dplaw_only = 1;
+  if (i == 0) no_z_scaling = 1; // No redshift evolution of any parameters.
+  if (i == 2) no_sfr_constraint = 1; // No constraint on the recent SFR histories of massive halos.
+  if (i == 3) dplaw_only = 1; // No Gaussian boost in the SFR--Vmax relation.
+                              // Note that even in the fiducial model we no longer
+                              // have this boost, so this argument is effectively
+                              // deprecated.
 
-  if (!atol(argv[2])) { no_matching_scatter = 1; }
-  setup_psf(atoi(argv[3]));
-  if (!atol(argv[3])) no_obs_scatter = 1;
-  if (!atol(argv[4])) { no_systematics = 1; }
-  nonlinear_luminosity = atol(argv[5]);
-  if (atol(argv[6])) { no_bh_mergers = 1; }
-  if (atol(argv[7])) { vel_dispersion = 1; }
+  if (!atol(argv[2])) { no_matching_scatter = 1; } // No intrinsic scatter in the stellar
+                                                    // mass--halo mass relation
+  setup_psf(atoi(argv[3])); // Set up the cache for Gaussian distribution.
+  if (!atol(argv[3])) no_obs_scatter = 1; // No random scatter in observed vs. true
+                                          // stellar mass
+  if (!atol(argv[4])) { no_systematics = 1; } // No galaxy systematic effects (like
+                                              // mu, kappa)
+  nonlinear_luminosity = atol(argv[5]); // Adopt the non-linear scaling relation between
+                                        // the radiative and the total Eddington ratio.
+  if (atol(argv[6])) { no_bh_mergers = 1; } // No BH mergers.
+  if (atol(argv[7])) // Use M-sigma relation instead of the black hole mass--bulge mass
+  {                  // relation. This is deprecated for now. See the fprintf() below.
+    fprintf(stderr, "M-sigma option is deprecated for now. Automatically switch to black hole mass--bulge mass relation.\n");
+    vel_dispersion = 0; 
+  }
+  
+  // Load the cached halo mass functions
   load_mf_cache(argv[8]);
+
+  // Initialize the time steps. See gen_mlists.c
   init_timesteps();
 
+  // Read in the observational data points.
   num_obs_smfs = 0;
   for (i=9; i<argc; i++) 
   {
     if (!strcmp(argv[i], "nopoints")) continue;
+    // See observations.c
     load_real_smf(&obs_smfs, &num_obs_smfs, argv[i]);
     if (obs_smfs[num_obs_smfs-1].z_high > z_limit) z_limit = obs_smfs[num_obs_smfs-1].z_high;
   }
 }
 
+// Set the scale factor for the identity matrix added to input_matrix 
+// each time.
 void set_identity_portion(void) 
 {
   int64_t i;
@@ -711,19 +773,24 @@ int main(int argc, char **argv)
   float temps[5] = {0.1, 0.2, 0.3, 0.5, 0.8};
   int64_t num_temps = 5;
   init_frac_below8();
-  gsl_set_error_handler_off();
+  gsl_set_error_handler_off(); // Turn off the built-in error handler of GSL.
+                               // This is because it kills the program every
+                               // time it gets triggered.
   
   init_mcmc_from_args(argc, argv);
   initial_conditions();
   fprintf(stderr, "Total number of data points: %ld", num_obs_smfs);
   // return 0;
 
+  // // Users can turn on the randomness if needed.
   // srand(time(0));
   // srand48(time(0));
   // init_genrand64((unsigned long long) time(0));
 
-  clear_stats();
+  clear_stats(); //Clean all the statistics before starting.
   set_identity_portion();
+
+  // Burn-in.
   for (i=0; i<num_temps; i++) {
     inv_temperature = temps[i];
     fprintf(stderr, "#Temp now: %f\n", 1.0/inv_temperature);
@@ -733,6 +800,8 @@ int main(int argc, char **argv)
   }
   return 0;
   inv_temperature = 1;
+
+  // Final MCMC
   fprintf(stderr, "#Temp now: %f\n", 1.0/inv_temperature);
   set_identity_portion();
   mcmc_smf_fit(MCMC_LENGTH/4.0, 1);
@@ -747,6 +816,8 @@ int main(int argc, char **argv)
 
 #endif
 
+// Initialize the orth_matrix, which specifies how 
+// different parameters are correlated with each other.
 void init_orth_matrix(void) 
 {
   int i,j;
@@ -763,6 +834,7 @@ void init_orth_matrix(void)
   }
 }
 
+// Print the orth_matrix.
 void print_orth_matrix(int type, int syst, float scatter, float z) 
 {
   FILE *output;
@@ -784,6 +856,8 @@ void print_orth_matrix(int type, int syst, float scatter, float z)
   fclose(output);
 }
 
+// Clear the statistics saved in the mean parameter values
+// and the covariant matrix.
 void clear_stats(void) 
 {
   int i, j;
@@ -799,6 +873,8 @@ void clear_stats(void)
   num_points = 0;
 }
 
+// Add new step to the mean parameter values
+// and the covariant matrix.
 void add_to_stats(struct smf_fit *a) 
 {
   int i,j;
@@ -812,6 +888,8 @@ void add_to_stats(struct smf_fit *a)
   }
 }
 
+// Update the input_matrix and eigenvalues
+// after adding a new step.
 void stats_to_step(int64_t num_stats) 
 {
   double mul = 1.0/(double)num_stats;
@@ -834,7 +912,8 @@ void stats_to_step(int64_t num_stats)
   }
 }
 
-
+// fix some parameters to certain values as indicated
+// by various flags.
 void assert_model(struct smf_fit *a) 
 {
   LAMBDA(*a) = LAMBDA_A(*a) = 0;
@@ -929,12 +1008,16 @@ void assert_model(struct smf_fit *a)
   ICL_FRAC_E(*a) = 0;
 }
 
+// The function to propose new steps in MCMC.
 void random_step(struct smf_fit *a) 
 {
-  int i,j,num_params=6;
+  int i,j,num_params=6; // To enhance the sampling efficiency, we randomly
+                        // choose 6 parameters to vary.
   for (i=0; i<num_params; i++) 
   {
     j = rand()%NUM_PARAMS;
+    // Generate a Gaussian random vector in the eigen vector space, and
+    // transform it back into the parameter space.
     vector_madd(a->params, normal_random(0,eigenvalues[j]), orth_matrix[j]);
   }
   assert_model(a);

@@ -20,6 +20,7 @@
 #include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_hyperg.h>
 
+// The parameters to calculate the correction for Compton-thick AGNs.
 #define BETA 0.24
 #define psi_min 0.2
 #define psi_max 0.84
@@ -36,11 +37,15 @@ extern float z_min;
 
 #define exp10fc(x) doexp10(x)
 
-static double doexp10(double x) {
+// The function to do 10^x.
+static double doexp10(double x) 
+{
   double a = exp(M_LN10*x);
   return a;
 }
 
+// The functions to calculate the fraction of Compton thick 
+// obscured AGNs. See Ueda et al. (2014).
 double psi4375(double z)
 {
   return z < 2? psi43750 * pow((1 + z), a1) : psi43750 * pow((1 + 2), a1);
@@ -53,6 +58,8 @@ double psi(double Lx, double z)
   return psi_max > max1 ? max1 : psi_max;
 }
 
+// Find the X-ray luminosity given the bolometric luminosity.
+// All the luminosities are in log10 units. See Ueda et al. (2014.)
 double find_Lx_at_Lbol(double Lbol)
 {
   double BC = 10.83 * pow(exp10(Lbol) / (1e10 * 3.839e33), 0.28) +
@@ -60,6 +67,8 @@ double find_Lx_at_Lbol(double Lbol)
   return Lbol - log10(BC);
 }
 
+// Find the bolometric luminosity given the X-ray luminosity.
+// All the luminosities are in log10 units. See Ueda et al. (2014).
 double find_Lbol_at_Lx(double Lx)
 {
   double dlx = Lx - 4.21484284e+01;
@@ -67,19 +76,21 @@ double find_Lbol_at_Lx(double Lx)
   return Lx + logBC;
 }
 
-// ref: Schulze+2015
+// The fraction of obscured AGNs, as a function of X-ray
+// luminosity. This is used to correct for the active
+// black hole mass functions from Kelly & Shen (2013).
 double F_obs(double Lx)
 {
   if (Lx < 43) return 0.985;
   return 0.56 + 1.0 / M_PI * atan((43.89 - Lx) / 0.46);
 }
 
-int use_obs_psf = 1;
-struct z_mf_cache *all_mf_caches = NULL;
-double gauss_cache[GAUSS_CACHE_SIZE];
+int use_obs_psf = 1; // The flag indicating if the scatter in observed stellar masses
+                    // is accounted for in the calculation of observables.
+struct z_mf_cache *all_mf_caches = NULL; // The cache of halo mass functions.
+double gauss_cache[GAUSS_CACHE_SIZE]; // The cache for the standard normal distribution.
 
-int output_smf = 0;
-
+// Initialize the cache of standard normal distributions.
 void init_gauss_cache(void) 
 {
   int i;
@@ -91,11 +102,19 @@ void init_gauss_cache(void)
   }
 }
 
+// Calculate the normalization of a Schechter function with a power-law index
+// alpha, within the interval [lower, upper]. Note that the input lower/upper
+// are in log10 units.
+// Note tht this function is effectively deprecated, since we adopt a double
+// power-law Eddington ratio distribution.
 double schechter_norm(double alpha, double lower, double upper, struct smf_fit *fit) 
 {
   lower = exp10fc(lower);
   upper = exp10fc(upper);
   gsl_sf_result rl, rh;
+
+  // The integral can be obtained by taking the difference of two incomplete
+  // gamma functions.
   if (gsl_sf_gamma_inc_e(alpha, lower, &rl) || gsl_sf_gamma_inc_e(alpha, upper, &rh)) 
   {
     //error happened...
@@ -108,40 +127,10 @@ double schechter_norm(double alpha, double lower, double upper, struct smf_fit *
   return((rl.val-rh.val)/log(10.0));
 }
 
-double hyperg_gt1(double a, double b, double c, double z, struct smf_fit* fit)
-{
-  double g_a, g_b, g_c, g_ab, g_ba, g_ca, g_cb;
-  double coef1, coef2;
-  double F1_1, F1_2;
-  gsl_sf_result r[9];
-  if (gsl_sf_gamma_e(a, &(r[0])) || gsl_sf_gamma_e(b, &(r[1])) || gsl_sf_gamma_e(c, &(r[2])) ||
-        gsl_sf_gamma_e(a - b, &(r[3])) || gsl_sf_gamma_e(b - a, &(r[4])) || gsl_sf_gamma_e(c - a, &(r[5])) ||
-        gsl_sf_gamma_e(c - b, &(r[6])))
-  {
-    if (fit) 
-      {
-        INVALIDATE(fit, "Invalid arguments to gamma function.");
-      }
-  }
-  g_a = r[0].val; g_b = r[1].val; g_c = r[2].val;
-  g_ab = r[3].val; g_ba = r[4].val; g_ca = r[5].val; g_cb = r[6].val;
-
-  if (gsl_sf_hyperg_2F1_e(a, c - b, a - b + 1, 1 / (1 - z), &(r[7])) || 
-       gsl_sf_hyperg_2F1_e(b, c - a, b - a + 1, 1 / (1 - z), &(r[8])))
-  {
-    if (fit) 
-      {
-        INVALIDATE(fit, "Invalid arguments to Hypergeometric function.");
-      }
-  }
-  coef1 = pow(1 - z, -a) * g_c * g_ba / (g_b * g_ca);
-  coef2 = pow(1 - z, -b) * g_c * g_ab / (g_a * g_cb);
-  F1_1 = r[7].val; F1_2 = r[8].val;
-  return coef1 * F1_1 + coef2 * F1_2;
-}
-
+// Calculate the normalization of a double power-law: 1 / (x**a + x**b).
 double doublePL_norm(double a, double b, double lower, double upper, struct smf_fit *fit) 
 { 
+  // Ensure that a is bigger than b.
   if (a < b)
   {
     double tmp = a;
@@ -154,9 +143,13 @@ double doublePL_norm(double a, double b, double lower, double upper, struct smf_
   a += 1;
   b += 1;
 
-
+  // Generally, the definite integral of this double power-law is a confluent 
+  // hypergeometric function. I don't wanna get into the weeds, and so implemented
+  // a numerical integral below.
   int n_pts = 200; // # of points in the numerical integral
-  double scale = 1.0 / n_pts * (upper - lower);
+  double scale = 1.0 / n_pts * (upper - lower); // scale is the multiplicative factor
+                                                // connecting the midway point of
+                                                // consecutive small intervals.
   scale = exp10fc(scale);
   double x1 = exp10fc(lower);
   double x2 = exp10fc(upper);
@@ -167,8 +160,8 @@ double doublePL_norm(double a, double b, double lower, double upper, struct smf_
   double dx = x_right - x_left;
   double x_center_a = pow(x_center, a);
   double x_center_b = pow(x_center, b);
-  double scale_a = pow(scale, a);
-  double scale_b = pow(scale, b);
+  double scale_a = pow(scale, a); // Precalculate the scale factor of the two power-laws,
+  double scale_b = pow(scale, b); // so that we don't have to invoke pow() every time.
 
   for (int i = 0; i < n_pts; i++)
   {    

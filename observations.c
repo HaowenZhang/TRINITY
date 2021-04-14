@@ -176,7 +176,9 @@ double doublePL_norm(double a, double b, double lower, double upper, struct smf_
 }
 
 
-
+// Calculate the inverse of the average Eddington ratio, 
+// given the Schechter power-law index, within the
+// interval [lower, upper].
 double schechter_inv_avg(double alpha, double lower, double upper, struct smf_fit *fit) 
 {
   double norm = schechter_norm(alpha, lower, upper, fit);
@@ -184,6 +186,9 @@ double schechter_inv_avg(double alpha, double lower, double upper, struct smf_fi
   return norm/norm2;
 }
 
+// Calculate the fraction of schechter distribution 
+// (power-law index alpha, normalization norm)
+// that is above a certain threshold (thresh).
 double schechter_frac_above_thresh(double thresh, double alpha, double norm, struct smf_fit *fit) 
 {
   if (thresh < BHER_EFF_MIN) thresh = BHER_EFF_MIN;
@@ -191,6 +196,10 @@ double schechter_frac_above_thresh(double thresh, double alpha, double norm, str
   return (schechter_norm(alpha, thresh, BHER_EFF_MAX, fit)*norm);
 }
 
+// Calculate the fraction of double power-law
+// distribution (power-law indices alpha and delta,
+// normalization norm) that is above a certain,
+// threshold (thresh).
 double doublePL_frac_above_thresh(double thresh, double alpha, double delta, double norm, struct smf_fit *fit) 
 {
   if (thresh < BHER_EFF_MIN) thresh = BHER_EFF_MIN;
@@ -198,13 +207,19 @@ double doublePL_frac_above_thresh(double thresh, double alpha, double delta, dou
   return (doublePL_norm(alpha, delta, thresh, BHER_EFF_MAX, fit)*norm);
 }
 
-
+// Calculate the Gaussian distribution value based on the 
+// difference with the central value, scaled by the Gaussian
+// spread (dm).
 double syst_cache(double dm) 
 {
   return (exp(-0.5*dm*dm)*(0.5*M_2_SQRTPI*M_SQRT1_2));
 }
 
-
+// Calculate the inverse of the total scatter,
+// which is a quadratic sum of the scatter in
+// observed stellar masses around the true masses
+// (obs_scatter), and the intrinsic scatter around,
+// e.g., the stellar mass--halo mass relation.
 double gen_inv_sigma(double obs_scatter, double scatter) 
 {
   if (!scatter && (!use_obs_psf || !obs_scatter)) return 0;
@@ -212,13 +227,18 @@ double gen_inv_sigma(double obs_scatter, double scatter)
   return 1.0/gauss_sigma;
 }
 
+// Evaluate the point spread function at a certain
+// mass difference (delta_m), given the inverse
+// of total scatter (gauss_inv_sigma).
 double evaluate_psf(double delta_m, double gauss_inv_sigma) 
 {
   if (!gauss_inv_sigma) return (delta_m ? 0 : 1);
   return(gauss_inv_sigma*syst_cache(delta_m*gauss_inv_sigma));
 }
 
-
+// Interpolation of list over stellar mass.
+// This function is used only when list contains
+// stellar masses.
 double _interp_from_sm(double sm, double *list, int64_t n, char *ok) 
 {
   double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
@@ -234,6 +254,9 @@ double _interp_from_sm(double sm, double *list, int64_t n, char *ok)
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
+// Interpolation of list over stellar mass.
+// This function is used only when the list
+// contains SFRs.
 double _interp_from_sfr(double sm, double *list, int64_t n) 
 {
   double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
@@ -249,6 +272,9 @@ double _interp_from_sfr(double sm, double *list, int64_t n)
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
+// Interpolation of list over stellar mass.
+// This function is used only when the list
+// contains galaxy quenched fractions.
 double _interp_from_sfrac(double sm, double *list, int64_t n) 
 {
   double f = (sm-SM_MIN)*((double)SM_BPDEX)+SM_EXTRA;
@@ -264,6 +290,9 @@ double _interp_from_sfrac(double sm, double *list, int64_t n)
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
+// Interpolation of list over stellar mass.
+// This function is used only when the list
+// contains UV magnitudes.
 double _interp_from_uv(double uv, double *list, int64_t n, char *ok) 
 {
   double f = (uv-UV_MIN)*((double)UV_BPMAG)+UV_EXTRA;
@@ -283,6 +312,10 @@ double _interp_from_uv(double uv, double *list, int64_t n, char *ok)
   return (list[b] + f*(list[b+1]-list[b]));
 }
 
+// Interpolation of list over stellar mass.
+// This function is used only when the list
+// contains the Gaussian spread of UV
+// magnitudes.
 double _interp_from_std_uv(double uv, double *list, int64_t n) 
 {
   double f = (uv-UV_MIN)*((double)UV_BPMAG)+UV_EXTRA;
@@ -298,34 +331,30 @@ double _interp_from_std_uv(double uv, double *list, int64_t n)
 }
   
 
-
+// Calculate the ***observed*** bulge mass
+// given the ***observed*** stellar mass
+// and scale factor (a= 1 / (1 + z)).
 double bulge_mass(double sm, double a) 
 {
   double z_mul = 1.0 - 0.5*(1.0-a);
   return sm+log10(z_mul/(1.0+exp(-1.12882*(sm-10.1993))));
 }
 
+// Calculate the contribution of a certain stellar mass
+// (sm) to the stellar mass function (SMF) at a pre-
+// defined stellar mass, extra_data->sm.
 double step_integral_helper(double sm, void *extra_data) 
 {
   struct step_integral_helper_data *ih = 
     (struct step_integral_helper_data *)extra_data;
   double delta_m = sm - ih->sm;
+
+  // Evaluate the point spread function, which specifies
+  // how much contribution from sm is scattered to ih->sm.
   double psf1 = evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  //New Kappa:
-  // double passive_frac = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass))+1);
-  // double passive_frac2 = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass-ih->kappa))+1);
-
-  // In the UM parametrization we no longer have different offsets between SF and Q
-  // galaxies, so only one PSF need to be evaluated. 
-  // double sfrac1 = _interp_from_sfrac(sm, ih->sfrac_sm, ih->n);
-  // double psf1 = (1 - sfrac1) * evaluate_psf(delta_m, ih->gauss_inv_sigma) +
-  //               sfrac1 * evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
-  // double psf = evaluate_psf(delta_m, ih->gauss_inv_sigma);
 
 
-  // psf = psf*passive_frac + 
-  //   (1.0-passive_frac2)*evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
-
+  // Apply further corrections if needed.
   if (ih->corr)
     psf1 *= exp10fc(-ih->corr*(delta_m-ih->s_corr));
   double val = _interp_from_sm(sm, ih->list, ih->n, ih->ok);
@@ -335,7 +364,6 @@ double step_integral_helper(double sm, void *extra_data)
     val = 1e-17;
   }
   return (psf1*val);
-  // return (psf*val);
 }
 
 // The new step_integral_helper for ssfr. This is because we have to separate the
@@ -345,20 +373,12 @@ double step_integral_helper_ssfr(double sm, void *extra_data)
   struct step_integral_helper_data *ih = 
     (struct step_integral_helper_data *)extra_data;
   double delta_m = sm - ih->sm;
-  // double psf = evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  //New Kappa:
-  // double passive_frac = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass))+1);
-  // double passive_frac2 = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass-ih->kappa))+1);
 
+  // We need two PSFs in this function, because both the contributions from star-forming
+  // and quenched galaxies should be accounted for.
   double sfrac = _interp_from_sfrac(sm, ih->sfrac_sm, ih->n);
-  // double sfrac2 = _interp_from_sm(sm, ih->sfrac_sm2, ih->n2, ih->ok2);
   double psf1 = (1 - sfrac) * evaluate_psf(delta_m, ih->gauss_inv_sigma);
   double psf2 = psf1 / (1 - sfrac) * sfrac;
-  // double psf2 = sfrac * evaluate_psf(delta_m, ih->gauss_inv_sigma);
-
-
-  // psf = psf*passive_frac + 
-  //   (1.0-passive_frac2)*evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
 
   if (ih->corr)
   {
@@ -366,6 +386,7 @@ double step_integral_helper_ssfr(double sm, void *extra_data)
     psf1 *= exp10fc(-ih->corr*(delta_m-ih->s_corr));
     psf2 *= exp10fc(-ih->corr*(delta_m-ih->s_corr));
   }
+  // Get the average SFRs for both star-forming and quenched galaxies.
   double val1 = _interp_from_sfr(sm, ih->sfr_sm_q, ih->n);
   double val2 = _interp_from_sfr(sm, ih->sfr_sm_sf, ih->n);
   if (ih->f > -1) val1 += ih->f*(_interp_from_sfr(sm, ih->sfr_sm_q2, ih->n2)-val1);
@@ -374,15 +395,19 @@ double step_integral_helper_ssfr(double sm, void *extra_data)
   {
     val1 = val2 = 1e-17;
   }
+  // Add up their contributions.
   return (psf1*val1 + psf2*val2);
-  // return (psf*val);
 }
 
+// Calculate the contribution of a certain stellar mass
+// (uv) to the UV luminosity function (UVLF) at a pre-
+// defined UV magnitude, extra_data->sm (not extra_data->uv).
 double step_integral_helper_uv(double uv, void *extra_data) 
 {
   struct step_integral_helper_data *ih = 
     (struct step_integral_helper_data *)extra_data;
   double delta_uv = uv - ih->sm;
+
   // Here we use ih->sfrac_sm to contain the std_uvlf grids.
   double std_uv = _interp_from_std_uv(uv, ih->sfrac_sm, ih->n);
   double gauss_inv_sigma = gen_inv_sigma(0, std_uv);
@@ -400,27 +425,22 @@ double step_integral_helper_uv(double uv, void *extra_data)
     val = 1e-17;
   }
   return (psf*val);
-  // return (psf*val);
 }
 
-double step_integral_helper_Q(double sm, void *extra_data) {
+// Calculate the contribution of a certain stellar mass
+// (sm) to the stellar mass function (SMF) at a pre-
+// defined stellar mass, extra_data->sm. NOTE: This function
+// only accounts for the quenched (Q) galaxies. This is gonna
+// be used when calculating galaxy quenched fractions.
+double step_integral_helper_Q(double sm, void *extra_data) 
+{
   struct step_integral_helper_data *ih = 
     (struct step_integral_helper_data *)extra_data;
   double delta_m = sm - ih->sm;
   double psf = evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  //New Kappa:
-  // double passive_frac = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass))+1);
-  // double passive_frac2 = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass-ih->kappa))+1);
 
   double sfrac1 = _interp_from_sfrac(sm, ih->sfrac_sm, ih->n);
-  // double sfrac2 = _interp_from_sm(sm, ih->sfrac_sm2, ih->n2, ih->ok2);
   double psf1 = (1 - sfrac1) * evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  // double psf2 = (1 - sfrac2) * evaluate_psf(delta_m, ih->gauss_inv_sigma) +
-  //               sfrac1 * evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
-
-
-  // psf = psf*passive_frac + 
-  //   (1.0-passive_frac2)*evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
 
   if (ih->corr)
     psf1 *= exp10fc(-ih->corr*(delta_m-ih->s_corr));
@@ -431,29 +451,22 @@ double step_integral_helper_Q(double sm, void *extra_data) {
     val = 1e-17;
   }
   return (psf1*val);
-  // return (psf*val);
 }
 
-
-double step_integral_helper_SF(double sm, void *extra_data) {
+// Calculate the contribution of a certain stellar mass
+// (sm) to the stellar mass function (SMF) at a pre-
+// defined stellar mass, extra_data->sm. NOTE: This function
+// only accounts for the star-forming (SF) galaxies. 
+// This is gonna be used when calculating galaxy quenched fractions.
+double step_integral_helper_SF(double sm, void *extra_data) 
+{
   struct step_integral_helper_data *ih = 
     (struct step_integral_helper_data *)extra_data;
   double delta_m = sm - ih->sm;
   double psf = evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  //New Kappa:
-  // double passive_frac = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass))+1);
-  // double passive_frac2 = 1.0/(exp10fc(-1.3*(sm-ih->passive_mass-ih->kappa))+1);
 
   double sfrac1 = _interp_from_sfrac(sm, ih->sfrac_sm, ih->n);
-  // double sfrac2 = _interp_from_sm(sm, ih->sfrac_sm2, ih->n2, ih->ok2);
   double psf1 = sfrac1 * evaluate_psf(delta_m, ih->gauss_inv_sigma);
-  // double psf1 = sfrac1 * evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
-  // double psf2 = (1 - sfrac2) * evaluate_psf(delta_m, ih->gauss_inv_sigma) +
-  //               sfrac1 * evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
-
-
-  // psf = psf*passive_frac + 
-  //   (1.0-passive_frac2)*evaluate_psf(delta_m-ih->kappa, ih->gauss_inv_sigma);
 
   if (ih->corr)
     psf1 *= exp10fc(-ih->corr*(delta_m-ih->s_corr));
@@ -464,39 +477,57 @@ double step_integral_helper_SF(double sm, void *extra_data) {
     val = 1e-17;
   }
   return (psf1*val);
-  // return (psf*val);
 }
 
-
+// Evaluate the observed stellar mass function
+// or average observed specific SFR (SSFR) at 
+// redshift z, ***observed*** stellar mass m.
 double evaluate_from_step(double z, double sm, int smf) 
 {
+  // phi_corr is the correction in the normalizations of
+  // either stellar mass function or average SSFR.
   double phi_corr=1, sm_true, sm_max;
   struct step_integral_helper_data ih;
+
+  // Find out the corresponding snapshots for redshift z.
   calc_step_at_z(z, &(ih.step), &(ih.f));
+
+  // Get the model parameters.
   struct smf smhm = steps[ih.step].smhm;
+
+  // The correction between the average and median values due to
+  // log-normal distribution.
   double scatter_corr = smhm.scatter*smhm.scatter*(0.5*M_LN10);
 
+  // Correct for the systematic offset in stellar mass. See
+  // Section 2.3 of Zhang et al. (2021).
   sm_true = (sm - smhm.mu);
-  if (!(sm_true >= 0 && sm_true < 20)) {
+
+  // Complain if the input stellar mass is unphysical.
+  if (!(sm_true >= 0 && sm_true < 20)) 
+  {
     fprintf(stderr, "Gah! %f %f %f %f %f %f %f %f %f %f %f\n", sm_true, sm, smhm.sm_0, smhm.v_1, smhm.delta, smhm.beta, smhm.gamma, smhm.lambda, smhm.scatter, smhm.mu, smhm.kappa);
   }
-  //if (smf) phi_corr = 1.0 /(1.0+smhm.kappa);
-  if (!smf) {
-    
-    // phi_corr *= pow(10,-sm_true)*smhm.ssfr_corr;
-    // Apply an additional offset of 10^(kappa * exp(-(z-2)^2/2)) to SSFR.
+  
+  // smf == 0 means that we're calculating the average SSFR. 
+  // In this case we should apply the offset in SFR as
+  // described in Section 2.3 of Zhang et al. (2021).
+  if (!smf) 
+  {
     phi_corr *= pow(10,-sm_true+smhm.kappa * exp(-0.5 * (z - 2) *(z - 2)))*smhm.ssfr_corr;
-    
-    // // Apply a uniform offset of 10^(mu + kappa * exp(-(z-2)^2/2)) to SSFR.
-    // phi_corr *= pow(10,-sm_true+smhm.mu+smhm.kappa * exp(-0.5 * (z - 2) *(z - 2)))*smhm.ssfr_corr;
+    // Also have to account for the correlation between stellar mass
+    // and SFR at fixed halo mass.
     ih.corr = smhm.sfr_sm_corr;
   }
+
+  // Otherwise we're calculating SMFs. No correction for 
+  // the normalization should be applied.
   else
   {
-    phi_corr *= smhm.sm_completeness;
     ih.corr = 0;
   }
 
+  // Write the information into the help structure, step_integral_helper_data ih.
   if (!use_obs_psf) smhm.obs_scatter = 0;
   ih.gauss_inv_sigma = gen_inv_sigma(smhm.obs_scatter, smhm.scatter);
   ih.s_corr = scatter_corr;
@@ -506,24 +537,39 @@ double evaluate_from_step(double z, double sm, int smf)
   ih.n = ih.n2 = -1;
   if (smf) 
   {
+    // ih.list is the array we're going to interpolate on.
     ih.list = steps[ih.step].smf;
     ih.sfrac_sm = steps[ih.step].sfrac_sm;
+    // ih.n is the step where we're doing the interpolation.
     ih.n = ih.step;
+    // ih.ok shows if ih.list varies smoothly. See calc_smf_and_ssfr()
+    // in calc_sfh.c.
     ih.ok = steps[ih.step].smf_ok;
 
+    // If we're not looking at the last snapshot,
+    // we also need to interpolate in the redshift
+    // dimension.
     if (ih.f > -1) 
     {
+      // Similar stuff but for the next snapshot
       ih.list2 = steps[ih.step+1].smf;
       ih.n2 = ih.step+1;
       ih.ok2 = steps[ih.step+1].smf_ok;
     }
   } 
-  else 
+  else // If we are calculating SSFRs
   {
+    // ih.list is then the average SFR as
+    // a function of stellar mass.
     ih.list = steps[ih.step].sfr_sm;
+    // We also need star-forming fraction,
+    // and SFRs for star-forming and quenched
+    // galaxies.
     ih.sfrac_sm = steps[ih.step].sfrac_sm;
     ih.sfr_sm_sf = steps[ih.step].sfr_sm_sf;
     ih.sfr_sm_q = steps[ih.step].sfr_sm_q;
+
+    // Same stuff for the next snapshot.
     if (ih.f > -1) 
     {
       ih.list2 = steps[ih.step+1].sfr_sm;
@@ -531,15 +577,25 @@ double evaluate_from_step(double z, double sm, int smf)
       ih.sfr_sm_q2 = steps[ih.step+1].sfr_sm_q;
     }
   }
+
+  // Due to various systematic offset and scatters,
+  // the observed stellar mass function at any 
+  // given stellar mass is a convolution of the
+  // contribution from a broad range of intrinsic
+  // stellar masses. And sm_max determines the 
+  // maximum stellar mass whose contribution 
+  // will be included when calculating the stellar 
+  // mass functions.
   sm_max = sm_true+GAUSS_CACHE_MAX/ih.gauss_inv_sigma;
   if (sm_max > steps[ih.step].smhm.sm_max)
     sm_max = steps[ih.step].smhm.sm_max;
 
   double result;
 
+  // No-scatter case.
   if (!smhm.scatter && (!use_obs_psf || !smhm.obs_scatter))
   {
-    if (smf == 2) //quenched fractions
+    if (smf == 2) //smf == 2 means calculating quenched fractions
       {
         double smf_q = step_integral_helper_Q(sm_true - smhm.scatter, (void *)&ih);
         double smf_sf = step_integral_helper_SF(sm_true - smhm.scatter, (void *)&ih);
@@ -550,12 +606,16 @@ double evaluate_from_step(double z, double sm, int smf)
     else
       result = (phi_corr*step_integral_helper(sm_true - smhm.scatter, (void *)&ih));
   }
+
+  // If there are scatters in the model
   else 
   {
     double precision = PHI_INTEGRAL_PRECISION;
-     if (z <= 0.2) precision*=0.001;
-     //fprintf(stderr, "sm=%f, a (sm_true) =%f, b (sm_max)=%f, phi_corr=%f\n", sm, sm_true + GAUSS_CACHE_MIN/ih.gauss_inv_sigma, sm_max, phi_corr);
-    if (smf == 2)
+    // Require higher precision for very low redshifts. This is because
+    // These data tend to have much smaller error bars.
+    if (z <= 0.2) precision*=0.001;
+
+    if (smf == 2) // Quenched fraction
     {
 
       double smf_q = (phi_corr * adaptiveGauss(step_integral_helper_Q, (void *)&ih,
@@ -569,7 +629,7 @@ double evaluate_from_step(double z, double sm, int smf)
 
       result = smf_q / (smf_q + smf_sf);
     }
-    else if (smf == 1)
+    else if (smf == 1) // Stellar mass function
     {
       result = (phi_corr * adaptiveGauss(step_integral_helper, (void *)&ih,
           sm_true + GAUSS_CACHE_MIN/ih.gauss_inv_sigma,
@@ -591,32 +651,26 @@ double evaluate_from_step(double z, double sm, int smf)
   return result;
 }
 
-
+// Calculate the observed UV luminosity function
+// at a given observed UV magnitude uv and redshift
+// z.
 double evaluate_from_step_uv(double z, double uv) 
 {
   double phi_corr=1;
   struct step_integral_helper_data ih;
   calc_step_at_z(z, &(ih.step), &(ih.f));
   struct smf smhm = steps[ih.step].smhm;
-  // double scatter_corr = smhm.scatter*smhm.scatter*(0.5*M_LN10);
 
-  // if (!use_obs_psf) smhm.obs_scatter = 0;
-  // ih.gauss_inv_sigma = gen_inv_sigma(smhm.obs_scatter, smhm.scatter);
-  // ih.gauss_inv_sigma = 10;
-  // ih.kappa = smhm.kappa;
-  // ih.passive_mass = smhm.passive_mass;
-  //ih.s_corr = scatter_corr;
+  // Similar info as in evaluate_from_step()
   ih.sm = uv;
-  //ih.scatter = smhm.scatter;
-  //ih.obs_scatter = smhm.obs_scatter;
   ih.n = ih.n2 = -1;
-  
   ih.list = steps[ih.step].uvlf;
   ih.sfrac_sm = steps[ih.step].std_uvlf;
-  //if (z <= 0.2) {
   ih.n = ih.step;
   ih.ok = steps[ih.step].uvlf_ok;
   
+  // Same stuff for the next snapshot, if there
+  // is a next snapshot.
   if (ih.f > -1) 
   {
     ih.list2 = steps[ih.step+1].uvlf;
@@ -624,16 +678,20 @@ double evaluate_from_step_uv(double z, double uv)
     ih.ok2 = steps[ih.step+1].uvlf_ok;
   }
   
+  // Determine the lower/upper limits for the integral.
   double uv_max = uv+UV_MAG_OFFSET;
   if (uv_max > steps[ih.step].smhm.uv_max)
     uv_max = steps[ih.step].smhm.uv_max;
   double uv_min = uv - UV_MAG_OFFSET;
   if (uv_min < steps[ih.step].smhm.uv_min)
     uv_min = steps[ih.step].smhm.uv_min;
-  //if (sm_true >= sm_max) return 0;
-  // fprintf(stderr, "sm_max=%f\n", sm_max);
+ 
   double result;
   double precision = PHI_INTEGRAL_PRECISION;
+  // Higher precision for very low redshifts.
+  // In fact this is very unlikely to be
+  // triggered since UVLF at such low-z is 
+  // very very difficult to calculate...
   if (z <= 0.2) precision*=0.001;
 
   result = (phi_corr * adaptiveGauss(step_integral_helper_uv, (void *)&ih,
@@ -644,6 +702,9 @@ double evaluate_from_step_uv(double z, double uv)
   return result;
 }
 
+// Calculate the average observed specific
+// SFR (SSFR) as a function of ***observed***
+// stellar mass (sm) and redshift (z).
 double calc_ssfr(double sm, double z) 
 {
   double ssfr = evaluate_from_step(z, sm, 0);
@@ -651,117 +712,31 @@ double calc_ssfr(double sm, double z)
   return ssfr;
 }
 
-double _quasar_lf_helper(int64_t mb, void *extra_info) 
-{
-  //Mi(z=2) = -5.26 - 2.5 log_10(n M_BH)
-  //log10(n) = -(Mi + 5.26)/2.5 - log_10(M_BH)
-  struct quasar_info *qi = extra_info;
-  if (mb < 0) { mb = 0; }
-  if (mb >= M_BINS) { mb = M_BINS-1; }
-  double mbh = steps[qi->step].log_bh_mass[mb];
-  double eta = -(qi->l + 5.26)/2.5 - mbh;
-  double nd = steps[qi->step].t[mb];
-  double eta_0 = steps[qi->step].bh_eta[mb];
-  double eta_frac = eta - eta_0;
-  if (eta_frac < steps[qi->step].ledd_min[mb] || eta_frac > steps[qi->step].ledd_max[mb]) return 0; 
-
-  double bher_f = (eta_frac-steps[qi->step].ledd_min[mb])*steps[qi->step].ledd_bpdex[mb];
-  int64_t bher_b = bher_f;
-  bher_f -= bher_b;
-
-  double p1 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b];
-  double p2 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b+1];
-  if (bher_b >= BHER_BINS-1) p2 = p1;
-  double prob = p1 + bher_f*(p2-p1);
-  // mass-dependent modulation of the duty cycle.
-  double f_mass = exp((log10(steps[qi->step].bh_mass_avg[mb]) - steps[qi->step].smhm.dc_mbh) / steps[qi->step].smhm.dc_mbh_w);
-  f_mass = f_mass / (1 + f_mass);
-  double dc = steps[qi->step].smhm.bh_duty * f_mass;
-  if (dc < 1e-4) dc = 1e-4;
-  prob *= dc;
-  return prob*nd;
-}
-
-double _quasar_lf_helper_ctn(int64_t mb, void *extra_info) {
-  //Mi(z=2) = -5.26 - 2.5 log_10(n M_BH)
-  //log10(n) = -(Mi + 5.26)/2.5 - log_10(M_BH)
-  struct quasar_info *qi = extra_info;
-  if (mb < 0) { mb = 0; }
-  if (mb >= M_BINS) { mb = M_BINS-1; }
-  double mbh = steps[qi->step].log_bh_mass[mb];
-  double eta = -(qi->l + 5.26)/2.5 - mbh;
-  double nd = steps[qi->step].t[mb];
-  double eta_0 = steps[qi->step].bh_eta[mb];
-  double eta_frac = eta - eta_0;
-  if (eta_frac < steps[qi->step].ledd_min[mb] || eta_frac > steps[qi->step].ledd_max[mb]) return 0; 
-
-  double bher_f = (eta_frac-steps[qi->step].ledd_min[mb])*steps[qi->step].ledd_bpdex[mb];
-  int64_t bher_b = bher_f;
-  bher_f -= bher_b;
-
-  double p1 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b];
-  double p2 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b+1];
-  if (bher_b >= BHER_BINS-1) p2 = p1;
-  double prob = p1 + bher_f*(p2-p1);
-  // mass-dependent modulation of the duty cycle.
-  double f_mass = exp((log10(steps[qi->step].bh_mass_avg[mb]) - steps[qi->step].smhm.dc_mbh) / steps[qi->step].smhm.dc_mbh_w);
-  f_mass = f_mass / (1 + f_mass);
-  double dc = steps[qi->step].smhm.bh_duty * f_mass;
-  if (dc < 1e-4) dc = 1e-4;
-  prob *= dc;
-  return prob*nd;
-}
-
-double quasar_lf_helper(double m, void *extra_info) {
-  //Mi(z=2) = -5.26 - 2.5 log_10(n M_BH)
-  //log10(n) = -(Mi + 5.26)/2.5 - log_10(M_BH)
-  struct quasar_info *qi = extra_info;
-  double mf = BPDEX*(m - M_MIN)-0.5;
-  int64_t mb = mf;
-  mf -= mb;
-  if (mb < 0) { mb = 0; mf = 0; }
-  if (mb >= M_BINS) { mb = M_BINS-2; mf = 1; }
-  double mbh1 = steps[qi->step].log_bh_mass[mb];
-  double mbh2 = steps[qi->step].log_bh_mass[mb+1];
-  double mbh = mbh1 + mf*(mbh2-mbh1);
-  double eta = -(qi->l + 5.26)/2.5 - mbh;
-  double nd = exp10fc(mf_cache(steps[qi->step].scale, m));
-  double eta1 = steps[qi->step].bh_eta[mb];
-  double eta2 = steps[qi->step].bh_eta[mb+1];
-  double eta_0 = eta1 + mf*(eta2-eta1);
-  double eta_frac = eta - eta_0;
-  if (eta_frac < steps[qi->step].ledd_min[mb] || eta_frac < steps[qi->step].ledd_min[mb+1] ||
-      eta_frac > steps[qi->step].ledd_max[mb] || eta_frac > steps[qi->step].ledd_max[mb+1])
-    return 0;
-
-  double bher_f1 = (eta_frac-steps[qi->step].ledd_min[mb])*steps[qi->step].ledd_bpdex[mb];
-  int64_t bher_b1 = bher_f1;
-  bher_f1 -= bher_b1;
-
-  double bher_f2 = (eta_frac-steps[qi->step].ledd_min[mb+1])*steps[qi->step].ledd_bpdex[mb+1];
-  int64_t bher_b2 = bher_f2;
-  bher_f2 -= bher_b2;
-
-  double p1m1 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b1];
-  double p2m1 = steps[qi->step].bher_dist_full[mb*BHER_BINS+bher_b1+1];
-  if (bher_b1 >= BHER_BINS-1) p2m1 = p1m1;
-  double pm1 = p1m1 + bher_f1*(p2m1-p1m1);
-  double p1m2 = steps[qi->step].bher_dist_full[(mb+1)*BHER_BINS+bher_b2];
-  double p2m2 = steps[qi->step].bher_dist_full[(mb+1)*BHER_BINS+bher_b2+1];
-  if (bher_b2 >= BHER_BINS-1) p2m2 = p1m2;
-  double pm2 = p1m2 + bher_f2*(p2m2-p1m2);
-  double prob = pm1 + mf*(pm2-pm1);
-
-  return prob*nd;
-}
-
+// Calculate the total (active + dormant)
+// black hole mass function at a given black
+// hole mass (m) and redshift (z). Note that
+// this is an older implementation. With
+// total BHMF already calculated at calc_bh_lum_distribution_full()
+// in calc_sfh.c for each snapshot, it would
+// be much faster to simply interpolate BHMF 
+// over two consecutive snapshots. However,
+// this one is kept here since it is used
+// in MCMC, where the speed really matters.
 double calc_bhmf(double m, double z) 
 {
   int64_t step;
   double f;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &step, &f);
   int64_t i;
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+  
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   double s3 = s1*s1+s2*s2;
@@ -769,6 +744,8 @@ double calc_bhmf(double m, double z)
   double norm_gauss = 1 / sqrt(2 * M_PI * s3);
   double nd = 0;
 
+  // Get the median BH mass and number densities of each halo mass
+  // bin, by interpolating between the two consecutive snapshots.
   double bhm[M_BINS]={0}, t[M_BINS]={0};
   for (i=0; i<M_BINS; i++) 
   {
@@ -777,8 +754,9 @@ double calc_bhmf(double m, double z)
     t[i] = ndm;
   }
 
-  // double tw = 0;
   int64_t s;
+  // For higher precision, we further divide each halo mass bin
+  // into 5 smaller bins.
   for (s=0; s<=(M_BINS-1)*5; s++) 
   {
     i = s/5;
@@ -788,16 +766,18 @@ double calc_bhmf(double m, double z)
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double dm = tbhm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
-    // tw += weight;
     nd += weight*tnd;
   }
-  // nd /= tw*INV_BPDEX;
-  nd /= 5.0;
+
+  nd /= 5.0; // Account for the fact that we split each halo
+             // mass bin in 5.
   if (nd > 1e-19) return nd;
   return 1e-19;
 }
 
-
+// Calculate the type I quasar mass function 
+// at a given black hole mass (m) and redshift (z).
+// See also: Kelly & Shen (2013)
 double calc_bhmf_typeI(double m, double z) 
 {
   int64_t step;
@@ -814,39 +794,55 @@ double calc_bhmf_typeI(double m, double z)
   bhm_f -= bhm_b;
 
   if (bhm_b >= MBH_BINS - 1) {bhm_b = MBH_BINS - 2; bhm_f = 1;}
+
+  // We start with the total BHMFs that are pre-calculated.
   double bhmf_tot1 = steps[step].bhmf[bhm_b] + bhm_f * (steps[step].bhmf[bhm_b+1] - steps[step].bhmf[bhm_b]);
   double bhmf_tot2 = steps[step+1].bhmf[bhm_b] + bhm_f * (steps[step+1].bhmf[bhm_b+1] - steps[step+1].bhmf[bhm_b]);
   double bhmf_tot = bhmf_tot1 + f * (bhmf_tot2 - bhmf_tot1);
 
-
+  // mass- and redshift-dependent AGN duty cycles.
   double f_mass = exp((m - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
   f_mass = f_mass / (1 + f_mass);
   double dc = steps[step].smhm.bh_duty * f_mass;
   if (dc < 1e-4) dc = 1e-4;
 
+  // Obscured AGNs won't look like Type I, so we need to count 
+  // how many of them are there and subtract them from
+  // the total BHMFs.
   double corr_obs = 0;
   double tw = 0;
   for (i=0; i<LBOL_BINS; i++)
   {
     double lbol = LBOL_MIN + (i + 0.5) * LBOL_INV_BPDEX;
     double lx = find_Lx_at_Lbol(lbol);
-    double f_obs = F_obs(lx);
+    double f_obs = F_obs(lx); // The obscured fraction is a function of X-ray luminosity.
     corr_obs += (1 - f_obs) * steps[step].lum_dist_full[bhm_b*LBOL_BINS+i];
     tw += steps[step].lum_dist_full[bhm_b*LBOL_BINS+i];
   }  
-  if (tw > 0) corr_obs /= tw;
+  if (tw > 0) corr_obs /= tw; // The final Type I fraction.
   return bhmf_tot * corr_obs * dc;
 
 }
 
-
+// Calculate active black hole mass functions
+// at a given black hole mass (m) and redshift (z).
+// See also: Schulze & Wisotzki (2010), Schulze
+// et al. (2015)
 double calc_active_bhmf(double m, double z) 
 {
   int64_t step;
   double f;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &step, &f);
   int64_t i;
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
   double s1 = (1.0-f)*steps[step].smhm.scatter*steps[step].smhm.bh_gamma + f*(steps[step+1].smhm.scatter)*steps[step+1].smhm.bh_gamma;
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   double abhmf_shift = (1.0-f)*steps[step].smhm.abhmf_shift + f*(steps[step+1].smhm.abhmf_shift);
@@ -855,6 +851,11 @@ double calc_active_bhmf(double m, double z)
   if (!s3) return 1e-15;
   double norm_gauss = 1 / sqrt(2 * M_PI * s3);
   double nd = 0;
+
+  // Get the median BH mass and number densities of each halo mass
+  // bin, by interpolating between the two consecutive snapshots.
+  // Aside from these, we also have to get the active fraction (f_active)
+  // that is calculated in calc_active_bh_fraction(), calc_sfh.c
   double bhm[M_BINS]={0}, t[M_BINS]={0};
   for (i=0; i<M_BINS; i++) 
   {
@@ -864,6 +865,8 @@ double calc_active_bhmf(double m, double z)
     t[i] = ndm*nactive;
   }
 
+  // For higher precision, we further divide each halo mass bin
+  // into 5 smaller bins.
   int64_t s;
   for (s=0; s<=(M_BINS-1)*5; s++) 
   {
@@ -876,19 +879,29 @@ double calc_active_bhmf(double m, double z)
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     nd += weight*tnd;
   }
-  nd /= 5.0;
+  nd /= 5.0; // Account for the fact that we split each halo
+             // mass bin in 5.
   if (nd > 1e-15) return nd;
   return 1e-15;
 }
 
-// calculate the average BHAR as a function of Mbh and z.
+// calculate the average BHAR as a function of 
+// black hole mass (m) and redshift (z).
 double calc_bhar_mbh(double m, double z) 
 {
   int64_t step;
   double f;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &step, &f);
   int64_t i;
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
   double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.gamma) + f*(steps[step].smhm.scatter * steps[step].smhm.gamma);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
   double s3 = s1*s1+s2*s2;
@@ -900,6 +913,10 @@ double calc_bhar_mbh(double m, double z)
   double bhm[M_BINS]={0}, t[M_BINS]={0};
   double bhm_avg[M_BINS] = {0};
   double bhar[M_BINS] = {0};
+
+  // Get the average, median BH masses, BH accretion rates,
+  // and number densities of each halo mass bin, by interpolating 
+  // between the two consecutive snapshots.
   for (i=0; i<M_BINS; i++) 
   {
     bhm_avg[i] = (1.0-f)*log10(steps[step].bh_mass_avg[i]) + f*log10(steps[step+1].bh_mass_avg[i]);
@@ -909,6 +926,8 @@ double calc_bhar_mbh(double m, double z)
     t[i] = ndm;
   }
 
+  // For higher precision, we further divide each halo mass bin
+  // into 5 smaller bins.
   int64_t s;
   for (s=0; s<=(M_BINS-1)*5; s++) 
   {
@@ -916,13 +935,22 @@ double calc_bhar_mbh(double m, double z)
     f = (s%5)/5.0;
     if (i==(M_BINS-1)) { i--; f=1; }
     
+    // Average BH mass is used to account for the correlation between
+    // BH mass and BH accretion rate. This correlation is induced by
+    // our assumption that BHs of different masses at fixed ***halo mass***
+    // share the same Eddington ratio distribution.
     double tbhm_avg = bhm_avg[i] + f*(bhm_avg[i+1]-bhm_avg[i]);
     double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
     if (!isfinite(tbhm_avg) || tbhm_avg < 5) continue;
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
-    tbhar *= exp10fc(m - tbhm_avg); //constant BHER distribution!
+    // With this assumption of Eddington ratio distribution, BH accretion
+    // rates are enhanced by the same amount as the offset of BH mass
+    // relative to the average mass.
+    tbhar *= exp10fc(m - tbhm_avg); 
     double dm = tbhm - m;
+
+    // The weight is determined by a log-normal distribution.
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
     nd += weight*tnd;
     bhar_nd += weight*tnd*tbhar;
@@ -932,9 +960,11 @@ double calc_bhar_mbh(double m, double z)
   return 1e-15;
 }
 
-// calculate the average BHAR as a function of Mstar and z.
+// calculate the average BHAR as a function of 
+// stellar mass (Mstar) and redshift (z).
 double calc_bhar_mstar(double m, double z) 
 {
+
   int64_t step;
   double f;
   calc_step_at_z(z, &step, &f);
@@ -943,13 +973,18 @@ double calc_bhar_mstar(double m, double z)
   double s1 = (1.0-f)*(steps[step].smhm.scatter) + f*(steps[step].smhm.scatter);
   double mu = (1.0-f)*(steps[step].smhm.mu) + f*(steps[step].smhm.mu);
   double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  // Since we're looking at fixed stellar mass, the total scatter
+  // is the one around the median stellar mass--halo mass relation.
   double s3 = s1*s1;
   if (!s3) return 1e-15;
   double norm_gauss = 1 / sqrt(2 * M_PI * s3);
   double nd = 0;
   double bhar_nd = 0;
 
-
+  // This function is very similar to calc_bhar_mbh(),
+  // except that now we're looking at fixed stellar mass,
+  // so we need to calculate the average and median BH
+  // mass first.
   double mbulge = bulge_mass(m + mu, steps[step].scale);
   double mbh_med = calc_bh_at_bm(mbulge, steps[step].smhm);
   double med_to_avg_bh = 0.5 * ((s2 * s2) * M_LN10);
@@ -980,6 +1015,11 @@ double calc_bhar_mstar(double m, double z)
     double tsm = sm[i] + f*(sm[i+1]-sm[i]);
     double tnd = t[i] + f*(t[i+1]-t[i]);
     double tbhar = bhar[i] + f*(bhar[i+1]-bhar[i]);
+
+    // Assuming different BHs share the same Eddington ratio
+    // distribution at fixed ***halo mass***, the BH accretion
+    // rates are enhanced by the same amount that the BH mass
+    // is relative to the average BH mass for this halo mass bin.
     tbhar *= exp10fc(mbh_med + med_to_avg_bh - tmbh_avg);
     double dm = tsm - m;
     double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
@@ -993,12 +1033,14 @@ double calc_bhar_mstar(double m, double z)
 }
 
 
-// calculate the average BHAR/SFR ratio as a function of Mbh and z.
-// This function is actually more complicated than the calculation of
-// BHAR, BHMR, and BHERs, because there's a correlation between the 
-// SFR and the average stellar mass. Consequently we need to trace
-// the galaxy mass distribution in each halo mass, ***given the
-// BH mass*** that we're looking for.
+// calculate the average BHAR/SFR ratio as a function of BH mass (Mbh)
+// and redshift (z). This function is actually more complicated 
+// than the calculation of BHAR, BHMR, and BHERs, because there's a 
+// correlation between the SFR and the average stellar mass. 
+// Consequently we need to trace the galaxy mass distribution 
+// in each halo mass, ***given the BH mass*** that we're looking for.
+// Most comments are omitted because they are already written in 
+// calc_bhar_mbh().
 double calc_bhar_sfr_mbh(double m, double z) 
 {
   int64_t step;
@@ -1054,6 +1096,9 @@ double calc_bhar_sfr_mbh(double m, double z)
     double tsfr = 0;
     double tnorm = 0;
 
+    // The calculation of SFR at fixed BH mass should 
+    // be done carefully, by using the prob calculated in
+    // the loop below.
     for (double sm_tmp=3; sm_tmp<=13; sm_tmp+=0.05)
     {
       double bm_tmp = bulge_mass(sm_tmp + mu, 1/(1+z));
@@ -1088,6 +1133,8 @@ double calc_bhar_sfr_mbh(double m, double z)
 // SFR and the average stellar mass. Consequently we need to trace
 // the galaxy mass distribution in each halo mass, ***given the
 // BH mass*** that we're looking for.
+// Most comments are omitted because they are already written in 
+// calc_bhar_mbh() or calc_bhar_sfr_mbh().
 double calc_bhar_sfr_mstar(double m, double z) 
 {
   int64_t step;
@@ -1155,7 +1202,9 @@ double calc_bhar_sfr_mstar(double m, double z)
   return 1e-15;
 }
 
-
+// calculate the average SFR as a function of stellar mass (Mstar)
+// and redshift (z). Most comments are omitted because they are 
+// already written in calc_bhar_mbh().
 double calc_sfr_mstar(double m, double z) 
 {
   int64_t step;
@@ -1207,8 +1256,8 @@ double calc_sfr_mstar(double m, double z)
 
 
 
-// calculate the average SBHAR/SSFR ratio as a function of Mbh and z.
-// This function is actually more complicated than the calculation of
+// calculate the average SBHAR/SSFR ratio as a function of black hole mass (Mbh)
+// and redshift (z). This function is actually more complicated than the calculation of
 // BHAR, BHMR, and BHERs, because there's a correlation between the 
 // SFR and the average stellar mass. Consequently we need to trace
 // the galaxy mass distribution in each halo mass, ***given the
@@ -1302,12 +1351,8 @@ double calc_sbhar_ssfr_mbh(double m, double z)
   return 1e-15;
 }
 
-// calculate the average SBHAR as a function of Mstar and z.
-// This function is actually more complicated than the calculation of
-// BHAR, BHMR, and BHERs, because there's a correlation between the 
-// SFR and the average stellar mass. Consequently we need to trace
-// the galaxy mass distribution in each halo mass, ***given the
-// BH mass*** that we're looking for.
+// calculate the average specific BHAR (BHAR / BH mass) as a 
+// function of stellar mass (Mstar) and redshift (z).
 double calc_sbhar_mstar(double m, double z) 
 {
   int64_t step;
@@ -1689,31 +1734,51 @@ double calc_bhmr_mstar(double m, double z)
   return 1e-15;
 }
 
-
+// Calculate the cosmic black hole mass density at a given
+// redshift (z), and a threshold in Eddington ratio (thresh_ledd)
+// or in bolometric luminosity (thresh_lbol). thresh_ledd
+// and thresh_lbol should be set to zero if no limit is applied.
 double cosmic_bh_density(double z, double thresh_ledd, double thresh_lbol, struct smf_fit *fit) 
 {
   int64_t i, step;
   double f;
+
+  // Find out which snapshot to look at
   calc_step_at_z(z, &step, &f);
   double mnd = 0;
+
+  // Alpha and delta will be useful when a threshold on Eddington ratio or
+  // bolometric luminosity is applied.
   double alpha = (1.0-f)*steps[step].smhm.bh_alpha + f*(steps[step+1].smhm.bh_alpha);
   double delta = (1.0-f)*steps[step].smhm.bh_delta + f*(steps[step+1].smhm.bh_delta);
   double bh_eta_crit = (1.0-f)*steps[step].smhm.bh_eta_crit + f*(steps[step+1].smhm.bh_eta_crit);
   for (i=0; i<M_BINS; i++) 
   {
+    // mass- and redshift-dependent AGN duty cycles.
     double dc = (1.0-f)*steps[step].smhm.bh_duty + f*(steps[step+1].smhm.bh_duty);
     double f_mass = exp((log10(steps[step].bh_mass_avg[i]) - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
     dc *= f_mass;
     if (dc < 1e-4) dc = 1e-4;
+
     double sn = dc/doublePL_frac_above_thresh(BHER_EFF_MIN, alpha, delta, 1.0, fit);
+
+    // average BH mass for each halo mass bin, interpolated between two snapshots.
     double bhm = (1.0-f)*steps[step].bh_mass_avg[i] + f*(steps[step+1].bh_mass_avg[i]);
+    // halo number densities, interpolated between two snapshots.
     double nd = (1.0-f)*steps[step].t[i] + f*(steps[step+1].t[i]);
+
+    // If the threshold is in the form of bolometric luminosity,
+    // convert it into the one in Eddington ratio.
     if (thresh_lbol) 
     {
       double lbhm = (1.0-f)*steps[step].log_bh_mass[i] + f*(steps[step+1].log_bh_mass[i]);
       double lum_i = 72.5 - 2.5*(thresh_lbol - 7);
       thresh_ledd = -(lum_i + 5.26)/2.5 - lbhm;
+
+      // If we assume a non-linear relation between the radiative and total
+      // Eddington ratios, we also need to convert the threshold (radiative) 
+      // Eddington ratio into the total one.
       if (nonlinear_luminosity) 
       {
         const double log_of_2 = M_LN2 / M_LN10;
@@ -1730,6 +1795,8 @@ double cosmic_bh_density(double z, double thresh_ledd, double thresh_lbol, struc
       }
     }
 
+    // If the threshold is in Eddington ratio, then just calculate the fraction of
+    // BHs that lie above the threshold.
     if (thresh_ledd) 
     {
       double beta = (1.0-f)*steps[step].bh_eta[i] + f*(steps[step+1].bh_eta[i]);
@@ -1737,6 +1804,8 @@ double cosmic_bh_density(double z, double thresh_ledd, double thresh_lbol, struc
       double f_active = doublePL_frac_above_thresh(t_ef, alpha, delta, sn, fit);
       mnd += nd*bhm*f_active;
     } 
+
+    // If no threshold is applied, then add everything up.
     else 
     {
       mnd += nd*bhm;
@@ -1745,6 +1814,8 @@ double cosmic_bh_density(double z, double thresh_ledd, double thresh_lbol, struc
   return mnd;
 }
 
+// Calculate cosmic BH mass density contributed by halos between
+// [Mh_low, Mh_high], at a given redshift (z).
 double cosmic_bh_density_split(double z, double Mh_low, double Mh_high, struct smf_fit *fit) 
 {
   int64_t i, step;
@@ -1758,35 +1829,21 @@ double cosmic_bh_density_split(double z, double Mh_low, double Mh_high, struct s
   {
     mh = M_MIN + (i + 0.5) * INV_BPDEX;
     if (mh < Mh_low || mh > Mh_high) continue;
-    double bhm = exp10((1.0-f)*steps[step].log_bm[i] + f*(steps[step+1].log_bm[i]));
+    double bhm = exp10((1.0-f)*steps[step].log_bh_mass[i] + f*(steps[step+1].log_bh_mass[i]));
     double nd = (1.0-f)*steps[step].t[i] + f*(steps[step+1].t[i]);
     mnd += nd*bhm;
     nd_tot += nd;
   }
   mnd /= nd_tot;
-
   return mnd;
 }
 
-double calc_quasar_lf(double l, double z) 
-{
-  struct quasar_info qi;
-  qi.l = l;
-  double sf = 0;
-  calc_step_at_z(z, &(qi.step), &sf);
-  int64_t i=0;
-
-  double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
-  norm /= 2.5; //Per mag instead of per dex
-
-  double ld = 0;
-  for (i=0; i<M_BINS; i++)
-    ld += _quasar_lf_helper(i, &qi);
-  return norm*ld;
-}
-
+// Calculate quasar luminosity functions at a given luminosity (Mi)
+// and redshift (z).
 double calc_quasar_lf_new(double Mi, double z) 
 {
+  // The input luminosity is in the i band magnitude at z=2,
+  // which can be converted in to luminosity (erg/s) like this:
   double lbol = 36 - 0.4 * Mi;
   int64_t step; double sf = 0;
   calc_step_at_z(z, &(step), &sf);
@@ -1798,6 +1855,10 @@ double calc_quasar_lf_new(double Mi, double z)
   double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
   norm /= 2.5; //Per mag instead of per dex
 
+  // In calc_bh_lum_distribution_full() in calc_sfh.c,
+  // we have already calculated the quasar luminosity
+  // functions for each BH mass bin. To calculate the
+  // total quasar luminosity, we simply add them up.
   double ld = 0;
   for (i=0; i<MBH_BINS; i++)
   {
@@ -1811,6 +1872,9 @@ double calc_quasar_lf_new(double Mi, double z)
   return norm*ld;
 }
 
+// Calculate quasar luminosity functions at a given luminosity (Mi)
+// and redshift (z) that are contributed by BHs with masses
+// between [mbh_low, mbh_high].
 double calc_quasar_lf_mbh(double Mi, double z, double mbh_low, double mbh_high) 
 {
   double lbol = 36 - 0.4 * Mi;
@@ -1858,7 +1922,8 @@ double calc_quasar_lf_mbh(double Mi, double z, double mbh_low, double mbh_high)
 }
 
 // To calculate the QLF in slices of Eddington ratios, we simply convert the eta limits
-// to Mbh limits.
+// to Mbh limits. After the conversion, the calculation is the same as in
+// calc_quasar_lf_mbh().
 double calc_quasar_lf_eta(double Mi, double z, double eta_low, double eta_high) 
 {
   double lbol = 36 - 0.4 * Mi;
@@ -1911,86 +1976,34 @@ double calc_quasar_lf_eta(double Mi, double z, double eta_low, double eta_high)
   return norm*ld;
 }
 
-double calc_quasar_lf_ctn(double l, double z) 
-{
-  struct quasar_info qi;
-  qi.l = l;
-
-  // convert l back to Log10(erg/s) in order to calculate the Compton-thick fraction.
-  l = (90 - l) / 2.5;
-  double Lx = find_Lx_at_Lbol(l);
-  double psi_ctn = psi(Lx, z);
-
-  double sf = 0;
-  calc_step_at_z(z, &(qi.step), &sf);
-  int64_t i=0;
-
-  double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
-  norm /= 2.5; //Per mag instead of per dex
-
-  double ld = 0;
-  for (i=0; i<M_BINS; i++)
-    ld += _quasar_lf_helper_ctn(i, &qi);
-  return norm*ld / (1 + psi_ctn); //The Compton-thick correction comes from that we assume the fraction
-  // of CTK objects is the same as CTN ones in each redshift and luminosity.
-}
-
-double calc_quasar_lf_split(double l, double z, double Mh_min, double Mh_max) 
-{
-  struct quasar_info qi;
-  qi.l = l;
-  double sf = 0;
-  calc_step_at_z(z, &(qi.step), &sf);
-  int64_t i=0;
-
-
-  double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
-  norm /= 2.5; //Per mag instead of per dex
-
-  double ld = 0;
-  for (i=0; i<M_BINS; i++)
-  {
-    if (M_MIN + (i + 0.5) * INV_BPDEX < Mh_min || M_MIN + (i + 0.5) * INV_BPDEX > Mh_max) continue;
-    ld += _quasar_lf_helper(i, &qi);
-  }
-    
-  return norm*ld;
-}
-
-double calc_quasar_lf_split_sm(double l, double z, double sm_min, double sm_max) 
-{
-  struct quasar_info qi;
-  qi.l = l;
-  double sf = 0;
-  calc_step_at_z(z, &(qi.step), &sf);
-  int64_t i=0;
-
-
-  double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
-  norm /= 2.5; //Per mag instead of per dex
-
-
-  double ld = 0;
-  for (i=0; i<M_BINS; i++)
-  {
-    if (log10(steps[qi.step].sm_avg[i]) < sm_min || log10(steps[qi.step].sm_avg[i]) > sm_max) continue;
-    ld += _quasar_lf_helper(i, &qi);
-  }
-    
-  return norm*ld;
-}
-
+// The probability distribution of Eddington ratio distributions at
+// a certain ***absolute*** ***radiative*** Eddington ratio (ledd),
+// a typical Eddington ratio (bher_char), double power-law indices
+// of Eddington ratio distributions (alpha, delta), a provided 
+// normalization of Eddington ratio distribution (bh_prob_norm),
+// and a critical Eddington ratio value where the scaling between
+// the radiative and total Eddington ratios start to change (bh_eta_crit).
+// See Section 2.7 of Zhang et al. (2021).
 double _prob_of_ledd_nonlinear(double ledd, double bher_char, double alpha, double delta, double bh_prob_norm, double bh_eta_crit) 
 {
   double bher = ledd;
   double bher_norm = 1;
   const double log_of_2 = M_LN2 / M_LN10;
+
+  // When the radiative Eddington ratio is too high,
+  // we adopt a log relation between the radiative
+  // and total Eddington ratios to account for the
+  // trapped photons at high Eddington ratios.
   if (bher > log_of_2) 
   {
     bher_norm = exp10(ledd - log_of_2);
     if (!isfinite(bher_norm)) return 0;
     bher = (bher_norm - 1.0 + M_LN2)/M_LN10;
   }
+
+  // When the Eddington ratio is too low, switch
+  // to another scaling to account for the kinetic
+  // energy output of AGNs.
   else if (bher < bh_eta_crit) 
   {
     bher_norm = 0.5;
@@ -2005,9 +2018,14 @@ double _prob_of_ledd_nonlinear(double ledd, double bher_char, double alpha, doub
   return retval;
 }
 
-// Note here that the input Eddington ratio (ledd) is the ***kinetic*** one,
-// NOT the total Eddington ratio. This is because the conversion between 
-// them is not monotonic.
+// The probability distribution of Eddington ratio distributions at
+// a certain ***absolute*** ***kinetic*** Eddington ratio (ledd),
+// a typical Eddington ratio (bher_char), double power-law indices
+// of Eddington ratio distributions (alpha, delta), a provided 
+// normalization of Eddington ratio distribution (bh_prob_norm),
+// and a critical Eddington ratio value where the scaling between
+// the radiative and total Eddington ratios start to change (bh_eta_crit).
+// See Section 2.7 of Zhang et al. (2021).
 double _prob_of_ledd_kinetic(double ledd, double bher_char, double alpha, double delta, double bh_prob_norm, double bh_eta_crit) 
 {
   double bher = ledd;
@@ -2047,6 +2065,8 @@ double _prob_of_ledd_kinetic(double ledd, double bher_char, double alpha, double
   return retval;
 }
 
+// Similar to _prob_of_ledd_nonlinear(), but assuming the total Eddington
+// ratio always equals the radiative one, i.e., no kinetic energy output.
 double _prob_of_ledd_linear(double ledd, double bher_char, double alpha, double delta, double bh_prob_norm, double bh_eta_crit) 
 {
   double bher = ledd;
@@ -2055,22 +2075,46 @@ double _prob_of_ledd_linear(double ledd, double bher_char, double alpha, double 
   return bher_norm*bh_prob_norm / (exp10(bher*alpha) + exp10(bher*delta));
 }
 
+// Calculate the quasar probability distribution functions at given 
+// AGN bolometric luminosity (l), stellar mass (m), and redshift (z).
+// NOTE: This function is deprecated for now, because it uses Eddington 
+// ratio distributions for each ***halo*** mass bin, whereas in the newest
+// implementation, we calculate the luminosity distributions for all 
+// ***BH mass*** bins.
 double calc_qpdf_at_l_m_z(double l, double m, double z) 
 {
   int64_t i;
   int64_t step;
   double f;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &step, &f);
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
   double s1 = steps[step].smhm.scatter;
 
   double lum_i = 72.5 - 2.5*(l - 7);
+
+  // The observational data are not corrected for Compton-thick
+  // obscurations, but our model includes them. So we need to 
+  // calculate the correction and apply it to model predictions, 
+  // before comparing them with observations.
   double Lx = find_Lx_at_Lbol(l);
-  double psi_ctn = psi(Lx, z);
+  double psi_ctn = psi(Lx, z); // psi_ctn is the fraction of Compton-thin
+                              // obscured objects relative to non-obscured
+                              // objects, which is assumed to be the fraction
+                              // of Compton-thick objects. So in the end
+                              // we would divide the result with (1 + psi_ctn)
+                              // to get non-obscured & Compton-think obscured
+                              // only values.
   double acc_rate_norm = -(lum_i+5.26)/2.5;
+
+  // Get the required BH mass and Eddington ratio to calculate number densities.
   double med_bh_m = calc_bh_at_bm(bulge_mass(m, 1.0/(1.0+z)), steps[step].smhm);
   double med_edd_r = acc_rate_norm - med_bh_m;
   double tw = 0, ld=0;
+
+  // Go over each halo mass bin and collect BHs with masses and Eddington ratios
+  // obtained above.
   for (i=0; i<M_BINS; i++) 
   {
     double dm = (steps[step].log_sm[i]+steps[step].smhm.mu - m)/s1;
@@ -2087,7 +2131,7 @@ double calc_qpdf_at_l_m_z(double l, double m, double z)
     if (bher_b >= BHER_BINS-1) p2 = p1;
     double prob = p1 + bher_f*(p2-p1);
 
-    // mass-dependent modulation of the duty cycle
+    // mass-dependent modulation of AGN duty cycles
     double f_mass = exp((log10(steps[step].bh_mass_avg[i]) - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
     f_mass = f_mass / (1 + f_mass);
     double dc = steps[step].smhm.bh_duty * f_mass;
@@ -2095,15 +2139,19 @@ double calc_qpdf_at_l_m_z(double l, double m, double z)
     prob *= dc;
     ld += w*prob;
   }
-  if (tw>0) return (ld/tw/(1+psi_ctn));
+  if (tw>0) return (ld/tw/(1+psi_ctn)); //correct for Compton-thick obscurations.
   return 1e-15;
 }
 
+// Calculate the quasar probability distribution functions at given 
+// AGN bolometric luminosity (l), stellar mass (m), and redshift (z).
 double calc_qpdf_at_l_m_z_new(double lbol, double m, double z) 
 {
   int64_t i;
   int64_t step;
   double f;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &step, &f);
   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
 
@@ -2114,7 +2162,10 @@ double calc_qpdf_at_l_m_z_new(double lbol, double m, double z)
   double mbh_med = calc_bh_at_bm(bm, steps[step].smhm);
   double gauss_norm = 1 / sqrt(2 * M_PI) / bh_scatter;
 
-  // Compton-thick fractions.
+  // The observational data are not corrected for Compton-thick
+  // obscurations, but our model includes them. So we need to 
+  // calculate the correction and apply it to model predictions, 
+  // before comparing them with observations.
   double lx = find_Lx_at_Lbol(lbol);
   double psi_ctn = psi(lx, z);
 
@@ -2123,12 +2174,18 @@ double calc_qpdf_at_l_m_z_new(double lbol, double m, double z)
 
   double qpdf = 0;
 
+  // Go over each BH mass bin and count how many BHs in each bin
+  // contribute to the BHs hosted by the galaxies with mass m.
   for (i=0; i<MBH_BINS; i++) 
   {
     double mbh = steps[step].bh_mass_min + (i + 0.5) * mbh_inv_bpdex;
     double dmbh = (mbh - mbh_med)/bh_scatter;
-    // Note the mbh_inv_bpdex in the next line.
+    
+    // prob_mbh is the fraction of BHs hosted by galaxies of mass m
+    // that are of mass mbh.
     double prob_mbh = exp(-0.5*dmbh*dmbh)*gauss_norm * mbh_inv_bpdex;
+
+    // prob_lbol is simply calculated from the luminosity distributions.
     double prob_lbol;
     if (lbol < LBOL_MIN || lbol > LBOL_MAX) 
       prob_lbol = 0;
@@ -2147,63 +2204,68 @@ double calc_qpdf_at_l_m_z_new(double lbol, double m, double z)
     qpdf += prob_mbh * prob_lbol;
   }
 
-  return qpdf / (1 + psi_ctn);
-}
-
-double calc_qpdf_at_sBHAR_m_z(double sBHAR, double m, double z) {
-  int64_t i;
-  int64_t step;
-  double f;
-  calc_step_at_z(z, &step, &f);
-  if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
-  double s1 = steps[step].smhm.scatter;
-  double tw = 0, ld=0;
-  for (i=0; i<M_BINS; i++) 
-  {
-    double dm = (steps[step].log_sm[i]+steps[step].smhm.mu - m)/s1;
-    double w = exp(-0.5*dm*dm)*steps[step].t[i];
-
-    double Lbol = log10(2.6e35) + m + sBHAR;
-    double lum_i = 72.5 - 2.5*(Lbol - 7);
-    double Lx = find_Lx_at_Lbol(Lbol);
-    double acc_rate_norm = -(lum_i+5.26)/2.5;
-    double med_bh_m = calc_bh_at_bm(bulge_mass(m, 1.0/(1.0+z)), steps[step].smhm);
-
-    double med_edd_r = acc_rate_norm - med_bh_m + steps[step].smhm.eta_mu;
-    double psi_ctn = psi(Lx, z);
-
-    tw += w;
-    double eta_frac = med_edd_r - steps[step].bh_eta[i];
-    
-    double prob;
-    if (eta_frac < steps[step].ledd_min[i] || eta_frac > steps[step].ledd_max[i]) 
-      prob = 0;
-    else
-    {
-      double bher_f = (eta_frac-steps[step].ledd_min[i])*steps[step].ledd_bpdex[i];
-      int64_t bher_b = bher_f;
-      bher_f -= bher_b;
-
-      double p1 = steps[step].bher_dist_full[i*BHER_BINS+bher_b];
-      double p2 = steps[step].bher_dist_full[i*BHER_BINS+bher_b+1];
-      if (bher_b >= BHER_BINS-1) p2 = p1;
-      prob = p1 + bher_f*(p2-p1);
-      prob /= (1 + psi_ctn);
-    }
-    
-    double f_mass = exp((log10(steps[step].bh_mass_avg[i]) - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    double dc = steps[step].smhm.bh_duty * f_mass;
-    if (dc < 1e-4) dc = 1e-4;
-    prob *= dc;
-    ld += w*prob;
-
-  }
-  if (tw>0) return (ld/tw);
-  return 1e-15;
+  return qpdf / (1 + psi_ctn); //correct for Compton-thick obscurations.
 }
 
 
+// double calc_qpdf_at_sBHAR_m_z(double sBHAR, double m, double z) {
+//   int64_t i;
+//   int64_t step;
+//   double f;
+//   calc_step_at_z(z, &step, &f);
+//   if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+//   double s1 = steps[step].smhm.scatter;
+//   double tw = 0, ld=0;
+//   for (i=0; i<M_BINS; i++) 
+//   {
+//     double dm = (steps[step].log_sm[i]+steps[step].smhm.mu - m)/s1;
+//     double w = exp(-0.5*dm*dm)*steps[step].t[i];
+
+//     double Lbol = log10(2.6e35) + m + sBHAR;
+//     double lum_i = 72.5 - 2.5*(Lbol - 7);
+//     double Lx = find_Lx_at_Lbol(Lbol);
+//     double acc_rate_norm = -(lum_i+5.26)/2.5;
+//     double med_bh_m = calc_bh_at_bm(bulge_mass(m, 1.0/(1.0+z)), steps[step].smhm);
+
+//     double med_edd_r = acc_rate_norm - med_bh_m + steps[step].smhm.eta_mu;
+//     double psi_ctn = psi(Lx, z);
+
+//     tw += w;
+//     double eta_frac = med_edd_r - steps[step].bh_eta[i];
+    
+//     double prob;
+//     if (eta_frac < steps[step].ledd_min[i] || eta_frac > steps[step].ledd_max[i]) 
+//       prob = 0;
+//     else
+//     {
+//       double bher_f = (eta_frac-steps[step].ledd_min[i])*steps[step].ledd_bpdex[i];
+//       int64_t bher_b = bher_f;
+//       bher_f -= bher_b;
+
+//       double p1 = steps[step].bher_dist_full[i*BHER_BINS+bher_b];
+//       double p2 = steps[step].bher_dist_full[i*BHER_BINS+bher_b+1];
+//       if (bher_b >= BHER_BINS-1) p2 = p1;
+//       prob = p1 + bher_f*(p2-p1);
+//       prob /= (1 + psi_ctn);
+//     }
+    
+//     double f_mass = exp((log10(steps[step].bh_mass_avg[i]) - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
+//     f_mass = f_mass / (1 + f_mass);
+//     double dc = steps[step].smhm.bh_duty * f_mass;
+//     if (dc < 1e-4) dc = 1e-4;
+//     prob *= dc;
+//     ld += w*prob;
+
+//   }
+//   if (tw>0) return (ld/tw);
+//   return 1e-15;
+// }
+
+// Calculate the quasar probability distribution functions at given 
+// specific BH accretio nrate (sBHAR), stellar mass (m), and redshift (z).
+// The observational data are taken from Aird et al. (2018). For the 
+// definition of sBHAR, see Section 2.8 of Zhang et al. (2018) (where
+// it is called sLx)
 double calc_qpdf_at_sBHAR_m_z_new(double sBHAR, double m, double z) 
 {
   int64_t i;
@@ -2223,9 +2285,15 @@ double calc_qpdf_at_sBHAR_m_z_new(double sBHAR, double m, double z)
   // to find the probability distribution values.
   double lx = log10(2.6e35 / 25) + m + sBHAR;
   // double lum_i = 72.5 - 2.5*(Lbol - 7);
-  // Compton-thick fractions.
+
+  // Find out the bolometric luminosity corresponding to the sBHAR
+  // values
   double lbol = find_Lbol_at_Lx(lx);
-  //fprintf(stderr, "lx=%f, lbol=%f\n", lx, lbol);
+
+  // The observational data are not corrected for Compton-thick
+  // obscurations, but our model includes them. So we need to 
+  // calculate the correction and apply it to model predictions, 
+  // before comparing them with observations.
   double psi_ctn = psi(lx, z);
 
   double mbh_bpdex = MBH_BINS / (steps[step].bh_mass_max - steps[step].bh_mass_min);
@@ -2233,12 +2301,17 @@ double calc_qpdf_at_sBHAR_m_z_new(double sBHAR, double m, double z)
   double eta_mu = steps[step].smhm.eta_mu;
   double qpdf = 0;
 
+  // Go over each BH mass bin and count how many BHs in each bin
+  // contribute to the BHs hosted by the galaxies with mass m.
   for (i=0; i<MBH_BINS; i++) 
   {
     double mbh = steps[step].bh_mass_min + (i + 0.5) * mbh_inv_bpdex;
     double dmbh = (mbh - mbh_med)/bh_scatter;
-    // Note the mbh_inv_bpdex in the next line.
+    // prob_mbh is the fraction of BHs hosted by galaxies of mass m
+    // that are of mass mbh.
     double prob_mbh = exp(-0.5*dmbh*dmbh)*gauss_norm * mbh_inv_bpdex;
+
+    // prob_lbol is simply calculated from the luminosity distributions.
     double prob_lbol;
     if (lbol + eta_mu < LBOL_MIN || lbol + eta_mu > LBOL_MAX) 
       prob_lbol = 0;
@@ -2257,21 +2330,30 @@ double calc_qpdf_at_sBHAR_m_z_new(double sBHAR, double m, double z)
     qpdf += prob_mbh * prob_lbol;
 
   }
-  return qpdf / (1 + psi_ctn);
+  return qpdf / (1 + psi_ctn); //correct for Compton-thick obscurations.
 }
 
+// Calculate the observed cosmic star formation rates at a
+// given redshift (z).
 double calc_cosmic_sfr(double z) 
 {
   int64_t step;
   double f;
   double sfr;
+
+  // Find out which snapshot to look at.
   calc_step_at_z(z, &(step), &(f));
   sfr = steps[step].observed_cosmic_sfr;
+
+  // interpolate with the next snapshot, if there
+  // is a next snapshot.
   if (f>-1) sfr += f*(steps[step+1].observed_cosmic_sfr-sfr);
   if (sfr < 1e-10) sfr = 1e-10;
   return sfr;
 }
 
+// Calculate the observed cosmic black hole accretion 
+// rate at a given redshift (z).
 double calc_cosmic_bhar(double z) 
 {
   int64_t step;
@@ -2284,15 +2366,25 @@ double calc_cosmic_bhar(double z)
   return bhar;
 }
 
+// The helper function to calculate the chi2 for 
+// stellar mass functions (SMFs) and specific star formation
+// rates (SSFRs), given a certain comoving volume (Vc).
 double chi2_err_helper(double Vc, void *extra_data) 
 {
   double m = *((double *)extra_data);
+
+  // Find out the redshift corresponding to the volume
   double z = comoving_volume_to_redshift(Vc);
+
+  // evaluate the SMF and SSFR
   double smf = evaluate_from_step(z, m, 1);
   if (smf < 1e-15) smf = 1e-15;
   return smf;
 }
 
+// The helper function to calculate the chi2 for 
+// galaxy quenched fractions (QFs), 
+// given a certain comoving volume (Vc).
 double chi2_err_helper_qf(double Vc, void *extra_data) 
 {
   double m = *((double *)extra_data);
@@ -2301,6 +2393,9 @@ double chi2_err_helper_qf(double Vc, void *extra_data)
   return qf;
 }
 
+// The helper function to calculate the chi2 for 
+// galaxy UV luminosity functions (UVLFs), 
+// given a certain comoving volume (Vc).
 double chi2_err_helper_uv(double Vc, void *extra_data) 
 {
   double uv = *((double *)extra_data);
@@ -2310,7 +2405,8 @@ double chi2_err_helper_uv(double Vc, void *extra_data)
   return uvlf;
 }
 
-//inline 
+// Calculate the model chi2, given a series of model data values (m_smf),
+// and another series of real data values (r_smf).
 double model_chi2(struct obs_smf *m_smf, struct obs_smf *r_smf) 
 {
   int i;
@@ -2318,16 +2414,30 @@ double model_chi2(struct obs_smf *m_smf, struct obs_smf *r_smf)
   double err, real_err;
   struct real_smf *real_smf = r_smf->real_smf;
   struct real_smf *model_smf = m_smf->real_smf;
+
+  // iterate over each data point
   for (i=0; i<r_smf->real_smf_points; i++) 
   {
+    // fit_error is the tolerance in the absolute difference between the model and data.
+    // If the model vs. data difference is smaller than that, we ignore its contribution
+    // to the final chi2. This is chosen as empirical models typically cannot fit to 
+    // real data to better than this tolerance.
     double fit_error = (r_smf->linear_errors) ? fabs(real_smf[i].val*(exp10fc(FIT_TOLERANCE)-1.0)) : fabs(FIT_TOLERANCE);
     err = (model_smf[i].val-real_smf[i].val);
     if (fabs(err) <= fit_error) continue;
     if (err > 0) err -= fit_error;
     else err += fit_error;
 
+    // If the model vs. data difference is bigger than the upper error bar, then
+    // we adopt the upper error bar to scale the difference;
     if (err > real_smf[i].err_h) err/=real_smf[i].err_h;
+
+    // If the model vs. data difference is smaller than the opposite of the 
+    // lower error bar, then we adopt the lower error bar to scale the difference;
     else if (-err > real_smf[i].err_l) err/=real_smf[i].err_l;
+
+    // otherwise, we do a linear interpolation to get a "medium" error bar.
+    // See Appendix F of Zhang et al. (2021).
     else 
     {
       real_err = real_smf[i].err_l +
@@ -2346,7 +2456,10 @@ double model_chi2(struct obs_smf *m_smf, struct obs_smf *r_smf)
   return chi2;
 }
 
-//inline 
+// Calculate the model chi2, given a single model data value (m_smf),
+// and another single real data value (r_smf). This is very similar to 
+// model_chi2(), except that this function deals with individual
+// data points.
 double model_chi2_point(struct obs_smf_point *m_smf, struct obs_smf_point *r_smf) 
 {
   double chi2 = 0;
@@ -2379,6 +2492,7 @@ double model_chi2_point(struct obs_smf_point *m_smf, struct obs_smf_point *r_smf
   return chi2;
 }
 
+// Calculate chi2's for a series of observed data points (cur_smf).
 double calc_single_chi2_err(struct obs_smf *cur_smf) 
 {
   int i;
@@ -2396,6 +2510,9 @@ double calc_single_chi2_err(struct obs_smf *cur_smf)
   for (i=0; i<real_smf_points; i++) 
   {
     m = real_smf[i].mass;
+
+
+    // Calculate the model predictions according to the data types.
     if (cur_smf->type == SMF_TYPE) 
     {
       if (cur_smf->z_low != cur_smf->z_high && !no_z_scaling) 
@@ -2438,7 +2555,7 @@ double calc_single_chi2_err(struct obs_smf *cur_smf)
 
     else if (cur_smf->type == CSFR_TYPE) 
     {
-      smf_val = calc_cosmic_sfr(real_smf[i].mass); //Actually redshift for CSFR
+      smf_val = calc_cosmic_sfr(real_smf[i].mass); //Actually redshift for CSFR, not mass.
     } 
 
     else if (cur_smf->type == BHMF_TYPEI_TYPE)
@@ -2453,6 +2570,8 @@ double calc_single_chi2_err(struct obs_smf *cur_smf)
   return chi2;
 }
 
+// Calculate chi2's for a single observed data points (cur_smf).
+// This is very similar to calc_single_chi2_err().
 double calc_single_chi2_err_point(struct obs_smf_point *cur_smf) 
 {
   double smf_val, epsilon;
@@ -2485,20 +2604,15 @@ double calc_single_chi2_err_point(struct obs_smf_point *cur_smf)
   }
   
   else if (cur_smf->type == CSFR_TYPE) {
-    smf_val = calc_cosmic_sfr(cur_smf->mass); //Actually redshift for CSFR
+    smf_val = calc_cosmic_sfr(cur_smf->mass); //Actually redshift for CSFR, not mass
   } 
   else if (cur_smf->type == QLF_TYPE) 
   {
     smf_val = calc_quasar_lf_new(m, cur_smf->z_low);
   }
-  else if (cur_smf->type == QLF_CTN_TYPE) 
-  {
-    smf_val = calc_quasar_lf_ctn(m, cur_smf->z_low);
-  }
   else if (cur_smf->type == QPDF_TYPE) 
   {
     smf_val = calc_qpdf_at_l_m_z_new(cur_smf->extra, cur_smf->mass, median_z);
-    //smf_val = calc_qpdf_at_l_m_z(cur_smf->extra, cur_smf->mass, median_z);
   }
   else if (cur_smf->type == QPDF_ETA_TYPE)
   {
@@ -2529,6 +2643,8 @@ double calc_single_chi2_err_point(struct obs_smf_point *cur_smf)
   return model_chi2_point(&model_smf, cur_smf);
 }
 
+// The helper function to calculate the halo mass function based 
+// on the cached simulation data, given a halo peak mass (mass).
 double _mf_cache(struct mf_cache *cache, double mass) 
 {
   int i;
@@ -2550,6 +2666,9 @@ double _mf_cache(struct mf_cache *cache, double mass)
   return r;
 }
 
+// Calculate the halo mass function based on the cached simulation data,
+// given a certain scale factor (scale = 1 / (1 + z)) and halo peak mass
+// (mass).
 double mf_cache(double scale, double mass) 
 {
   int i;
@@ -2569,15 +2688,22 @@ double mf_cache(double scale, double mass)
 	  all_mf_caches->caches[i].inv_scale_spacing);
 }
 
-
+// The function to load real observational data points.
 void load_real_smf(struct obs_smf_point **cur_smf, int64_t *num_points, char *filename)
 {
   FILE *smf_data;
   char buffer[1024];
+
+  // different data type identifiers
   char *data_types[] = {"smf", "ssfr", "cosmic sfr", "quasar lf", "quasar luminosity pdf", "active bhmf", "quasar eddington ratio pdf", "Compton-thin quasar lf", "qf", "uvlf", "type I bhmf"};
+  
+  // error types indicating if the data points and error bars are in
+  // linear or log units.
   char *error_types[] = {"log", "linear"};
   struct obs_smf_point next_smf, conv_smf;
   int64_t n, loaded=0;
+
+  // open the data file
   smf_data = fopen(filename, "r");
   if (!smf_data) 
   {
@@ -2594,13 +2720,16 @@ void load_real_smf(struct obs_smf_point **cur_smf, int64_t *num_points, char *fi
 	       &(next_smf.val), &(next_smf.err_h), &(next_smf.err_l));
     if (buffer[0] == '#') 
     {
+      // Get the lower/upper limits in redshifts.
       if (!strncmp(buffer, "#zlow: ", 7)) next_smf.z_low = atof(&(buffer[7]));
       if (!strncmp(buffer, "#zhigh: ", 8)) next_smf.z_high = atof(&(buffer[8]));
+      // Get the error type.
       if (!strncmp(buffer, "#errors: ", 9)) 
       {
 	      if (!strncasecmp(&(buffer[9]), "Linear", 6)) next_smf.linear_errors = 1;
 	      else  next_smf.linear_errors = 0;
       }
+      // Get the data type.
       if (!strncmp(buffer, "#type: ", 7)) 
       {
       	if (!strncasecmp(&(buffer[7]), "ssfr", 4)) next_smf.type = SSFR_TYPE;
@@ -2625,6 +2754,9 @@ void load_real_smf(struct obs_smf_point **cur_smf, int64_t *num_points, char *fi
       continue;
     }
 
+    // For QPDF data, we need an additional column (next_smf.extra) to contain 
+    // either luminosity or specific BH accretion rate (sBHAR or sLx, see Section
+    // 2.8 of Zhang et al. 2021).
     if (next_smf.type == QPDF_TYPE || next_smf.type == QPDF_ETA_TYPE) 
     {
       n = sscanf(buffer, "%lf %lf %lf %lf %lf", &(next_smf.mass), &(next_smf.extra),
@@ -2684,6 +2816,7 @@ void load_real_smf(struct obs_smf_point **cur_smf, int64_t *num_points, char *fi
   fprintf(stderr, "#Loaded %"PRId64" points from %s (type: %s; errors: %s)\n", loaded, filename, data_types[next_smf.type], error_types[next_smf.linear_errors]); 
 }
 
+// Set up the cache for standard Gaussian distribution.
 void setup_psf(int scatter) 
 {
   init_gauss_cache();
@@ -2699,6 +2832,8 @@ float readfloat(FILE *input)
   return result;
 }
 
+// Load the cached halo mass functions from
+// a certain file (filename).
 void load_mf_cache(char *filename) 
 {
   FILE *input;

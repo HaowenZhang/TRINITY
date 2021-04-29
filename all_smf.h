@@ -2,20 +2,31 @@
 #define ALL_SMF_H
 #include "smf.h"
 
+// The SFR threshold value for the prior against high recent SFRs among massive
+// halos. See all_smf_chi2_err() in all_smf.c
 #define SFR_CONSTRAINT 1.0
+// The width in SFR for the same prior.
 #define SFR_CONSTRAINT_WIDTH 0.3
+// The minimum scale factor from which the SFRs are determined as "recent".
 #define SFR_A_CONSTRAINT 0.8
+// The minimum halo mass from which the SFRs are included in the prior.
 #define SFR_M_CONSTRAINT 13.5
 
+// The minimum halo mass and scale factor from which
+// the SFH will be examined in rising_sfh_penalty(). See calc_sfh.c 
 #define RISING_SFH_M_CONSTRAINT 14
 #define RISING_SFH_A_CONSTRAINT 0.5
 
+// The parameters for the prior against too high M_ICL/M_*
+// ratios. See recent_Micl_Mstar_ratio_in_massive_halos() in calc_sfh.c
+// and all_smf_chi2_err() in all_smf.c.
 #define ICL_RATIO_CONSTRAINT 0.0
 #define ICL_RATIO_CONSTRAINT_WIDTH 0.3
 #define ICL_RATIO_A_CONSTRAINT 0.8
 #define ICL_RATIO_M_CONSTRAINT 15
 
 // Constraint on the fraction of massive halos that are kinetically powerful.
+// Due to the lack of good observational constraints, this is now deprecated.
 #define KIN_POWER_CONSTRAINT_LOW 44
 #define KIN_FRAC_CONSTRAINT_LOW 0.25
 // #define KIN_POWER_CONSTRAINT_HIGH 45
@@ -24,7 +35,9 @@
 #define KIN_POWER_A_CONSTRAINT_LOW 0.5
 #define KIN_POWER_M_CONSTRAINT 14
 
-
+// The parameters for the prior against too high radiative AGN powers among
+// massive halos at low redshift. See recent_radiative_power_in_massive_halos()
+// in calc_sfh.c and all_smf_chi2_err() in all_smf.c.
 #define RAD_POWER_CONSTRAINT_LOW 41.00
 #define RAD_POWER_CONSTRAINT_HIGH 43
 #define RAD_POWER_CONSTRAINT_WIDTH 0.3
@@ -32,14 +45,18 @@
 #define RAD_POWER_A_CONSTRAINT_LOW 0.5
 #define RAD_POWER_M_CONSTRAINT 14
 
-#define Z_CEIL_CENTER 16.0
-#define Z_CEIL_WIDTH 0.3
+// #define SMF_CPUS 8
 
-#define SMF_CPUS 8
-
+// The number of steps in the burn-in phase.
 #define BURN_IN_LENGTH (1<<6)
+
+// The number of parameters in Trinity. Note that this number may be different
+// than is shown in the papers, because lots of the parameters are fixed or
+// even deprecated in the code. Please refer to Zhang et al. (2021) for the
+// accurate number.
 #define NUM_PARAMS 70
 
+// 
 #define EFF_0_STEP    0.001
 #define EFF_0_A_STEP  0.015
 #define EFF_0_A2_STEP  0.015

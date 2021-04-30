@@ -1,0 +1,18 @@
+#The number of mergers per halo, per unit redshift, and per unit log10(mass ratio),
+#as a function of descendant halo peak mass (Mdesc) and mass ratio (theta).
+#z: 4.3-9.0
+#Ref: Behroozi et al. 2019, https://ui.adsabs.harvard.edu/abs/2019MNRAS.488.3143B/abstract
+#log10(Mdesc) log10(theta) log10(d^2N/dz/dlog10(theta))
+12.500000 -2.500000 -0.548077
+12.500000 -2.300000 -0.042589
+12.500000 -2.100000 0.193625
+12.500000 -1.900000 0.221242
+12.500000 -1.700000 0.024111
+12.500000 -1.500000 0.148941
+12.500000 -1.300000 -0.336070
+12.500000 -1.100000 -0.153073
+12.500000 -0.900000 -0.736172
+12.500000 -0.700000 -0.504533
+12.500000 -0.500000 -1.165489
+12.500000 -0.300000 -2.267890
+12.500000 -0.100000 -2.243657

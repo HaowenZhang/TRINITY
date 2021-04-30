@@ -1,0 +1,14 @@
+#Bulge mass-to-total mass ratio as a function of total stellar mass
+#z: 1.0
+#Ref: Lang et al. 2014, https://ui.adsabs.harvard.edu/abs/2014ApJ...788...11L/abstract
+#log(Mstar) log(Mbulge/Mstar)
+10.108216 -0.569487
+10.235671 -0.505323
+10.363126 -0.473148
+10.490581 -0.429763
+10.618036 -0.404227
+10.745491 -0.373049
+10.872946 -0.295818
+11.000401 -0.286601
+11.127856 -0.261217
+11.255311 -0.247261

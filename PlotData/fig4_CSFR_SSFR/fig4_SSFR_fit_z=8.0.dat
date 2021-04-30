@@ -1,0 +1,6 @@
+#Best-fitting average specific star formation rates from Trinity.
+#z: 8.0
+#Ref: Zhang et al. (2021)
+#log10(Mstar)[Msun] log10(SSFR)[yr^-1]
+8.600000 -7.752460
+8.700000 -7.754140

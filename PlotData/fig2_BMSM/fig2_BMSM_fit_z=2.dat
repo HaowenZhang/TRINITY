@@ -1,0 +1,12 @@
+#Best-fitting bulge mass-to-total mass ratio as a function of total stellar mass
+#z: 2.0
+#Ref: Zhang et al. 2021
+#log(Mstar) log(Mbulge/Mstar)
+8.250000 -1.231470
+8.750000 -0.879280
+9.250000 -0.567490
+9.750000 -0.437670
+10.250000 -0.370580
+10.750000 -0.082600
+11.250000 -0.123200
+11.750000 -0.287100

@@ -1,0 +1,10 @@
+#Best-fitting galaxy quenched fractions from Trinity.
+#z: 3.5
+#Ref: Zhang et al. (2021)
+#log10(Mstar)[Msun] Quenched_Fraction
+11.000000 0.097627
+11.100000 0.107081
+11.200000 0.116475
+11.300000 0.124192
+11.400000 0.132132
+11.500000 0.142199

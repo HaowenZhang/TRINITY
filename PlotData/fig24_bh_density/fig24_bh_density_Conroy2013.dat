@@ -1,0 +1,12 @@
+#Cosmic black hole mass density (rho_bh) as a function of redshift, from Conroy & White (2013)
+#Ref: Conroy & White 2013, https://ui.adsabs.harvard.edu/abs/2013ApJ...762...70C/abstract
+#z log(rho_bh_const_Eddington)[Msun Mpc^-3] log(rho_bh_varying_Eddington)[Msun Mpc^-3]
+0.500000 5.615015 5.620390
+1.000000 5.682396 5.290054
+1.500000 5.943899 5.350398
+2.000000 5.940915 5.198299
+2.400000 5.883479 5.098434
+2.800000 5.851442 4.970936
+3.250000 5.898014 4.937956
+3.750000 6.011894 5.029095
+4.250000 6.518835 5.598361

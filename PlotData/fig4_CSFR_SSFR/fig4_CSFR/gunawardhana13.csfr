@@ -1,0 +1,8 @@
+#type: csfr
+#ref: http://lanl.arxiv.org/abs/1305.1305v1
+#conversions: IMF
+#notes: values are from GAMA results in Table 2
+0.0505 -1.886 0.13 0.13
+0.125 -1.914 0.13 0.13
+0.205 -1.936 0.13 0.13
+0.295 -1.714 0.13 0.13

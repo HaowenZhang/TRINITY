@@ -1,0 +1,8 @@
+#type: csfr
+#ref: http://arxiv.org/abs/1009.0002v1
+#note: Chandra hard sources excluded
+#conversions: IMF
+0.75 -1.0918 0.13 0.13
+1.25 -1.0235 0.17 0.17
+2 -0.88203 0.19 0.19
+3 -0.94721 0.27 0.27

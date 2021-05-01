@@ -1,0 +1,8 @@
+#type: csfr
+#ref: http://lanl.arxiv.org/abs/1305.1305v1
+#note: Since multiple overlapping redshift ranges with the same fields were reported, only results from filter NB921 are included, which had the largest sample sizes.
+#conversions: IMF
+#note: narrowband measurements at z<0.5 excluded due to cosmic variance concerns.
+#0.39 0.41 -2.14 1
+0.855 -1.80 0.13 0.13
+1.465 -0.946 0.17 0.17

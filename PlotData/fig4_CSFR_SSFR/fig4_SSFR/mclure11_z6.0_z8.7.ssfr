@@ -1,0 +1,6 @@
+#type: ssfr
+#zlow: 7.59003483869087
+#zhigh: 7.59003483869087
+#ref: http://arxiv.org/abs/1102.4881v2
+#notes: average SFR/SM calculated from Table 6; first galaxy excluded due to extremely discrepant SFRs.  Average nebular emission line correction of 0.3 dex applied to SMs.
+9.1 -8.118 0.28 0.28

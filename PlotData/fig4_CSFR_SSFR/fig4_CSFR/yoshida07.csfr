@@ -1,0 +1,6 @@
+#type: csfr
+#ref: http://arxiv.org/pdf/astro-ph/0608512v1.pdf
+#conversions: IMF
+#notes: integrated from Schechter function fits down to MUV = -17, multiplied by UV - SFR conversion of 1.25e-28, converted to Chabrier.  Fig. 23 in paper appears to be in error.
+4.1 -1.473 0.27 0.27
+4.95 -1.754 0.27 0.27

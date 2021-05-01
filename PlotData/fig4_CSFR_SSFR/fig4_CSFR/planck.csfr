@@ -1,0 +1,8 @@
+#type: csfr
+#ref: http://arxiv.org/pdf/1309.0382v1.pdf
+#note: z=0 measurement from Vaccari+ 2010 
+#conversions: IMF
+0.1 -1.91 0.13 0.13
+1 -0.994 0.17 0.17
+2 -0.980 0.19 0.19
+4 -1.598 0.27 0.27

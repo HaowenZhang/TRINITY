@@ -1,0 +1,9 @@
+#type: csfr
+#ref: http://arxiv.org/pdf/0901.3783v3.pdf
+#conversions: IMF
+#notes: The IR - SFR relation is inconsistent between Fig. 9 and Fig. 10; Fig. 9 appears more consistent with Eq. 3.
+0.55 -1.411 0.13 0.13
+0.85 -1.103 0.13 0.13
+1.15 -0.977 0.17 0.17
+1.55 -1.077 0.17 0.17
+2.05 -1.020 0.19 0.19

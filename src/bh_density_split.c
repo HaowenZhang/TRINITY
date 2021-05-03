@@ -1,3 +1,5 @@
+// Generate cosmic black hole mass densities belw and above 10^8
+// Msuns as functions of redshift. Ref: Fig. 25 of Zhang et al. (2021).
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -20,52 +22,58 @@ int main(int argc, char **argv)
   }
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
+  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
+  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
 
   double sqrt12 = sqrt(0.5);
-  //int64_t mbh_bins = 1000;
 
-  printf("#z rho_5m6 rho_6m7 rho_7m8 rho_8m9 rho_9m10\n");
-  // for (i=0; i<200; i++) {
-  //   double z = i*0.05;
-  //   printf("%f %g %g %g %g %g\n", z, log10(cosmic_bh_density(z,0,0,NULL)), log10(cosmic_old_bh_density(z,0,0,NULL)), 
-	 //   log10(cosmic_bh_density(z,-2,0,NULL)), log10(cosmic_bh_density(z,0,43,NULL)), log10(cosmic_bh_density(z,0,46,NULL)));
-  // }
+  printf("#z rho_BH(Mbh < 10^8 Msun) rho_BH(Mbh > 10^8 Msun)\n");
+  // The (log10 of) SMBH masses defining the bins.
   double mbh_grid[] = {0, 8, 18};
-  //double mbh_grid[] = {5,6,7,8,9,10};
+  // bins in SMBH mass per dex, when calculating the contribution from
+  // each halo mass bin to the SMBH mass density.
   int64_t mbh_bpdex = 20;
-  //int64_t mbh_bins = (mbh_grid[2] - mbh_grid[0]) * mbh_bpdex;
   double mbh_inv_bpdex = 1.0 / mbh_bpdex;
   for (i=0; i < num_outputs; i++)
   {
     double z = 1 / steps[i].scale - 1;
     double bh_unmerged = 0;
+    // The scatter in SMBH mass at fixed halo mass. This is a quadratic summation
+    // of the scatter around the black hole mass--bulge mass relation and the
+    // scatter around the stellar mass--halo mass relation, scaled by the slope
+    // of the black hole mass--bulge mass relation.
     double scatter = sqrt(steps[i].smhm.bh_scatter*steps[i].smhm.bh_scatter+
                           steps[i].smhm.scatter*steps[i].smhm.scatter
                           *steps[i].smhm.bh_gamma*steps[i].smhm.bh_gamma);
     double inv_scatter = 1.0 / scatter;
+    // Pre-calculate the normalization of Gaussian distributions. 
     double norm_gauss = sqrt12 / scatter / sqrt(M_PI);
-    //double rho_bh_split[5] = {0};
+    // SMBH mass densities in different bins.
     double rho_bh_split[2] = {0};
+    // Iterate over each halo mass bin
     for (int j = 0; j < M_BINS; j++) 
     {
+      // Two broad SMBH mass bins
       for (int k=0; k<2; k++)
-      //for (int k=0; k<5; k++)
       {
-        // double log_bh_mass_avg = log10(steps[i].bh_mass_avg[j]);
         double mbh_low = mbh_grid[k];
         double mbh_high = mbh_grid[k+1];
-        // double sigma_low = (mbh_low - steps[i].log_bh_mass[j]) / scatter;
-        // double sigma_high = (mbh_high - steps[i].log_bh_mass[j]) / scatter;
-        // double frac_between = 0.5 * (erf(sigma_high*sqrt12) - erf(sigma_low*sqrt12));
         int64_t mbh_bins = (mbh_high - mbh_low) * mbh_bpdex;
+        // Divide each broad SMBH mass bin into finer sub-bins
         for (int l=0; l<mbh_bins; l++)
         {
+          // Calculate the corresponding SMBH mass, and the contribution
+          // from the j-th halo mass bin to this SMBH mass bin.
           double mbh = mbh_low + (l + 0.5) * mbh_inv_bpdex;
           double prob = norm_gauss * exp(-0.5 * (mbh - steps[i].log_bh_mass[j]) *
                                                 (mbh - steps[i].log_bh_mass[j]) *
@@ -75,9 +83,9 @@ int main(int argc, char **argv)
         }
       }
     }
+    // Print the results.
     printf("%f", z);
     for (int k=0; k<2; k++) printf(" %e", rho_bh_split[k]);
-    //for (int k=0; k<5; k++) printf(" %e", rho_bh_split[k]);
     printf("\n");
   }
   return 0;

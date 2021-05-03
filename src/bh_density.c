@@ -24,6 +24,8 @@ int main(int argc, char **argv)
   }
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
   // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);

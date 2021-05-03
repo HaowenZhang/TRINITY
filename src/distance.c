@@ -12,10 +12,14 @@
 #define TOTAL_BINS (((int)MAX_Z)*((int)Z_BINS))
 double Omega_M, Omega_L, h;
 double Dh;
+
+// Cached comoving distances as a function of redshift.
 double _Dc[TOTAL_BINS];
 
-
-double _E (double z) {
+// The ratio between the Hubble parameter at z (H(z))
+// and the Hubble constant (H0): _E(z) = H(z) / H0
+double _E (double z) 
+{
   double z1 = 1.0+z;
   return sqrt(Omega_M * (z1*z1*z1) + Omega_L);
 }
@@ -29,22 +33,29 @@ void init_cosmology(double omega_m, double omega_l, double h0)
   Omega_L = omega_l;
   h = h0;
   Dh = 2997.92458 / h; //In Mpc  (Speed of light / H0)
-  for (i=0; i<TOTAL_BINS; i++) {
+  // 
+  for (i=0; i<TOTAL_BINS; i++) 
+  {
     z = (float)(i+0.5) / Z_BINS;
     _Dc[i] = Dc_int * Dh;
     Dc_int += 1.0 / (_E(z)*Z_BINS);
   }
 }
 
-double redshift(double a) {
+double redshift(double a) 
+{
   return (1.0/a-1.0);
 }
 
-double scale_factor(double z) {
+double scale_factor(double z) 
+{
   return (1.0/(1.0+z));
 }
 
-double comoving_distance(double z) {
+// Calculate the comoving distance as a function of redshift, in unit of ***Mpc***.
+// This function makes use of the cached comoving distance.
+double comoving_distance(double z) 
+{
   float f = z*Z_BINS;
   int bin = f;
   if (z<0) return 0;
@@ -53,40 +64,57 @@ double comoving_distance(double z) {
   return (_Dc[bin]*(1.0-f) + _Dc[bin+1]*f);
 }
 
-double comoving_distance_h(double z) {
+// Calculate the comoving distance as a function of redshift, in unit of ***Mpc/h***.
+double comoving_distance_h(double z) 
+{
   return (comoving_distance(z)*h);
 }
 
-double transverse_distance(double z) {
+double transverse_distance(double z) 
+{
   return (comoving_distance(z));
 }
 
-double angular_diameter_distance(double z) {
+// Angular diameter distance, as a function of redshift.
+// This is simply the comoving distance divided by (1 + z).
+double angular_diameter_distance(double z) 
+{
   return (transverse_distance(z) / (1.0 + z));
 }
 
-double luminosity_distance(double z) {
+// Luminosity distance, as a function of redshift.
+// This is simply the comoving distance multiplied by (1 + z).
+double luminosity_distance(double z) 
+{
   return ((1.0+z)*transverse_distance(z));
 }
 
-double comoving_volume_element(double z) {
+// the comoving volume element dVc.
+double comoving_volume_element(double z) 
+{
   double z1da = (1.0+z)*angular_diameter_distance(z);
   return (Dh*(z1da*z1da)/_E(z));
 }
 
-double comoving_volume(double z) {
+double comoving_volume(double z) 
+{
   double r = transverse_distance(z);
   return (4.0*M_PI*r*r*r/3.0);
 }
 
-double comoving_volume_to_redshift(double Vc) {
+// Calculate the redshift given the comoving volume Vc(<z).
+double comoving_volume_to_redshift(double Vc) 
+{
+  // Calculate the comoving radius corresponding to the comoving volume
   double r = cbrt(Vc*(3.0/(4.0*M_PI)));
   if (r<=0) return 0;
   double z = 1;
   double dz = 0.1;
   double rt;
-  while (dz > 1e-7) {
+  while (dz > 1e-7) 
+  {
     rt = transverse_distance(z);
+    // Use secant method to calculate the corresponding redshift.
     dz = (r - rt) * dz/(transverse_distance(z+dz) - transverse_distance(z));
     if (!isfinite(dz)) return z;
     if (z+dz < 0) z /= 3.0;

@@ -39,10 +39,10 @@ double area_sdss = 14500.0 / 41252.96124941928; //fractional survey area of sdss
 double frac_below8[MBH_BINS] = {0};
 double frac_below11[MBH_BINS] = {0};
 
-void init_frac_below8(void)
 // Calculate the frac_below8 and frac_below11, i.e., 
 // the fractional probability that BH in each mass bin
 // get scattered below 10^8 and 10^11 Msun, respectively
+void init_frac_below8(void)
 {
   for (int i=0; i<MBH_BINS; i++)
   {
@@ -65,7 +65,8 @@ double cov_matrix[NUM_PARAMS][NUM_PARAMS];
 // orth_matrix is the correlation coefficient matrix for all parameters.
 double orth_matrix[NUM_PARAMS][NUM_PARAMS];
 
-// Eigenvalues vector.
+// Eigenvalue vector. This eigenvalue vector determines the Gaussian
+// width in the proposal of new samples.
 double eigenvalues[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_STEP, 
 				   EFF_0_A3_STEP, EXPSCALE_STEP, M_1_STEP,
 				   M_1_A_STEP, M_1_A2_STEP, M_1_A3_STEP,

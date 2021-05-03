@@ -1,7 +1,9 @@
 #ifndef MF_CACHE
 #define MF_CACHE
 
-struct mf_cache {
+// Cached halo mass functions at a certain redshift.
+struct mf_cache 
+{
   float mass_min;
   float mass_max;
   float inv_scale_spacing;
@@ -14,7 +16,9 @@ struct mf_cache {
   float *errors;
 };
 
-struct z_mf_cache {
+// Cached halo mass functions at all redshifts.
+struct z_mf_cache 
+{
   float scale_min;
   float scale_max;
   float h0, omega_m, omega_l;

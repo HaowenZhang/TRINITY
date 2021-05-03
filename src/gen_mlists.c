@@ -376,7 +376,6 @@ void init_timesteps(void)
     }
   }
 
-  
   build_stepcache();
   write_steps_to_file("steps_PLaexp_sat_frac.bin");
 }

@@ -2823,6 +2823,7 @@ void setup_psf(int scatter)
   use_obs_psf = scatter;
 }
 
+// Read a single float number from the file input.
 float readfloat(FILE *input) 
 {
   char buffer[50] = {0};
@@ -2848,14 +2849,17 @@ void load_mf_cache(char *filename)
 
   all_mf_caches = (struct z_mf_cache *)malloc(sizeof(struct z_mf_cache));
 
+  // Read cosmology parameters, initialize the cosmology, and the time table.
   omega_m = all_mf_caches->omega_m = readfloat(input);
   omega_l = all_mf_caches->omega_l = readfloat(input);
   h0 = all_mf_caches->h0 = readfloat(input);
   init_cosmology(omega_m, omega_l, h0);
   init_time_table(omega_m, h0);
 
+  // Read the minimum and maximum scale factors
   all_mf_caches->scale_min = readfloat(input);
   all_mf_caches->scale_max = readfloat(input);
+  // Read the number of scale factors (i.e., # of snapshots)
   all_mf_caches->scales = readfloat(input);
   all_mf_caches->avg_inv_scale_spacing = (float)(all_mf_caches->scales-1) / 
     (all_mf_caches->scale_max - all_mf_caches->scale_min);
@@ -2869,15 +2873,22 @@ void load_mf_cache(char *filename)
     exit(7);
   }
 
+  // Allocate the space for the cache from each snapshot
   all_mf_caches->caches = (struct mf_cache *)
     malloc(sizeof(struct mf_cache)*all_mf_caches->scales);
+
+  // Read information for every snapshot
   for (i=0; i<all_mf_caches->scales; i++) 
   {
     mf = &(all_mf_caches->caches[i]);
+    // minimum/maximum halo masses
     mf->mass_min = readfloat(input);
     mf->mass_max = readfloat(input);
+    // number of halo masses
     mf->masses = readfloat(input);
+    // scale factor
     mf->scale = readfloat(input);
+    // slope of the halo mass function (before the exponential suppression at the massive end)
     mf->alpha = fabs(readfloat(input));
     if (! (mf->scale >= all_mf_caches->scale_min &&
 	   mf->scale <= all_mf_caches->scale_max)) 
@@ -2892,8 +2903,10 @@ void load_mf_cache(char *filename)
     }
 
     mf->mf = (float *)malloc(sizeof(float)*mf->masses);
+    // Read in the actual mass functions
     fread(mf->mf, sizeof(float), mf->masses, input);
     mf->inv_mass_spacing = (float)(mf->masses-1)/(mf->mass_max - mf->mass_min);
+    // The inverse of the characteristic mass of the Schechter halo mass function.
     mf->inv_m0 = log10(((mf->mass_max - mf->mass_min)*(1.0-mf->alpha)
 			+ mf->mf[0] - mf->mf[mf->masses-1])/exp10(mf->mass_max));
   }

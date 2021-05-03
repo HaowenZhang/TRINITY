@@ -56,7 +56,7 @@
 // accurate number.
 #define NUM_PARAMS 70
 
-// 
+// The initial eigenvalues in each dimension.  See all_smf.c.
 #define EFF_0_STEP    0.001
 #define EFF_0_A_STEP  0.015
 #define EFF_0_A2_STEP  0.015
@@ -151,6 +151,7 @@
 #define ETA_MU_0_STEP 0.001
 #define ETA_MU_1_STEP 0.001
 
+// Helper function to get model parameters in a human-friendly way.
 #define EFF_0(x)     ((x).params[0])
 #define EFF_0_A(x)   ((x).params[1])
 #define EFF_0_A2(x)  ((x).params[2])
@@ -239,6 +240,7 @@
 
 #define MODEL_FLAGS(x)     ((x).params[69]) 
 
+// Flag indicating if the model is invalid (!= 0) or not (== 0).
 #define INVALID(x)  ((x).params[NUM_PARAMS])
 #define CHI2(x)     ((x).params[NUM_PARAMS+1])
 #ifdef __APPLE__
@@ -247,14 +249,20 @@
 #define INVALIDATE(x,y) { INVALID(*x) = 1; }
 #endif
 
-struct smf_fit {
+// The structure containing all the model parameters, 
+// including the model flag, chi2, and the invalidity flag.
+struct smf_fit 
+{
   double params[NUM_PARAMS+2];
 };
 
-void shutdown_clients(void);
+void shutdown_clients(void); //Deprecated.
+
+// For the non-deprecated function below, please see
+// the comments in all_smf.c.
 void init_frac_below8(void);
 float all_smf_chi2_err(struct smf_fit test);
-float all_smf_chi2_err_write(struct smf_fit test);
+float all_smf_chi2_err_write(struct smf_fit test); //Deprecated.
 float chi2_type(struct smf_fit test);
 void clear_stats(void);
 void add_to_stats(struct smf_fit *a);

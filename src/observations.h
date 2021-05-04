@@ -46,11 +46,13 @@
 #define SC_BINS ((int64_t)((SC_ALPHA_MAX - SC_ALPHA_MIN)*SC_BPUNIT + 1)
 
 
-struct real_smf {
+struct real_smf 
+{
   double mass, val, err_l, err_h;
 };
 
-struct obs_smf {
+struct obs_smf 
+{
   struct real_smf real_smf[MAX_SMF_POINTS];
   int real_smf_points;
   double z_low, z_high;
@@ -59,7 +61,8 @@ struct obs_smf {
   int type;
 };
 
-struct obs_smf_point {
+struct obs_smf_point 
+{
   double mass, extra, val, err_l, err_h;
   double z_low, z_high, v_low, v_high;
   double chi2;
@@ -67,7 +70,8 @@ struct obs_smf_point {
   int type;
 };
 
-struct step_integral_helper_data {
+struct step_integral_helper_data 
+{
   double f, sm, scatter, obs_scatter, gauss_inv_sigma,corr,s_corr,kappa;
   double passive_mass;
   int64_t step, n, n2;
@@ -77,7 +81,8 @@ struct step_integral_helper_data {
   char *ok, *ok2;
 };
 
-struct quasar_info {
+struct quasar_info 
+{
   double l;
   int64_t step;
 };

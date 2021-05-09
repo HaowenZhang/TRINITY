@@ -775,6 +775,70 @@ double calc_bhmf(double m, double z)
   return 1e-19;
 }
 
+double calc_bhmf_mh(double m, double z, double mh_low, double mh_high) 
+{
+  int64_t step;
+  double f;
+
+  // Find out which snapshot to look at.
+  calc_step_at_z(z, &step, &f);
+  int64_t i;
+  if (step >= num_outputs - 1) { step = num_outputs - 2; f = 1.0; }
+  
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
+  double s1 = (1.0-f)*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma) + f*(steps[step].smhm.scatter * steps[step].smhm.bh_gamma);
+  double s2 = (1.0-f)*steps[step].smhm.bh_scatter + f*(steps[step+1].smhm.bh_scatter);
+  double s3 = s1*s1+s2*s2;
+  if (!s3) return 1e-19;
+  double norm_gauss = 1 / sqrt(2 * M_PI * s3);
+  double nd = 0;
+
+  // Get the median BH mass and number densities of each halo mass
+  // bin, by interpolating between the two consecutive snapshots.
+  double bhm[M_BINS]={0}, t[M_BINS]={0};
+  for (i=0; i<M_BINS; i++) 
+  {
+    bhm[i] = (1.0-f)*steps[step].log_bh_mass[i] + f*steps[step+1].log_bh_mass[i];
+    double ndm = (1.0-f)*steps[step].t[i] + f*steps[step+1].t[i];
+    t[i] = ndm;
+  }
+
+  int64_t s;
+  // For higher precision, we further divide each halo mass bin
+  // into 5 smaller bins.
+
+  int64_t mh_bpdex = 20;
+  double inv_mh_bpdex = 1.0 / mh_bpdex;
+  int64_t mh_bins = (mh_high - mh_low) * mh_bpdex;
+  if (mh_bins < 1)
+  {
+    fprintf(stderr, "[mh_low, mh_high] interval is too small. The minimum difference should be %.6f dex.\n", inv_mh_bpdex);
+    return 1e-19;
+  }
+
+  for (s=0; s<=mh_bins; s++) 
+  {
+    double mh = mh_low + (s + 0.5) * inv_mh_bpdex;
+    f = (mh - M_MIN - 0.5 * INV_BPDEX) * BPDEX;
+    i = f; f -= i;
+    // printf("mh=%f, i=%d, f=%f\n", mh, i, f);
+    if (i==(M_BINS-1)) { i--; f=1; }
+    double tbhm = bhm[i] + f*(bhm[i+1]-bhm[i]);
+    double tnd = t[i] + f*(t[i+1]-t[i]);
+    double dm = tbhm - m;
+    double weight = exp(-0.5*dm*dm/s3) * norm_gauss;
+    nd += weight*tnd;
+  }
+
+  nd *= BPDEX * 1.0 / mh_bpdex; // Account for the fact that we split each halo mass bin into (mh_bpdex / BPDEX) sub-bins.
+  if (nd > 1e-19) return nd;
+  return 1e-19;
+}
+
 // Calculate the type I quasar mass function 
 // at a given black hole mass (m) and redshift (z).
 // See also: Kelly & Shen (2013)

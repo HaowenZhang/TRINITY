@@ -134,6 +134,7 @@ double calc_quasar_lf_mbh(double Mi, double z, double mbh_low, double mbh_high);
 double calc_quasar_lf_eta(double Mi, double z, double eta_low, double eta_high);
 
 double calc_bhmf(double m, double z);
+double calc_bhmf_mh(double m, double z, double mh_low, double mh_high);
 double calc_bhmf_typeI(double m, double z);
 
 double calc_bhar_mbh(double m, double z);

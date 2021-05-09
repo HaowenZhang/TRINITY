@@ -1,5 +1,5 @@
-// Generate the ***total*** (active+inactive) and active-only
-// black hole mass functions at a given redshift.
+// Generate ***total*** (active+inactive) black hole mass functions, broken up
+// into the contributions from different halo mass bins, at a given redshift.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -16,9 +16,9 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  double m;
-
-  if (argc<3+NUM_PARAMS) {
+  double mbh, mh;
+  if (argc<3+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s z mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
@@ -42,17 +42,23 @@ int main(int argc, char **argv)
   // Calculate the # of snapshot that is the closest to the input redshift.
   calc_step_at_z(z, &step, &f);
   
+
   double s1 = steps[step].smhm.scatter;
   double s2 = steps[step].smhm.bh_scatter;
   double s = sqrt(s1*s1+s2*s2);
-  printf("#BH_Scatter at fixed mass: %f\n", s);
-  printf("Mbh Mh Mbh_med scatter ND f_active\n");
- 
-  // Calculate the total and active BHMFs.
-  for (m=4; m<10.5; m+=0.1) 
-  {
-    printf("%f %e %e\n", m, calc_bhmf(m, z), calc_active_bhmf(m,z));
-  }
+  printf("#BH_Scatter at fixed halo mass: %f\n", s);
+  printf("Mbh ND ND(11<Mh<12) ND(12<Mh<13) ND(13<Mh<14) ND(14<Mh<15)\n");
 
+  for (mbh=4; mbh<10.5; mbh+=0.1) 
+  {
+    // Calculate the total BHMF
+    printf("%f %e", mbh, calc_bhmf(mbh, z));
+    for (mh=11; mh<15; mh+=1)
+    {
+      // Calculate the contributions from each halo mass bin.
+      printf(" %e", calc_bhmf_mh(mbh, z, mh, mh+1));
+    }
+    printf("\n");
+  }
   return 0;
 }

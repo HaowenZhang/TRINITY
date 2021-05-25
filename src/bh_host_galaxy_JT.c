@@ -1,4 +1,4 @@
-// Calculate the probability distribution of galaxies hosting a quasar 
+// Calculate the mass probability distribution of galaxies hosting a quasar 
 // with given SMBH mass and luminosity at a given redshift. 
 #include <stdlib.h>
 #include <stdio.h>

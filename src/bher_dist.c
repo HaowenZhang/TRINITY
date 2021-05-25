@@ -10,43 +10,13 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
-//#include "fitter.h"
-
-// This file generates interpolated BH merger rates with mass ratio larger than 1:10 and 1:100.
-
-#define INTERP(y,x) { double s1, s2; s1 = (1.0-f)*steps[i].x[j]+f*steps[i+1].x[j];     \
-    s2 = (1.0-f)*steps[i].x[j+1]+f*steps[i+1].x[j+1];			               \
-    y = s1+mf*(s2-s1); }
-
-#define LINTERP(y,x) { double s1, s2; s1 = (1.0-f)*log10(steps[i].x[j])+f*log10(steps[i+1].x[j]); \
-    s2 = (1.0-f)*log10(steps[i].x[j+1])+f*log10(steps[i+1].x[j+1]);	\
-    y = s1+mf*(s2-s1); }
-
-float fitter(float *params) {
-  struct smf_fit test;
-  int i;
-  for (i=0; i<NUM_PARAMS; i++)
-    test.params[i] = params[i];
-
-  assert_model(&test);
-
-  for (i=0; i<NUM_PARAMS; i++)
-    params[i] = test.params[i];
-  //iterations++;
-  float err = all_smf_chi2_err(test);
-  if (!isfinite(err) || err<0) return 1e30;
-  return err;
-}
-
-float calc_chi2(float *params) {
-  return fitter(params);
-}
 
 int main(int argc, char **argv)
 {
   int64_t i, j, k;
   struct smf_fit smf;
-  if (argc<2+NUM_PARAMS) {
+  if (argc<2+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }

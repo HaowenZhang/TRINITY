@@ -1,3 +1,5 @@
+// Calculate the average SMBH Eddington ratio as a function of galaxy mass
+// at a given redshift.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -22,12 +24,22 @@ int main(int argc, char **argv)
   double z = atof(argv[1]);
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+3]);
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
+  // We use non-linear scaling relation between the radiative and total Eddington ratios.
+  nonlinear_luminosity = 1;
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
+  // Load cached halo mass functions.
   load_mf_cache(argv[2]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
+  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
+  // Calculate the # of the snapshot that is the closest to
+  // the input redshift.
   int64_t step;
   double f;
   calc_step_at_z(z, &step, &f);
@@ -36,7 +48,7 @@ int main(int argc, char **argv)
   printf("#Mstar BHER_avg\n");
   for (m=8; m<12.5; m+=0.1) 
   {
-    printf("%f %e\n", m, calc_bher_mstar(m, z));
+    printf("%f %e\n", m, calc_bher_mstar(m, z)); //See observations.c for the documentation for calc_bher_mstar().
   }
   // fclose(pfile);
   return 0;

@@ -27,13 +27,14 @@ int main(int argc, char **argv)
 {
   int64_t i,j;
   struct smf_fit smf;
-  if (argc<2+NUM_PARAMS) {
+  if (argc<2+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
-gsl_set_error_handler_off();
+  gsl_set_error_handler_off();
   nonlinear_luminosity = 1;
   setup_psf(1);
   load_mf_cache(argv[1]);
@@ -42,7 +43,8 @@ gsl_set_error_handler_off();
   calc_sfh(&smf);
   double t,m;
   printf("#1+z M_h SM M_bh duty_cycle dc_beta dc_mass_factor f(Lbol>%g) f(mdot>0.1) f(mdot>1) f(mdot>10)\n", LBOL_THRESH);
-  for (t=0; t<num_outputs-1; t+=1.0/3.0) {
+  for (t=0; t<num_outputs-1; t+=1.0/3.0) 
+  {
     i = t;
     double f = t-i;
     double zp1 = (1.0-f)/steps[i].scale + f/steps[i+1].scale;
@@ -53,13 +55,15 @@ gsl_set_error_handler_off();
     //double efficiency = (1.0-f)*steps[i].smhm.bh_efficiency + f*steps[i+1].smhm.bh_efficiency;
     double alpha = (1.0-f)*steps[i].smhm.bh_alpha + f*steps[i+1].smhm.bh_alpha;
     double delta = (1.0-f)*steps[i].smhm.bh_alpha + f*steps[i+1].smhm.bh_delta;
-    for (j=0; j<BHER_BINS; j++) {
+    for (j=0; j<BHER_BINS; j++) 
+    {
       bher_dist[j] = (1.0-f)*steps[i].bher_dist[j] + f*steps[i+1].bher_dist[j];
       bher_dist[j] *= dc*BHER_INV_BPDEX;
     }
     double z = zp1 - 1;
     double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
-    for (m=8; m<15; m+=0.05) {
+    for (m=8; m<15; m+=0.05) 
+    {
       if (m >= mass_real) continue;
       double mf = (m-M_MIN)*BPDEX+0.5;
       double sm;
@@ -81,17 +85,18 @@ gsl_set_error_handler_off();
       dc_mass_factor = dc_mass_factor / (1 + dc_mass_factor);
       dc *= dc_mass_factor;
 
-      for (j=0; j<BHER_BINS; j++) {
-	double edd_frac = BHER_MIN+j*BHER_INV_BPDEX;
-	double edd_r_obs = edd_frac + bh_eta;
-	//double edd_r = edd_r_obs + log10(0.1/efficiency);
-	double lir = -5.26 - 2.5*(edd_r_obs+lbh_mass); //=72.5 - 2.5(Lbol-7)
-	double lbol = (lir - 72.5)/-2.5 + 7.0;
-	double ff_lbol = (lbol > LBOL_THRESH) ? 1 : 0;
-	if (!ff_lbol && (lbol+BHER_INV_BPDEX>LBOL_THRESH))
-	  ff_lbol += (lbol+BHER_INV_BPDEX-LBOL_THRESH)*BHER_BPDEX;
+      for (j=0; j<BHER_BINS; j++) 
+      {
+      	double edd_frac = BHER_MIN+j*BHER_INV_BPDEX;
+      	double edd_r_obs = edd_frac + bh_eta;
+      	//double edd_r = edd_r_obs + log10(0.1/efficiency);
+      	double lir = -5.26 - 2.5*(edd_r_obs+lbh_mass); //=72.5 - 2.5(Lbol-7)
+      	double lbol = (lir - 72.5)/-2.5 + 7.0;
+      	double ff_lbol = (lbol > LBOL_THRESH) ? 1 : 0;
+      	if (!ff_lbol && (lbol+BHER_INV_BPDEX>LBOL_THRESH))
+      	  ff_lbol += (lbol+BHER_INV_BPDEX-LBOL_THRESH)*BHER_BPDEX;
 
-	f_lbol += bher_dist[j]*ff_lbol;
+      	f_lbol += bher_dist[j]*ff_lbol;
       }
 
       double thresh_01 = -1.0 - bh_eta;

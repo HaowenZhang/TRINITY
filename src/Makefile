@@ -226,10 +226,12 @@ gen_sm_sfr_check:
 	$(CC) $(BASE_FILES) sm_sfr_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sm_sfr_check
 chi2_type:
 	$(CC) $(BASE_FILES) gen_chi2_type.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_chi2_type
-asymmetry_check:
-	$(CC) $(BASE_FILES) gen_asymmetry_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_asymmetry_check
+mbh_info:
+	$(CC) $(BASE_FILES) gen_mbh_info.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_mbh_info
 gen_energy_density:
 	$(CC) $(BASE_FILES) energy_density.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o energy_density
+avg_eff_rad:
+	$(CC) $(BASE_FILES) gen_avg_eff_rad.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_avg_eff_rad
 qf:
 	$(CC) $(QF_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(QF_NAME)
 gen_bh_host_halo_JT:

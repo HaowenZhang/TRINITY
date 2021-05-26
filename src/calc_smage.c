@@ -20,7 +20,8 @@ extern struct timestep *steps;
 #define B_NB ((B_END-B_START)*B_BPDEX+1)
 float conv_coeffs[B_NB][M_BINS];
 
-void gen_conv_coeffs(struct smf_fit f) {
+void gen_conv_coeffs(struct smf_fit f) 
+{
   int64_t i,j;
   struct smf smf = smhm_at_z(1.0/steps[num_outputs-1].scale-1.0, f);
   double scatter2 = smf.scatter*smf.scatter + smf.obs_scatter*smf.obs_scatter;

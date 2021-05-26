@@ -1,3 +1,5 @@
+// Print out the fraction of infalling satellite galaxies that are merged into 
+// central halos, i.e., merged_frac, as a function of halo mass and redshift.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -19,21 +21,34 @@ int main(int argc, char **argv)
   struct smf_fit the_smf;
   int i, j;
 
-  if (argc<3+NUM_PARAMS) {
+  if (argc<3+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
   for (i=0; i<NUM_PARAMS; i++)
     the_smf.params[i] = atof(argv[i+2]);
 
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
+  gsl_set_error_handler_off();
+  // We use non-linear scaling relation between the radiative and total Eddington ratios.
+  nonlinear_luminosity = 1;
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
+  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
+  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&the_smf);
   
-  for (i=1; i<num_outputs-1; i++) {
+  // Print out the merged fraction.
+  for (i=1; i<num_outputs-1; i++) 
+  {
     printf("%f ", steps[i].scale);
-    for (j=11; j<16; j++) {
+    for (j=11; j<16; j++) 
+    {
       int b = (j-M_MIN)*BPDEX;
       printf("%e ", steps[i].merged_frac[b]);
     }

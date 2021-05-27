@@ -91,14 +91,19 @@ void calc_sfh(struct smf_fit *f)
   }
 }
 
-
+// Calculate the fraction of super-Eddington SMBHs among the quasars that are
+// above a certain bolometric luminosities (logLbol >= l), 
+// for the i-th halo mass bin in the n-th snapshot.
 void calc_supEdd_frac_lum(int n, int i, double l)
 {
   double ledd_min = steps[n].ledd_min[i];
   // double ledd_max = steps[n].ledd_max[i];
   double bpdex = steps[n].ledd_bpdex[i];
 
-  
+  // Figure out the distribution in SMBH mass in the halo mass bin, which is a
+  // log-normal. The scatter is the quadratic sum of the scatter in BH mass--bulge
+  // mass relation, and the scatter around the stellar mass--halo mass relation
+  // scaled up by the slope of the BH mass--bulge mass relation.
   double scatter_tot = sqrt(steps[n].smhm.bh_scatter * steps[n].smhm.bh_scatter +
                             steps[n].smhm.scatter * steps[n].smhm.bh_gamma * 
                             steps[n].smhm.scatter * steps[n].smhm.bh_gamma);
@@ -118,6 +123,8 @@ void calc_supEdd_frac_lum(int n, int i, double l)
     return;
   }
 
+  // Count the fraction of super-Eddington objects among those above the 
+  // luminosity threshold by using the Eddington ratio distribution.
   double frac_above_l = 0.0;
   for (double mbh=mbh_min; mbh<=mbh_max; mbh+=dmbh)
   {

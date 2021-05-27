@@ -220,6 +220,8 @@ gen_bher_mstar:
 	$(CC) $(BASE_FILES) bher_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bher_mstar
 gen_bhmr_mstar:
 	$(CC) $(BASE_FILES) bhmr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmr_mstar
+galaxy_growth_rate:
+	$(CC) $(BASE_FILES) gen_galaxy_growth_rate.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_galaxy_growth_rate
 hist2d:
 	$(CC) $(BASE_FILES) gen_edd_r_color.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_edd_r_color
 gen_sm_sfr_check:

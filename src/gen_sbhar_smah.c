@@ -75,7 +75,8 @@ float mar_from_mbins(int64_t n, int64_t j)
 }
 
 // log-linear interpolation on a two dimensional grid.
-float biterp (float a, float b, float c, float d, float f1, float f2) {
+float biterp (float a, float b, float c, float d, float f1, float f2) 
+{
   float al = log10(a);
   float bl = log10(b);
   float cl = log10(c);
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  // Read in the redshift and model parameters. 
+  // Read in the model parameters. 
   for (i=0; i<NUM_PARAMS; i++)
     the_smf.params[i] = atof(argv[i+2]);
   // Turn off the built-in GSL error handler that kills the program

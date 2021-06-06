@@ -1,3 +1,7 @@
+// Calculate the star formation rate-to-halo accretion rate ratio,
+// halo accretion rate, halo accretion rate multiplied by number
+// density, star formation rate scaled by the maximum SFR, and
+// SFR itself, given each step in the MCMC chain.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -35,6 +39,9 @@ struct smf_fit parse_smf_fit(char *buffer) {
   return a;
 }
 
+// Calculate dark matter halo accretion rates
+// given the snapshot number, n, and the halo 
+// mass bin number, j.
 float _mar_from_mbins(int64_t n, int64_t j) {
   int64_t i;
   if (!n) return pow(10, M_MIN+(j+0.5)*INV_BPDEX)/steps[n].dt;
@@ -53,12 +60,18 @@ float _mar_from_mbins(int64_t n, int64_t j) {
   return ((pow(10, M_MIN+(j+0.5)*INV_BPDEX) - sum)/steps[n].dt);
 }
 
+// Calculate dark matter halo accretion rates
+// given the snapshot number, n, and the halo 
+// mass bin number, j. The only difference with
+// _mar_from_mbins is that we take the average
+// value between the two snapshots.
 float mar_from_mbins(int64_t n, int64_t j) {
   float mar1 = _mar_from_mbins(n,j);
   float mar2 = _mar_from_mbins(n+1,j);
   return (0.5*(mar1+mar2));
 }
 
+// log-linear interpolation on a two dimensional grid.
 float biterp (float a, float b, float c, float d, float f1, float f2) {
   float al = log10(a);
   float bl = log10(b);
@@ -82,7 +95,8 @@ int main(int argc, char **argv)
   char buffer[1024];
   float *sfe[NUM_ZS]={0};
 
-  if (argc<4+NUM_PARAMS) {
+  if (argc<4+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s mass_cache num_runs mcmc_output\n", argv[0]);
     exit(1);
   }
@@ -90,41 +104,52 @@ int main(int argc, char **argv)
   int64_t num_runs = atol(argv[2]);
   for (i=0; i<NUM_ZS; i++)
     sfe[i] = check_realloc(NULL, sizeof(float)*num_runs, "SFEs");
+  // Open the file that contains the MCMC chain.
   input = check_fopen(argv[3]);
+  // Generate the cache to speed up the calculation of exp10
   gen_exp10cache();
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
+  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
   
-  while (fgets(buffer, 1024, input)) {
+  // Repeat the calculation for each step in the MCMC chain.
+  while (fgets(buffer, 1024, input)) 
+  {
+    // Read in the redshift and model parameters. 
     the_smf = parse_smf_fit(buffer);
 
   INVALID(the_smf) = 0;
+  // Calculate star formation histories.
   calc_sfh(&the_smf);
 
   sprintf(buffer, "sfe_11.dat");
   sfe_f = check_fopen(buffer, "w");
 
+  // Find the maximum star formation rate in each snapshot.
   max_sfr = malloc(sizeof(float)*num_outputs);
-  for (i=0; i<num_outputs; i++) {
+  for (i=0; i<num_outputs; i++) 
+  {
     max_sfr[i] = 0;
     float max_m = m_at_a(15.77, steps[i].scale);
-    for (j=0; j<M_BINS; j++) {
+    for (j=0; j<M_BINS; j++) 
+    {
       float m = M_MIN+j*INV_BPDEX;
       if (m>max_m) break;
       if (steps[i].sfr[j] > max_sfr[i]) max_sfr[i] = steps[i].sfr[j];
     }
   }
 
-  for (m=9; m<15.1; m+=0.05) {
+  // Iterate over the 2-dimensional halo mass--snapshot number grid.
+  for (m=9; m<15.1; m+=0.05) 
+  {
     j = (m-M_MIN-INV_BPDEX*0.5)*BPDEX;
     fm = (m-M_MIN)*BPDEX - j;
-    for (t=1; t<(num_outputs-1)*3; t++) {
-      //for (t=0; t<max_t; t+=0.007) {
-      //float tscale = pow(10, -t);
-      //for (i=num_outputs-2; i>=0; i--)
-      //	if (steps[i].scale < tscale) break;
-      //ft = (t - log10(1.0/steps[i].scale))/log10(steps[i].scale/steps[i+1].scale);
+    for (t=1; t<(num_outputs-1)*3; t++) 
+    {
+
       ft = (float)(((int)t)%3) / 3.0;
       i = t/3;
       float tscale = steps[i].scale + ft*(steps[i+1].scale - steps[i].scale);
@@ -148,6 +173,10 @@ int main(int argc, char **argv)
       float sfr_ma = sfr - ma_rate;
       float ma_nd = ma_rate + nd;
      
+      // Output the star formation rate-to-halo accretion rate ratio,
+      // halo accretion rate, halo accretion rate multiplied by number
+      // density, star formation rate scaled by the maximum SFR, and
+      // SFR itself.
       fprintf(sfr_ma_f, "%f %f %f\n", scale, m, sfr_ma);
       fprintf(ma_f, "%f %f %f\n", scale, m, ma_rate);
       fprintf(ma_nd_f, "%f %f %f\n", scale, m, ma_nd);

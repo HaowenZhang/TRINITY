@@ -1,3 +1,7 @@
+// Calculate the numbers of SMBH mergers above mass ratios 1:10 and 1:100
+// per halo, as functions of halo mass and redshift. This is for now 
+// ***DEPRECATED*** because we do not store the SMBH mass distributions
+// that are available for mergers.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>

@@ -9,7 +9,6 @@ BASE_FILES=universe_time.c observations.c mt_rand.c jacobi.c integrate.c distanc
 SSFR_FILES = $(BASE_FILES) gen_ssfr.c
 SFR_FILES = $(BASE_FILES) gen_sfr_check.c
 SSFR2_FILES = $(BASE_FILES) gen_ssfr2.c
-CPLOT_FILES = $(BASE_FILES) gen_colorplots.c
 CSFR_FILES = $(BASE_FILES) gen_csfr.c
 CATALOG_FILES= $(BASE_FILES) sm_catalog.c stringparse.c inthash.c 
 AGN_UM_CATALOG_FILES = $(BASE_FILES) sm_agn_catalog_from_um.c stringparse.c 
@@ -219,8 +218,6 @@ lum_dist_mbh_obs:
 	$(CC) $(BASE_FILES) gen_lum_dist_mbh_obs.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_obs
 lum_dist_mbh_int:
 	$(CC) $(BASE_FILES) gen_lum_dist_mbh_int.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_int
-bhmf_lum_dist:
-	$(CC) $(BASE_FILES) output_bhmf_lum_dist.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o output_bhmf_lum_dist
 clean:
 	rm -f $(CACHE_OBJ_NAME) $(ASMF_OBJ_NAME) $(SMF_NAME) $(R_NAME) $(SMASS_NAME) $(SM2_NAME) $(FIT_NAME) $(DEC_NAME) $(COSMO_NAME) $(SMASS_CV_NAME) $(FIT2_NAME) $(REMARG_NAME)
 	rm -f *~

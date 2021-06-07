@@ -15,13 +15,18 @@ $GSL_INCLUDE=/your/path/to/gsl/include
 $GSL_LIB=/your/path/to/gsl/lib
 
 ## Installation
-The user can use the Makefile to compile the whole project. (TBC)
+TRINITY comes with a Makefile, so user can use the "make" command to compile the whole project. Alternatively, users can use target names specified in the Makefile to specifically produce the corresponding executables. For example, if one wants to compile the code to predict quasar luminosity functions (QLFs) only, there is a target in the Makefile as follows:
+
+qlf:
+	$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
+  
+So they can use the command "make qlf" to compile gen_qlf.c and produce gen_qlf, without having to compile the entire project.
 
 ## Roadmap
 After successful compilation, multiple binary executables will be produced:
 
-1. fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
-2. all_smf_mcmc is used for performing Markov Chain Monte Carlo;
+1. TRINITY/src/fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
+2. TRINITY/src/all_smf_mcmc is used for performing Markov Chain Monte Carlo (MCMC);
 3. Other files, e.g., gen_smf and gen_edd_r_color, are used for predicting galaxy and SMBH properties based on input model parameters.
 
 ## Renerating Predictions Based on Model Parameters
@@ -41,3 +46,16 @@ Below is how to predict galaxy and SMBH properties as functions of halo mass and
 ./gen_edd_r_color mass_cache (mcmc output) > properties.dat.
 
 The required inputs are similar to the usage of gen_qlf except for the redshift.
+
+## Running Your Own Model Fitting or Markov Chain Monte Carlo (MCMC) Processes
+./fitter carries out model fitting with gradient descent method. The usage is shown as follows (TRINITY/examples/fit.pbs):
+
+OMP_NUM_THREADS=8 ../src/fitter 1 1 1 1 1 0 0 ../aux/mf_bolshoi_planck.dat  ../obs/Kelly_BHMF_TypeI/\*.bhmf_typei ../obs/\*.\* ../obs/Ueda_QLF_CTK/\*.qlf ../obs/Aird_qpdf_no_high/\*no_highest_0.3dex.qpdf ../obs/qf/\*.qf ../obs/uvlf/new/\*.uvlf < ./cfit_final_eff_z.param > ../mcmc_runs/fit_final_eff_z.dat 2> ../mcmc_runs/err_final_eff_z.dat
+
+Here, several numerical flags are set (1 1 1 1 1 0 0). For the meaning of each flag, see init_mcmc_from_args() in all_smf.c. ./fitter takes observational data (e.g., those included in TRINITY/obs/) as constraints, and read initial parameters from stdin. The final output parameters are directed to stdout and the log messages to stderr.
+
+./all_smf_mcmc runs MCMC process using adaptive Metropolis-Hastings method. The usage is shown as follows (TRINITY/examples/mcmc.pbs): 
+
+OMP_NUM_THREADS=16 ../src/all_smf_mcmc 1 1 1 1 1 0 0 ../aux/mf_bolshoi_planck.dat ../obs/Kelly_BHMF_TypeI/\*.bhmf_typei ../obs/\*.\* ../obs/Ueda_QLF_CTK/\*.qlf ../obs/Aird_qpdf_no_high/\*no_highest_0.3dex.qpdf ../obs/qf/\*.qf ../obs/uvlf/new/\*.uvlf < ../mcmc_runs/fit_final_eff_z.dat > ../mcmc_runs/all_final_eff_z.dat 2> ../mcmc_runs/burn_in_final_eff_z.dat
+
+The format is very similar to the model fitting case.

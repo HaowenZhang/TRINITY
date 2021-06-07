@@ -1,7 +1,12 @@
 # TRINITY
 An empirical model that statistically connects dark matter halos, galaxies and supermassive black holes (SMBHs) from z=0-10.
 
-## Prerequisite (TBC)
+## Prerequisite
+This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:
+
+$GSL_INCLUDE=/your/path/to/gsl/include
+
+$GSL_LIB=/your/path/to/gsl/lib
 
 ## Installation
 The user can use the Makefile to compile the whole project. (TBC)

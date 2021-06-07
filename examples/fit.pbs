@@ -16,5 +16,5 @@
 
 #cd /xdisk/behroozi/mig2020/extra/hwzhang0595/Codes/Quasars_SFR/AGN
 
-OMP_NUM_THREADS=8 ./src/fitter 1 1 1 1 1 0 0 mf_bolshoi_planck.dat  obs/Kelly_BHMF_TypeI/*.bhmf_typei ./obs/*.* ./obs/Ueda_QLF_CTK/*.qlf ./obs/Aird_qpdf_no_high/*no_highest_0.3dex.qpdf ./obs/qf/*.qf ./obs/uvlf/new/*.uvlf < ./cfit_final_eff_z.param > ./mcmc_runs/fit_final_eff_z.dat 2> ./mcmc_runs/err_final_eff_z.dat
+OMP_NUM_THREADS=8 ../src/fitter 1 1 1 1 1 0 0 ../aux/mf_bolshoi_planck.dat ../obs/Kelly_BHMF_TypeI/*.bhmf_typei ../obs/*.* ../obs/Ueda_QLF_CTK/*.qlf ../obs/Aird_qpdf_no_high/*no_highest_0.3dex.qpdf ../obs/qf/*.qf ../obs/uvlf/new/*.uvlf < ./cfit_final_eff_z.param > ../mcmc_runs/fit_final_eff_z.dat 2> ../mcmc_runs/err_final_eff_z.dat
 

@@ -94,7 +94,6 @@ reg:
 	$(CC) $(BASE_FILES) gen_duty_cycle.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_duty_cycle
 	$(CC) $(BASE_FILES) gen_qpdf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qpdf_eta
 	$(CC) $(BASE_FILES) gen_merger_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_check
-	$(CC) $(BASE_FILES) gen_bhar_sfr.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_bhar_sfr
 
 	$(CC) $(BASE_FILES) make_sf_catalog.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o make_sf_catalog
 

@@ -112,7 +112,7 @@ int main(int argc, char **argv)
   init_timesteps();
   // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&the_smf);
-  INVALID(smf) = 0;
+  INVALID(the_smf) = 0;
 
   while (fgets(buffer, 1024, stdin)) 
   {

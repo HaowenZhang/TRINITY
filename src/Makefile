@@ -95,18 +95,12 @@ reg:
 	$(CC) $(BASE_FILES) gen_qpdf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qpdf_eta
 	$(CC) $(BASE_FILES) gen_merger_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_check
 
-	$(CC) $(BASE_FILES) make_sf_catalog.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o make_sf_catalog
-
 	$(CC) $(BASE_FILES) gen_obs_ssfr_smah.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_obs_ssfr_smah
 	$(CC) $(BASE_FILES) gen_ssfr_hm.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_ssfr_hm
 	$(CC) $(BASE_FILES) cosmic_sfr_integral.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o cosmic_sfr_integral
-	$(CC) $(BASE_FILES) gen_ssfr_smah_colorplot.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_ssfr_smah_colorplot
 	$(CC) $(COSMO_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(COSMO_NAME)
-	$(CC) $(BASE_FILES) gen_lgsmhm.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lgsmhm
-	$(CC) $(BASE_FILES) gen_smar.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_smar
 	$(CC) $(BASE_FILES) gen_ssfr_smah.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_ssfr_smah
 	$(CC) $(BASE_FILES) gen_sbhar_smah.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_sbhar_smah
-	$(CC) $(CATALOG_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(CATALOG_NAME)
 	$(CC) gen_smf_intrinsic.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_smf_intrinsic
 	$(CC) gen_smf_range.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_smf_range
 	$(CC) calc_sm_density.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o calc_sm_density

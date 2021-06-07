@@ -127,7 +127,7 @@ double quasar_lf_helper(double m, void *extra_info);
 double calc_quasar_lf(double l, double z);
 double calc_quasar_lf_new(double Mi, double z);
 double calc_quasar_lf_ctn(double l, double z);
-double calc_quasar_lf_mstar(double Mi, double z, double mstar_low, double mstar_high)
+double calc_quasar_lf_mstar(double Mi, double z, double mstar_low, double mstar_high);
 double bulge_mass(double sm, double a);
 double calc_quasar_lf_mbh(double Mi, double z, double mbh_low, double mbh_high);
 double calc_quasar_lf_eta(double Mi, double z, double eta_low, double eta_high);

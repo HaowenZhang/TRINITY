@@ -1,8 +1,7 @@
 CC=gcc
-GSLFLAGS=-L$(HOME)/Software/gsl/2.6/lib -I$(HOME)/Software/gsl/2.6/include
+GSL_LIB=$(HOME)/Software/gsl/2.6/lib 
+GSL_INCLUDE=$(HOME)/Software/gsl/2.6/include
 CFLAGS=-lm -m64 -lgsl -lgslcblas -Wall -fopenmp -L$(GSL_LIB) -I$(GSL_INCLUDE) -L/opt/local/lib -I/opt/local/include -fno-math-errno
-#CC=gcc
-#CFLAGS=-lm -m64 -lgsl -lgslcblas -Wall -fopenmp
 OPT_FLAGS=-O3 -msse3
 DEBUG_FLAGS=-g -Wall -O0
 PROF_FLAGS=-O3 -pg -ftest-coverage -fprofile-arcs

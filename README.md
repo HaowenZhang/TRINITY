@@ -1,6 +1,12 @@
 # TRINITY
 An empirical model that statistically connects dark matter halos, galaxies and supermassive black holes (SMBHs) from z=0-10.
 
+Most code: Copyright (C)2018-2021 Haowen Zhang
+
+License: GNU GPLv3
+
+Science/Documentation Paper: https://arxiv.org/abs/2105.10474
+
 ## Prerequisite
 This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:
 

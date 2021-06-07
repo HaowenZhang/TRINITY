@@ -7,7 +7,7 @@ License: GNU GPLv3
 
 Science/Documentation Paper: https://arxiv.org/abs/2105.10474
 
-## Prerequisite
+## Prerequisites
 This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:
 
 $GSL_INCLUDE=/your/path/to/gsl/include

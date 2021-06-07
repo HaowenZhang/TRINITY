@@ -17,8 +17,10 @@ $GSL_LIB=/your/path/to/gsl/lib
 ## Installation
 TRINITY comes with a Makefile, so user can use the "make" command to compile the whole project. Alternatively, users can use target names specified in the Makefile to specifically produce the corresponding executables. For example, if one wants to compile the code to predict quasar luminosity functions (QLFs) only, there is a target in the Makefile as follows:
 
+
 qlf:
-	$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
+	
+$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
   
 So they can use the command "make qlf" to compile gen_qlf.c and produce gen_qlf, without having to compile the entire project.
 
@@ -27,7 +29,7 @@ After successful compilation, multiple binary executables will be produced:
 
 1. TRINITY/src/fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
 2. TRINITY/src/all_smf_mcmc is used for performing Markov Chain Monte Carlo (MCMC);
-3. Other files, e.g., gen_smf and gen_edd_r_color, are used for predicting galaxy and SMBH properties based on input model parameters.
+3. Other files, e.g., gen_smf and gen_edd_r_color, are used for predicting galaxy and SMBH properties based on input model parameters. For the purpose of each executables, please see the comments in their corresponding c codes.
 
 ## Renerating Predictions Based on Model Parameters
 TRINITY is able to are predict many observational data (e.g., galaxy stellar mass functions and quasar luminosity functions) and underlying galaxy and SMBH properties (e.g., SMBH Eddington average Eddington ratios). These predictions are made by different code files like gen_smf.c, gen_qlf.c, gen_edd_r_color.c, etc.. There are broadly two types of ''prediction'' codes: the first type generate observable data given input redshift or redshift invertals like gen_smf.c and gen_qlf.c; the second type generates galaxy or SMBH properties as a function of host halo mass and redshift, like gen_edd_r_color.c.

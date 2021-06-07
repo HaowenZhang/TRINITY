@@ -1937,6 +1937,94 @@ double calc_quasar_lf_new(double Mi, double z)
 }
 
 // Calculate quasar luminosity functions at a given luminosity (Mi)
+// and redshift (z) that are contributed by galaxies with masses
+// between [mstar_low, mstar_high].
+double calc_quasar_lf_mstar(double Mi, double z, double mstar_low, double mstar_high) 
+{
+  double lbol = 36 - 0.4 * Mi;
+  int64_t step; double sf = 0;
+  calc_step_at_z(z, &(step), &sf);
+  int64_t i, j, k;
+  double mbh_min = steps[step].bh_mass_min; double mbh_max = steps[step].bh_mass_max;
+  double mbh_inv_bpdex = (mbh_max - mbh_min) / MBH_BINS;
+
+  double bh_scatter = steps[step].smhm.bh_scatter;
+  double scatter = steps[step].smhm.scatter;
+  double mu = steps[step].smhm.mu;
+
+  int64_t mstar_bpdex = 20;
+  double mstar_inv_bpdex = 1.0 / mstar_bpdex;
+  if (mstar_high - mstar_low < mstar_inv_bpdex)
+  {
+    fprintf(stderr, "The (mstar_low, mstar_high) interval is too small. The minimum width is %.4f\n", mstar_inv_bpdex);
+    return 1e-19;
+  }
+  int64_t mstar_bins = (mstar_high - mstar_low) * mstar_bpdex;
+  double gauss_norm_bh = 1.0 / sqrt(2*M_PI) / bh_scatter;
+  double gauss_norm_gal = 1.0 / sqrt(2*M_PI) / scatter;
+
+  double *lum_func_mstar = malloc(sizeof(double)*mstar_bins);
+  memset(lum_func_mstar, 0, sizeof(double)*mstar_bins);
+
+  if (lbol < LBOL_MIN || lbol > LBOL_MAX) return 0;
+  double norm = 1.0;  //1.0/schechter_norm(steps[qi.step].smhm.bh_alpha, BHER_MIN, BHER_MAX);
+  norm /= 2.5; //Per mag instead of per dex
+
+  double ld = 0;
+  double qlf_mstar = 0;
+
+  double lbol_f = (lbol - LBOL_MIN) * LBOL_BPDEX;
+  int64_t lbol_b = lbol_f;
+  lbol_f -= lbol_b;
+  
+  for (i=0; i<mstar_bins; i++)
+  {
+    double sm = mstar_low + (i + 0.5) * mstar_inv_bpdex;
+    double bm = bulge_mass(sm + mu, steps[step].scale);
+    double mbh_med = calc_bh_at_bm(bm, steps[step].smhm);
+    
+
+    for (j=0; j<M_BINS; j++)
+    {
+      
+      double dsm = (sm - steps[step].log_sm[j]) / scatter;
+      double prob_mstar = gauss_norm_gal * exp(-0.5*dsm*dsm) * mstar_inv_bpdex;
+
+      double dc = steps[step].smhm.bh_duty;
+      double f_mass = exp((log10(steps[step].bh_mass_avg[j]) - steps[step].smhm.dc_mbh) / 
+                        steps[step].smhm.dc_mbh_w);
+      f_mass /= (1 + f_mass);
+      dc *= f_mass;
+      if (dc < 1e-4) dc = 1e-4;
+
+
+      for (k=0; k<MBH_BINS; k++)
+      {
+        double mbh = mbh_min + (k + 0.5) * mbh_inv_bpdex;
+        double dmbh = (mbh - mbh_med) / bh_scatter;
+        double prob_mbh = gauss_norm_bh * exp(-0.5*dmbh*dmbh) * mbh_inv_bpdex;
+
+        double eta_frac = lbol - 38.1 - mbh - steps[step].bh_eta[j];
+        double bher_f = (eta_frac-steps[step].ledd_min[j])*steps[step].ledd_bpdex[j];
+        int64_t bher_b = bher_f;
+        bher_f -= bher_b;
+        if (bher_b < 0) {bher_b = 0; bher_f = 0;}
+        else if (bher_b >= BHER_BINS - 1) {bher_b = BHER_BINS - 2; bher_f = 1;}
+        double p1 = steps[step].bher_dist[j*BHER_BINS+bher_b];
+        double p2 = steps[step].bher_dist[j*BHER_BINS+bher_b+1];
+        lum_func_mstar[i] += prob_mstar * prob_mbh * (p1 + bher_f * (p2 - p1)) * steps[step].t[j] * dc;
+      }
+
+    }
+
+    qlf_mstar += lum_func_mstar[i];
+    // printf("sm=%.3f, smf[%d]/smf_norm=%.3e, lum_func_mstar[%d]=%.3e, qlf_mstar=%.3e\n", sm, 
+    //   i, smf[i] / smf_norm, i, lum_func_mstar[i], qlf_mstar);
+  }
+  return qlf_mstar / 2.5;
+}
+
+// Calculate quasar luminosity functions at a given luminosity (Mi)
 // and redshift (z) that are contributed by BHs with masses
 // between [mbh_low, mbh_high].
 double calc_quasar_lf_mbh(double Mi, double z, double mbh_low, double mbh_high) 

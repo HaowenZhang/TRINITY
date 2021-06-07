@@ -1,0 +1,8 @@
+#type: ssfr
+#zlow: 0.825481812223657
+#zhigh: 0.825481812223657
+#ref: http://lanl.arxiv.org/pdf/1401.1648v1.pdf
+#notes: data points with >1 dex errors were excluded.
+9.75 -8.936283185840708 0.28 0.28
+10.25 -9.30796460176991 0.28 0.28
+10.75 -9.502654867256636 0.28 0.28

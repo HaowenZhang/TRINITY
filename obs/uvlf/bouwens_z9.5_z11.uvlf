@@ -1,0 +1,7 @@
+#type: uvlf
+#ref: http://lanl.arxiv.org/pdf/1506.01035v2.pdf
+#errors: linear
+#zlow: 9.5
+#zhigh: 11
+-2.125000e+01 9.000000e-07 7.000000e-07 7.000000e-07
+-2.045000e+01 1.800000e-05 9.800000e-06 9.800000e-06

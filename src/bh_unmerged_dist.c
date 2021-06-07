@@ -40,7 +40,7 @@ int main(int argc, char **argv)
   // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
   printf("#Is the model invalid? %e\n", INVALID(smf));
-  double t,m;s
+  double m;
   // Printing.
   printf("#1+z M_h SM M_bh bh_unmerged_dist\n");
   for (i=0; i<num_outputs-1; i++) 

@@ -17,7 +17,6 @@ AGN_UM_CATALOG_FILES = $(BASE_FILES) sm_agn_catalog_from_um.c stringparse.c
 ASMF_C_FILES = $(BASE_FILES) 
 SMF_FILES = $(BASE_FILES) gen_smf.c 
 UVLF_FILES = $(BASE_FILES) gen_uvlf.c
-UVLF_TEST_FILES = $(BASE_FILES) gen_uvlf_test.c
 QF_FILES = $(BASE_FILES) gen_qf.c
 SMASS_FILES = $(BASE_FILES) smass_density.c sm_limits.c
 SMASS_COMP_FILES = $(BASE_FILES) smass_comparison_density.c sm_limits.c
@@ -46,7 +45,6 @@ SMASS_CV_NAME=smass_cv_cosmo
 SM2_NAME=smass_sm_avg
 SMF_NAME=gen_smf
 UVLF_NAME=gen_uvlf
-UVLF_TEST_NAME=gen_uvlf_test
 FIT_NAME=fitter
 CHI2_NAME=calc_chi2
 FIT2_NAME=fitter-mcmc
@@ -68,7 +66,6 @@ debug_csfr:
 	@make csfr EXTRA_FLAGS="$(DEBUG_FLAGS)"
 
 reg:
-	$(CC) $(UVLF_TEST_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(UVLF_TEST_NAME)
 	#$(CC) $(BASE_FILES) gen_icl_map.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_icl_map
 	#$(CC) mcmc_client.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o mcmc_client
 	#$(CC) $(CPLOT_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_colorplots
@@ -88,18 +85,19 @@ reg:
 	$(CC) $(BASE_FILES) bh_host_halo_integral_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_halo_integral_JT
 	$(CC) $(BASE_FILES) bh_host_halo_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_halo_JT
 	$(CC) $(BASE_FILES) bh_host_galaxy_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_galaxy_JT
-# 	$(CC) $(BASE_FILES) bh_host_galaxy_halo_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_galaxy_halo_JT
+	# $(CC) $(BASE_FILES) bh_host_galaxy_halo_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_galaxy_halo_JT
 	$(CC) $(BASE_FILES) gen_max_mfrac.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_max_mfrac
 	$(CC) $(BASE_FILES) gen_avg_eff_rad.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_avg_eff_rad
 	$(CC) $(BASE_FILES) gen_merger_rate.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_rate
-	$(CC) $(BASE_FILES) bh_unmerged_dist.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_unmerged_dist
+	# $(CC) $(BASE_FILES) bh_unmerged_dist.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_unmerged_dist
 	$(CC) $(BASE_FILES) bher_dist.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bher_dist
 	$(CC) $(BASE_FILES) test_bh_unmerged.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o test_bh_unmerged
 	
 	# $(CC) $(BASE_FILES) gen_sbhar_ssfr.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_sbhar_ssfr
 	# $(CC) $(BASE_FILES) gen_edd_r_color_low_res.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_edd_r_color_low_res
 	# $(CC) $(BASE_FILES) gen_sbhar_ssfr_low_res.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_sbhar_ssfr_low_res
-	$(CC) $(BASE_FILES) gen_qlf_split.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_split
+	# $(CC) $(BASE_FILES) gen_qlf_split.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_split
+	$(CC) $(BASE_FILES) gen_qlf_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_mstar
 	$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
 	$(CC) $(BASE_FILES) gen_qlf_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_mbh
 	$(CC) $(BASE_FILES) gen_qlf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf_eta
@@ -244,8 +242,6 @@ sfr_map:
 	$(CC) $(BASE_FILES) gen_sfr_map.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_sfr_map
 uvlf:
 	$(CC) $(UVLF_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(UVLF_NAME)
-uvlf_test:
-	$(CC) $(UVLF_TEST_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(UVLF_TEST_NAME)
 uv_map:
 	$(CC) $(BASE_FILES) gen_uv_map.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_uv_map
 fitter:

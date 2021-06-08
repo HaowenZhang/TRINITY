@@ -53,7 +53,7 @@ int main(int argc, char **argv)
   printf("#Is the model invalid? %e\n", INVALID(smf));
   double t,m;
 
-  printf("#1+z yrs M_h M_b M_bh SFR dM_bh/dt Edd_r. bh_eta Obs.ER L_typ BH_Merge_Rate f_active acc_rate_obs SM eta_avg L_kin obs_uv gal_mr\n");
+  printf("#1+z M_h M_star M_bulge M_bh SFR BHAR bh_eta_avg bh_eta_typical BH_Merge_Rate (All in log units except for 1+z)\n");
 
   for (t=0; t<num_outputs-1; t+=1.0/3.0) 
   {
@@ -92,16 +92,10 @@ int main(int argc, char **argv)
       
       //log_edd is the ***average*** SMBH Eddington ratio.
       log_edd = log_bh_acc_rate-log_bh_mass + log10(4.5e7);
-      efficiency = (1.0-f)*steps[i].smhm.bh_efficiency + 
-	f*steps[i+1].smhm.bh_efficiency;
-      log_edd_obs = log_edd + log10(efficiency) + 1.0;
-      avg_l = -5.26 -2.5*(log_edd_obs+log_bh_mass);
-      avg_l = -1.0*avg_l;
-      bh_merge_rate = log10(bh_merge_rate);
-      l_kin = 38.1 + log_bh_mass + eta_kin_avg;
+
       // age of the Universe at the given redshift.
 	    float years = scale_to_years(1.0 / zp1);
-      printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", zp1, years, m, log_bm, log_bh_mass, log_sfr, log_bh_acc_rate, log_edd, bh_eta, log_edd_obs, avg_l, bh_merge_rate, bh_unmerged, frac_active, log_bh_acc_rate_obs, log_sm, eta_rad_avg, l_kin, obs_uv, gal_mr);
+      printf("%f %f %f %f %f %f %f %f %f %f\n", zp1, m, log_sm, log_bm, log_bh_mass, log_sfr, log_bh_acc_rate, log_edd, bh_eta, bh_merge_rate);
     }
   }
   return 0;

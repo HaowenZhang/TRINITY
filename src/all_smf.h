@@ -261,6 +261,7 @@ void shutdown_clients(void); //Deprecated.
 // For the non-deprecated function below, please see
 // the comments in all_smf.c.
 void init_frac_below8(void);
+void read_params(char *buffer, double *data, int max_n);
 float all_smf_chi2_err(struct smf_fit test);
 float all_smf_chi2_err_write(struct smf_fit test); //Deprecated.
 float chi2_type(struct smf_fit test);

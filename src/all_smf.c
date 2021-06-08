@@ -133,7 +133,8 @@ double eigenvalues_original[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_S
 
 // Read model parameters from buffer and store them
 // in data. Repeat for at most max_n times.
-static void read_params(char *buffer, double *data, int max_n) 
+// static void read_params(char *buffer, double *data, int max_n) 
+void read_params(char *buffer, double *data, int max_n) 
 {
   int num_entries = 0;
   char *cur_pos = buffer, *end_pos;

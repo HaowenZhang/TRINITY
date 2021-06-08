@@ -27,17 +27,11 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  if (argc<2) 
+  if (argc<2+NUM_PARAMS) 
   {
-    fprintf(stderr, "Usage: %s mass_cache parameter_file\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-
-  // Read in model parameters
-  char buffer[2048];
-  fgets(buffer, 2048, stdin);
-  read_params(buffer, smf.params, NUM_PARAMS);
-
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
   // Fix some model parameters.

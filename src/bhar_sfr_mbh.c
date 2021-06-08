@@ -21,7 +21,7 @@ int main(int argc, char **argv)
   
   if (argc < 4) 
   {
-    fprintf(stderr, "Usage: %s z mass_cache param_file\n", argv[0]);
+    fprintf(stderr, "Usage: %s z mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
   double z = atof(argv[1]);

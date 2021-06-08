@@ -19,9 +19,9 @@ int main(int argc, char **argv)
 {
   int64_t i, j, k;
   struct smf_fit smf;
-  if (argc<2) 
+  if (argc < 2) 
   {
-    fprintf(stderr, "Usage: %s mass_cache\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache >mass_function_file 2>merger_rate_file\n", argv[0]);
     exit(1);
   }
 

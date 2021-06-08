@@ -44,16 +44,23 @@ int main(int argc, char **argv)
   struct smf_fit smfs[4];
   float smf_points[4][MASS_BINS];
   int i,j;
-  if (argc<4+NUM_PARAMS) 
+  
+  if (argc < 5) 
   {
-    fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s z_low z_high mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
   // Read in the lower and higher redshifts and model parameters.
   z_low = atof(argv[1]);
   z_high = atof(argv[2]);
-  for (i=0; i<NUM_PARAMS; i++)
-    smfs[0].params[i] = atof(argv[i+4]);
+
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[4], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smfs[0].params, NUM_PARAMS);
+
+
   smfs[0].params[NUM_PARAMS] = 0;
 
   smfs[1] = smfs[2] = smfs[3] = smfs[0];

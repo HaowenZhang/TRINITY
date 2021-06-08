@@ -18,7 +18,7 @@ int main(int argc, char **argv)
   
   if (argc < 3) 
   {
-    fprintf(stderr, "Usage: %s mass_cache param_file\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
   // Read in model parameters, redshift, BH mass, and lower and upper limits of Eddington ratio.

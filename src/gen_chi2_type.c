@@ -20,9 +20,9 @@ int main(int argc, char **argv)
   int64_t i;
   struct smf_fit smf;
 
-  if (argc<2) 
+  if (argc < 2) 
   {
-    fprintf(stderr, "Usage: %s mass_cache\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache < ./input_mcmc_chain\n", argv[0]);
     exit(1);
   }
 

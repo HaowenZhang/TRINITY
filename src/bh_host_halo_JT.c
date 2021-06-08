@@ -19,7 +19,7 @@ int main(int argc, char **argv)
   struct smf_fit smf;
   if (argc < 6) 
   {
-    fprintf(stderr, "Usage: %s mass_cache param_file z bh_mass(in Msun) bh_Lbol(in erg/s)\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache param_file z bh_mass(in Msun) bh_Lbol(in erg/s) (> output_file)\n", argv[0]);
     exit(1);
   }
 

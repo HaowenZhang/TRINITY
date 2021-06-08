@@ -28,13 +28,18 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  if (argc<4+NUM_PARAMS) 
+  if (argc < 5) 
   {
-    fprintf(stderr, "Usage: %s ledd_or_lum? log(lum_limit/ledd_limit) mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s ledd_or_lum? log(lum_limit/ledd_limit) mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+4]);
+  
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[4], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
+
   int ledd_or_lum = atoi(argv[1]); //if zero, then the threshold is for bolometric luminosity, and
                                    //for Eddington ratio otherwise.
   double log_lim = atof(argv[2]); //The threshold value.

@@ -18,17 +18,20 @@ int main(int argc, char **argv)
   int64_t i, j, k, l;
   struct smf_fit smf;
   // Calculate the black hole mass function within a certain luminosity bin (lbol_low, lbol_high) at a certain redshift.
-  if (argc<2+NUM_PARAMS) 
+  if (argc < 6) 
   {
-    fprintf(stderr, "Usage: %s mass_cache (mcmc output) z lbol_low(in erg/s) lbol_high(in erg/s)\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache param_file z lbol_low(in erg/s) lbol_high(in erg/s) (> output_file)\n", argv[0]);
     exit(1);
   }
   // Read in model parameters, redshift, and bolometric luminosity intervals.
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+2]);
-  double z = atof(argv[i+4]);
-  double Lbol_low = atof(argv[i+5]);
-  double Lbol_high = atof(argv[i+6]);
+  FILE *param_input = check_fopen(argv[2], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
+
+  double z = atof(argv[3]);
+  double Lbol_low = atof(argv[4]);
+  double Lbol_high = atof(argv[5]);
 
   // Fix model parameters
   assert_model(&smf);

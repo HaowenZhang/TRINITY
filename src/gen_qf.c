@@ -46,16 +46,20 @@ int main(int argc, char **argv)
   struct smf_fit smfs[4];
   float qf_points[4][MASS_BINS];
   int i,j;
-  if (argc<4+NUM_PARAMS) 
+
+  if (argc < 5) 
   {
-    fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s z_low z_high mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
   z_low = atof(argv[1]);
   z_high = atof(argv[2]);
-  for (i=0; i<NUM_PARAMS; i++)
-    smfs[0].params[i] = atof(argv[i+4]);
-  smfs[0].params[NUM_PARAMS] = 0;
+
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[4], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
 
   // Turn off the built-in GSL error handler that kills the program
   // when an error occurs. We handle the errors manually.

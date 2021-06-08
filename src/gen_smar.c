@@ -53,16 +53,19 @@ int main(int argc, char **argv)
   float z, m;
   struct smf_fit the_smf;
   int i;
-  if (argc<3+NUM_PARAMS) 
+  if (argc < 4) 
   {
-    fprintf(stderr, "Usage: %s m mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s m mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
   // Read in the input stellar mass and model parameters.
   m = atof(argv[1]);
-  for (i=0; i<NUM_PARAMS; i++)
-    the_smf.params[i] = atof(argv[i+3]);
-  the_smf.params[NUM_PARAMS] = 0;
+  
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[3], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
 
   // Fix some model parameters.
   assert_model(&smf);

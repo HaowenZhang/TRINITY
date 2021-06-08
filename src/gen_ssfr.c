@@ -21,16 +21,19 @@ int main(int argc, char **argv)
 {
   float z, m;
   struct smf_fit the_smf;
-  int i;
-  if (argc<3+NUM_PARAMS) 
+  if (argc < 4) 
   {
-    fprintf(stderr, "Usage: %s z mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s z mass_cache param_file (> output_file)\n", argv[0]);
     exit(1);
   }
-  // Read in the redshift and model parameters.
-  z = atof(argv[1]);
-  for (i=0; i<NUM_PARAMS; i++)
-    the_smf.params[i] = atof(argv[i+3]);
+  // Read in the redshift and model parameters. 
+  double z = atof(argv[1]);
+
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[3], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, the_smf.params, NUM_PARAMS);
   the_smf.params[NUM_PARAMS] = 0;
 
   // Turn off the built-in GSL error handler that kills the program

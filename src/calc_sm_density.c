@@ -91,13 +91,17 @@ int main(int argc, char **argv)
   int i;
   char buffer[1024] = {0};
 
-  if (argc<3+NUM_PARAMS) 
+  if (argc < 3) 
   {
-    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache parameter_file (> output_file)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    the_smf.params[i] = atof(argv[i+2]);
+
+  // Read in model parameters
+  FILE *param_input = check_fopen(argv[2], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
 
   // Turn off the built-in GSL error handler that kills the program
   // when an error occurs. We handle the errors manually.

@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 {
   int64_t i, j;
   struct smf_fit smf;
-  if (argc < 8bh_host_halo_inte) 
+  if (argc < 8) 
   {
     fprintf(stderr, "Usage: %s mass_cache parameter_file z Mbh_low(in Msun) Mbh_high log_eta_low log_eta_high\n", argv[0]);
     exit(1);

@@ -103,7 +103,12 @@ reg:
 	$(CC) calc_sm_density.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o calc_sm_density
 
 
-
+merger_tree:
+	$(CC) $(BASE_FILES) gen_merger_tree.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_tree
+max_mfrac:
+	$(CC) $(BASE_FILES) gen_max_mfrac.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_max_mfrac
+merger_rate:
+	$(CC) $(BASE_FILES) gen_merger_rate.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_rate
 gen_sm_agn_catalog_from_um:
 	$(CC) $(AGN_UM_CATALOG_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(AGN_UM_CATALOG_NAME)
 bher_dist_check:
@@ -112,6 +117,8 @@ lum_dist_check:
 	$(CC) $(BASE_FILES) lum_dist_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_check
 baryon_eff:
 	$(CC) $(BASE_FILES) gen_baryon_eff.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_baryon_eff
+gen_bhmf_mh:
+	$(CC) $(BASE_FILES) bhmf_mh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_mh
 gen_bhar_mbh:
 	$(CC) $(BASE_FILES) bhar_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_mbh
 gen_bhar_sfr_mbh:

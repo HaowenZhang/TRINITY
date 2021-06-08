@@ -15,15 +15,18 @@ int main(int argc, char **argv)
   int64_t i;
   struct smf_fit smf;
   double m;
-  if (argc<3+NUM_PARAMS) 
+  
+  if (argc < 3) 
   {
-    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache param_file\n", argv[0]);
     exit(1);
   }
-  // Read in redshift and model parameters.
-  double z;
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+2]);
+  // Read in model parameters, redshift, BH mass, and lower and upper limits of Eddington ratio.
+  FILE *param_input = check_fopen(argv[2], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
+
   // Fix model parameters
   assert_model(&smf);
   // Turn off the built-in GSL error handler that kills the program
@@ -41,6 +44,7 @@ int main(int argc, char **argv)
   // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
 
+  double z;
   // The redshifts at which quasar luminosities are calculated.
   double zs[12] = {0};
   for (i=2; i<12; i++) zs[i] = i - 1;

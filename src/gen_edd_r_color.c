@@ -34,12 +34,14 @@ int main(int argc, char **argv)
   }
 
   // Read in model parameters
+
+  FILE *param_input = check_fopen(argv[2], "r");
   char buffer[2048];
-  fgets(buffer, 2048, stdin);
+  fgets(buffer, 2048, param_input);
   read_params(buffer, smf.params, NUM_PARAMS);
 
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+2]);
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   smf.params[i] = atof(argv[i+2]);
   // Fix some model parameters.
   assert_model(&smf);
   // Turn off the built-in GSL error handler that kills the program

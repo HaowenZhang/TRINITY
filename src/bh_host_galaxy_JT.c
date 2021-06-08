@@ -19,15 +19,22 @@ int main(int argc, char **argv)
   int64_t i, j;
   struct smf_fit smf;
   gsl_set_error_handler_off();
-  if (argc<2+NUM_PARAMS) {
-    fprintf(stderr, "Usage: %s mass_cache (mcmc output) z bh_mass(in Msun) bh_Lbol(in erg/s)\n", argv[0]);
+  if (argc < 6) 
+  {
+    fprintf(stderr, "Usage: %s mass_cache parameter_file z bh_mass(in Msun) bh_Lbol(in erg/s) (> output_file)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+2]);
-  double z = atof(argv[i+4]);
-  double Mbh = atof(argv[i+5]);
-  double Lbol = atof(argv[i+6]);
+
+  // Read in model parameters, redshift, BH mass, and BH luminosity
+  FILE *param_input = check_fopen(argv[2], "r");
+  char buffer[2048];
+  fgets(buffer, 2048, param_input);
+  read_params(buffer, smf.params, NUM_PARAMS);
+
+  double z = atof(argv[3]);
+  double Mbh = atof(argv[4]);
+  double Lbol = atof(argv[5]);
+
   // Turn off the built-in GSL error handler that kills the program
   // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();

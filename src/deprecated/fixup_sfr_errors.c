@@ -57,18 +57,18 @@ float mar_from_mbins(int64_t n, int64_t j) {
 
 #define NUM_MS 5
 
-static void read_params(char *buffer, double *data, int max_n) {
-  int num_entries = 0;
-  char *cur_pos = buffer, *end_pos;
-  float val = strtod(cur_pos, &end_pos);
-  while (cur_pos != end_pos && num_entries < max_n) {
-    data[num_entries] = val;
-    num_entries++;
-    cur_pos=end_pos;
-    while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
-    val = strtod(cur_pos, &end_pos);
-  }
-}
+// static void read_params(char *buffer, double *data, int max_n) {
+//   int num_entries = 0;
+//   char *cur_pos = buffer, *end_pos;
+//   float val = strtod(cur_pos, &end_pos);
+//   while (cur_pos != end_pos && num_entries < max_n) {
+//     data[num_entries] = val;
+//     num_entries++;
+//     cur_pos=end_pos;
+//     while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
+//     val = strtod(cur_pos, &end_pos);
+//   }
+// }
 
 int main(int argc, char **argv)
 {

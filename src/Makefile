@@ -152,6 +152,8 @@ avg_eff_rad:
 	$(CC) $(BASE_FILES) gen_avg_eff_rad.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_avg_eff_rad
 qf:
 	$(CC) $(QF_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(QF_NAME)
+gen_bh_host_galaxy_JT:
+	$(CC) $(BASE_FILES) bh_host_galaxy_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_galaxy_JT
 gen_bh_host_halo_JT:
 	$(CC) $(BASE_FILES) bh_host_halo_JT.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_host_halo_JT
 gen_bh_host_halo_integral_JT:
@@ -188,6 +190,8 @@ erdf:
 	$(CC) $(BASE_FILES) gen_erdf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_erdf
 gen_bh_density_split:
 	$(CC) $(BASE_FILES) bh_density_split.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_density_split
+gen_bh_density:
+	$(CC) $(BASE_FILES) bh_density.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_density
 gen_bh_density_split_check:
 	$(CC) $(BASE_FILES) bh_density_split_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_density_split_check
 gen_quasar_host_halo_Feige:

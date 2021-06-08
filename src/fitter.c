@@ -166,19 +166,19 @@ float calc_chi2(float *params)
   return fitter(params);
 }
 
-void read_params(char *buffer, float *data, int max_n) 
-{
-  int num_entries = 0;
-  char *cur_pos = buffer, *end_pos;
-  float val = strtod(cur_pos, &end_pos);
-  while (cur_pos != end_pos && num_entries < max_n) {
-    data[num_entries] = val;
-    num_entries++;
-    cur_pos=end_pos;
-    while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
-    val = strtod(cur_pos, &end_pos);
-  }
-}
+// void read_params(char *buffer, float *data, int max_n) 
+// {
+//   int num_entries = 0;
+//   char *cur_pos = buffer, *end_pos;
+//   float val = strtod(cur_pos, &end_pos);
+//   while (cur_pos != end_pos && num_entries < max_n) {
+//     data[num_entries] = val;
+//     num_entries++;
+//     cur_pos=end_pos;
+//     while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
+//     val = strtod(cur_pos, &end_pos);
+//   }
+// }
 
 void read_params_and_steps(float *params, float *steps) 
 {

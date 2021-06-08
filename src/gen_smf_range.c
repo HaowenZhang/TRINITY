@@ -25,7 +25,7 @@
 #define SIGMA_DOWN ((int)(num_smfs*(0.5-ONE_SIGMA/2.0)))
 
 
-void read_params(char *buffer, double *params, int max_n);
+// void read_params(char *buffer, double *params, int max_n);
 int float_compare(const void *a, const void *b);
 
 float integrate_smf(float z_low, float z_high, double m, struct smf_fit *fit) 
@@ -127,15 +127,15 @@ int float_compare(const void *a, const void *b)
   return 0;
 }
 
-void read_params(char *buffer, double *params, int max_n) {
-  int num_entries = 0;
-  char *cur_pos = buffer, *end_pos;
-  float val = strtod(cur_pos, &end_pos);
-  while (cur_pos != end_pos && num_entries < max_n) {
-    params[num_entries] = val;
-    num_entries++;
-    cur_pos=end_pos;
-    while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
-    val = strtod(cur_pos, &end_pos);
-  }
-}
+// void read_params(char *buffer, double *params, int max_n) {
+//   int num_entries = 0;
+//   char *cur_pos = buffer, *end_pos;
+//   float val = strtod(cur_pos, &end_pos);
+//   while (cur_pos != end_pos && num_entries < max_n) {
+//     params[num_entries] = val;
+//     num_entries++;
+//     cur_pos=end_pos;
+//     while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
+//     val = strtod(cur_pos, &end_pos);
+//   }
+// }

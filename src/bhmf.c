@@ -18,10 +18,12 @@ int main(int argc, char **argv)
   struct smf_fit smf;
   double m;
 
-  if (argc<3+NUM_PARAMS) {
+  if (argc<3+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s z mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
+  // Read in redshift and model parameters.
   double z = atof(argv[1]);
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+3]);
@@ -42,6 +44,11 @@ int main(int argc, char **argv)
   // Calculate the # of snapshot that is the closest to the input redshift.
   calc_step_at_z(z, &step, &f);
   
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
   double s1 = steps[step].smhm.scatter;
   double s2 = steps[step].smhm.bh_scatter;
   double s = sqrt(s1*s1+s2*s2);

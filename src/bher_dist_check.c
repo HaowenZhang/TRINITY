@@ -1,3 +1,5 @@
+// Output SMBH Eddington ratio distributions at a given redshift, z,
+// for each halo mass bin.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -10,7 +12,6 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
-//#include "fitter.h"
 
 
 
@@ -18,55 +19,47 @@ int main(int argc, char **argv)
 {
   int64_t i, j;
   struct smf_fit smf;
-  if (argc<2+NUM_PARAMS) {
+  if (argc<2+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s z mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
+
+  // Read in redshift and model parameters.
+  double z = atof(argv[1]);
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+3]);
+  // Fix model parameters
   assert_model(&smf);
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
+  // We use non-linear scaling relation between the radiative and total Eddington ratios.
   nonlinear_luminosity = 1;
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  double z = atof(argv[1]);
+  // Load cached halo mass functions.
   load_mf_cache(argv[2]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  //double chi2 = calc_chi2(smf.params);
-  //printf("Actual chi2=%e\n", chi2);
+  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
-
+  // Find the snapshot that is the closest to the given redshift.
   int64_t step;
   double f;
   calc_step_at_z(z, &step, &f);
 
   printf("#z=%f, snapshot=%d\n", z, step);
-  //printf("#Mbh_min: %f\n", steps[step].bh_mass_min);
-  //printf("#Mbh_max: %f\n", steps[step].bh_mass_max);
-  //printf("#Mbh_bpdex: %f\n", (double)(MBH_BINS) / (steps[step].bh_mass_max - steps[step].bh_mass_min));
-  //printf("#Lbol_min: %f\n", (double)(LBOL_MIN));
-  //printf("#Lbol_max: %f\n", (double)(LBOL_MAX));
-  //printf("#Lbol_bpdex: %f\n", (double)(LBOL_BPDEX));
 
-  //fprintf(stderr, "#z=%f, snapshot=%d\n", z, step);
-  //fprintf(stderr, "#Mbh_min: %f\n", steps[step].bh_mass_min);
-  //fprintf(stderr, "#Mbh_max: %f\n", steps[step].bh_mass_max);
-  //fprintf(stderr, "#Mbh_bpdex: %f\n", (double)(MBH_BINS) / (steps[step].bh_mass_max - steps[step].bh_mass_min));
-  //fprintf(stderr, "#Lbol_min: %f\n", (double)(LBOL_MIN));
-  //fprintf(stderr, "#Lbol_max: %f\n", (double)(LBOL_MAX));
-  //fprintf(stderr, "#Lbol_bpdex: %f\n", (double)(LBOL_BPDEX));
-  double mbh_bpdex = (double)(MBH_BINS) / (steps[step].bh_mass_max - steps[step].bh_mass_min);
+  // Output SMBH Eddington ratio distributions.
   for (i=0; i<M_BINS; i++)
   {
-    //printf("%f ", steps[step].bh_mass_min + (i + 0.5) / mbh_bpdex);
-    //fprintf(stderr, "%f ", steps[step].bh_mass_min + (i + 0.5) / mbh_bpdex); 
     for (j=0; j<BHER_BINS; j++)
     {
       printf("%e ", steps[step].bher_dist[i*BHER_BINS+j]);
-      //fprintf(stderr, "%e ", steps[step].lum_dist_full[i*LBOL_BINS + j]);
     }
     printf("\n");
-   // fprintf(stderr, "\n");
   } 
 
   return 0;

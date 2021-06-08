@@ -93,7 +93,6 @@ reg:
 	$(CC) $(BASE_FILES) gen_qpdf_eta.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qpdf_eta
 	$(CC) $(BASE_FILES) gen_merger_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_check
 
-	$(CC) $(BASE_FILES) gen_obs_ssfr_smah.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_obs_ssfr_smah
 	$(CC) $(BASE_FILES) gen_ssfr_hm.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_ssfr_hm
 	$(CC) $(BASE_FILES) cosmic_sfr_integral.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o cosmic_sfr_integral
 	$(CC) $(COSMO_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(COSMO_NAME)

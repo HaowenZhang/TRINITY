@@ -1,3 +1,5 @@
+// Calculate average AGN X-ray luminosities-to-star formation rate ratio
+// as functions of galaxy stellar mass at a given redshift, z.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -10,7 +12,7 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
-//#include "fitter.h"
+
 
 #define MASS_START 7
 #define MASS_STOP 12.5
@@ -18,36 +20,39 @@
 #define MASS_BINS (int)((MASS_STOP-MASS_START)*(MASS_BPDEX))
 #define MASS_STEP (1.0/(double)MASS_BPDEX)
 
-// double find_Lx_at_Lbol(double Lbol)
-// {
-//   double BC = 10.83 * pow(exp10(Lbol) / (1e10 * 3.839e33), 0.28) +
-//                             6.08 * pow(exp10(Lbol) / (1e10 * 3.839e33), -0.02);
-//   return Lbol - log10(BC);
-// }
 
 int main(int argc, char **argv)
 {
   int64_t i, j, k, l;
   struct smf_fit smf;
-  // Calculate the black hole mass function within a certain luminosity bin (lbol_low, lbol_high) at a certain redshift.
-  if (argc<2+NUM_PARAMS) {
+
+  if (argc<2+NUM_PARAMS) 
+  {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output) z\n", argv[0]);
     exit(1);
   }
+
+  // Read in model parameters and redshift.
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
   double z = atof(argv[i+4]);
 
 
+  // We use non-linear scaling relation between the radiative and total Eddington ratios.
   nonlinear_luminosity = 1;
+  // Turn off the built-in GSL error handler that kills the program
+  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
+  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
+  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
+  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  //double chi2 = calc_chi2(smf.params);
-  //printf("Actual chi2=%e\n", chi2);
+  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
+  // Fix some model parameters.
   assert_model(&smf); 
 
   printf("#Is the model invalid? %e\n", INVALID(smf));
@@ -56,6 +61,7 @@ int main(int argc, char **argv)
   double t,m;
   int64_t step;
   double f;
+  // Calculate the # of snapshot that is the closest to the input redshift.
   calc_step_at_z(z, &step, &f);
 
   double lx_avg[MBH_BINS] = {0}; //The probabilities of having luminosities between (Lbol_low, Lbol_high), as a function of BH mass.
@@ -63,11 +69,15 @@ int main(int argc, char **argv)
   for (i=0; i<LBOL_BINS; i++)
   {
     double lbol_tmp = LBOL_MIN + (i + 0.5) * LBOL_INV_BPDEX;
-    // lx_at_lbol[i] = find_Lx_at_Lbol(lbol_tmp);
+    // use a constant bolometric correction kbol = 25 to be consistent with Aird et al. (2018).
     lx_at_lbol[i] = lbol_tmp - log10(25);
   }
 
-
+  // calculate the total scatter in BH mass at fixed ***halo mass***,
+  // which is a quadratic sum of the scatter around the median black
+  // hole mass--bulge mass relation, and that of the median stellar
+  // mass--halo mass relation, enhanced by the slope of the black
+  // hole mass--bulge mass relation.
   double sm_scatter = steps[step].smhm.scatter * steps[step].smhm.bh_gamma;
   double scatter = sqrt(sm_scatter*sm_scatter 
                       + steps[step].smhm.bh_scatter*steps[step].smhm.bh_scatter);
@@ -97,6 +107,7 @@ int main(int argc, char **argv)
     // fprintf(stderr, "%f %e\n", mbh, prob_lbol[i]);
   }
 
+  // Count the contribution to different stellar mass bins from different SMBH masses.
   for (i=0; i<MASS_BINS; i++) 
   {
     m = MASS_START + i*MASS_STEP; //observed stellar mass.
@@ -120,49 +131,6 @@ int main(int argc, char **argv)
 
   }
 
-
-
-
-  
-  // // Calculate the probabilities integrated over
-  // for (i=step_low; i<=step_high; i++)
-  // {
-    
-
-  //   double prob_lbol[MBH_BINS] = {0}; //The cumulative probabilities of being more luminous than Lbol_low,
-  //                                     //as a function of black hole mass.
-
-  //   for (k=0; k<MBH_BINS; k++)
-  //   {
-  //     double Mbh = mbh_min + (k + 0.5) * mbh_inv_bpdex;
-  //     if (Mbh < Mbh_low) continue;
-  //     double lbol_f = (Lbol_low - LBOL_MIN) * LBOL_BPDEX;
-  //     int64_t lbol_b = lbol_f;
-  //     lbol_f -= lbol_b;
-  //     if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
-  //     prob_lbol[k] = (1 - lbol_f) * steps[i].lum_dist_full[k*LBOL_BINS + lbol_b];
-  //     for (l=lbol_b+1; l<LBOL_BINS; l++) prob_lbol[k] += steps[i].lum_dist_full[k*LBOL_BINS + l];
-  //   }
-
-  //   for (j=0; j<M_BINS; j++)
-  //   {
-  //     for (k=0; k<MBH_BINS; k++)
-  //     {
-  //       double Mbh = mbh_min + (k + 0.5) * mbh_inv_bpdex;
-  //       if (Mbh < Mbh_low) continue;
-  //       double dMbh = Mbh - steps[i].log_bh_mass[j];
-  //       double prob_Mbh = 1 / (sqrt(2*M_PI) * scatter) * exp(-dMbh*dMbh / (2*scatter*scatter)) * mbh_inv_bpdex; //dimension: dlogMbh^{-1}
-  //       prob_Mh[j] += prob_Mbh * prob_lbol[k];
-  //     }
-  //     prob_Mh[j] *= steps[i].t[j];
-  //   }
-  // }
-
-  
-  // for (i = 0; i < M_BINS; i++) 
-  // {
-  //   printf("%.1f %.6e\n", (M_MIN + (i + 0.5) * INV_BPDEX), prob_Mh[i]);
-  // }
   
   return 0;
 }

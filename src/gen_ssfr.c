@@ -19,6 +19,7 @@
 
 int main(int argc, char **argv)
 {
+  int64_t i;
   float z, m;
   struct smf_fit the_smf;
   if (argc < 4) 
@@ -27,7 +28,7 @@ int main(int argc, char **argv)
     exit(1);
   }
   // Read in the redshift and model parameters. 
-  double z = atof(argv[1]);
+  z = atof(argv[1]);
 
   // Read in model parameters
   FILE *param_input = check_fopen(argv[3], "r");

@@ -27,7 +27,7 @@ int main(int argc, char **argv)
   FILE *param_input = check_fopen(argv[2], "r");
   char buffer[2048];
   fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
+  read_params(buffer, the_smf.params, NUM_PARAMS);
   
   // Fix some of the model parameters.
   assert_model(&the_smf);

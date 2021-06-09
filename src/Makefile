@@ -101,7 +101,41 @@ reg:
 	$(CC) gen_smf_intrinsic.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_smf_intrinsic
 	$(CC) gen_smf_range.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_smf_range
 	$(CC) calc_sm_density.c $(BASE_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o calc_sm_density
-
+	$(CC) $(AGN_UM_CATALOG_FILES) $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(AGN_UM_CATALOG_NAME)
+	$(CC) $(BASE_FILES) bher_dist_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_bher_dist_check
+	$(CC) $(BASE_FILES) lum_dist_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_check
+	$(CC) $(BASE_FILES) gen_baryon_eff.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_baryon_eff
+	$(CC) $(BASE_FILES) bhmf_mh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_mh
+	$(CC) $(BASE_FILES) bhar_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_mbh
+	$(CC) $(BASE_FILES) bhar_sfr_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_sfr_mbh
+	$(CC) $(BASE_FILES) sbhar_ssfr_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sbhar_ssfr_mbh
+	$(CC) $(BASE_FILES) bher_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bher_mbh
+	$(CC) $(BASE_FILES) bhmr_mbh.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmr_mbh
+	$(CC) $(BASE_FILES) bhar_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_mstar
+	$(CC) $(BASE_FILES) bhar_sfr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhar_sfr_mstar
+	$(CC) $(BASE_FILES) smar_ssfr_sbhar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o smar_ssfr_sbhar
+	$(CC) $(BASE_FILES) sbhar_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sbhar_mstar
+	$(CC) $(BASE_FILES) sbhar_ssfr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sbhar_ssfr_mstar
+	$(CC) $(BASE_FILES) bher_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bher_mstar
+	$(CC) $(BASE_FILES) bhmr_mstar.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmr_mstar
+	$(CC) $(BASE_FILES) gen_mbh_info.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_mbh_info
+	$(CC) $(BASE_FILES) energy_density.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o energy_density
+	$(CC) $(BASE_FILES) gen_sfr_map.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_sfr_map
+	$(CC) $(BASE_FILES) gen_uv_map.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_uv_map
+	$(CC) $(BASE_FILES) gen_frac_supEdd_l.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_frac_supEdd_l
+	$(CC) $(BASE_FILES) gen_active_fraction.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_active_fraction
+	$(CC) $(BASE_FILES) bhmf_all_z.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_all_z
+	$(CC) $(BASE_FILES) gen_erdf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_erdf
+	$(CC) $(BASE_FILES) bh_density_split.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bh_density_split
+	$(CC) $(BASE_FILES) quasar_host_halo_Feige.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o quasar_host_halo_Feige
+	$(CC) $(BASE_FILES) bhmf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_quasar_lum
+	$(CC) $(BASE_FILES) host_smf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_smf_quasar_lum
+	$(CC) $(BASE_FILES) host_hmf_quasar_lum.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o host_hmf_quasar_lum
+	$(CC) $(BASE_FILES) lx_sfr_mstar_james.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o lx_sfr_mstar_james
+	$(CC) $(BASE_FILES) lx_mstar_james.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o lx_mstar_james
+	$(CC) $(BASE_FILES) bhmf_typeI.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o bhmf_typeI
+	$(CC) $(BASE_FILES) gen_lum_dist_mbh_obs.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_obs
+	$(CC) $(BASE_FILES) gen_lum_dist_mbh_int.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_lum_dist_mbh_int
 
 merger_tree:
 	$(CC) $(BASE_FILES) gen_merger_tree.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_merger_tree
@@ -147,8 +181,6 @@ galaxy_growth_rate:
 	$(CC) $(BASE_FILES) gen_galaxy_growth_rate.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_galaxy_growth_rate
 hist2d:
 	$(CC) $(BASE_FILES) gen_edd_r_color.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_edd_r_color
-gen_sm_sfr_check:
-	$(CC) $(BASE_FILES) sm_sfr_check.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o sm_sfr_check
 chi2_type:
 	$(CC) $(BASE_FILES) gen_chi2_type.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_chi2_type
 mbh_info:

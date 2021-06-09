@@ -89,7 +89,7 @@ int main(int argc, char **argv)
   struct smf_fit the_smf;
   struct int_helper the_helper;
   int i;
-  char buffer[1024] = {0};
+  // char buffer[1024] = {0};
 
   if (argc < 3) 
   {

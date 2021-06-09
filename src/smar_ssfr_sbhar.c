@@ -67,6 +67,7 @@ int main(int argc, char **argv)
   read_params(buffer, smf.params, NUM_PARAMS);
 
   // Find out the halo mass bin to do the interpolation.
+  double mh = atof(argv[3]);
   double mf = (mh - M_MIN) * BPDEX - 0.5;
   int mb = mf;
   mf -= mb;

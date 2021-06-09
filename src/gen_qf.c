@@ -59,7 +59,7 @@ int main(int argc, char **argv)
   FILE *param_input = check_fopen(argv[4], "r");
   char buffer[2048];
   fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
+  read_params(buffer, smfs[0].params, NUM_PARAMS);
 
   // Turn off the built-in GSL error handler that kills the program
   // when an error occurs. We handle the errors manually.

@@ -97,7 +97,6 @@ int main(int argc, char **argv)
   FILE *ssfr_smah_f;
   FILE *sfe_smah_f;
   FILE *smhm_smah_f;
-  char buffer[1024];
   double smah_ratio[16];
   double smah_norm[16];
   double smah_norm_sm[16];

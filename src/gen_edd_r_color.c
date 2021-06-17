@@ -58,7 +58,7 @@ int main(int argc, char **argv)
   printf("#Is the model invalid? %e\n", INVALID(smf));
   double t,m;
 
-  printf("#1+z M_h M_star M_bulge M_bh SFR BHAR bh_eta_avg bh_eta_typical BH_Merge_Rate (All in log units except for 1+z)\n");
+  printf("#1+z M_h M_star(intrinsic) M_bulge(observed) M_bh(intrinsic) SFR BHAR bh_eta_avg bh_eta_typical BH_Merge_Rate (All in log units except for 1+z)\n");
 
   for (t=0; t<num_outputs-1; t+=1.0/3.0) 
   {
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
       mf -= j;
       double log_bh_mass, log_bh_acc_rate, log_edd, log_edd_obs, avg_l, efficiency, bh_merge_rate, bh_unmerged, log_bm, log_sfr, gal_mr, bh_eta, obs_uv, frac_active, log_bh_acc_rate_obs, log_sm, eta_rad_avg, eta_kin_avg;
       double l_kin;
-      LINTERP(log_bh_mass,bh_mass_avg);
+      INTERP(log_bh_mass,log_bh_mass);
       INTERP(obs_uv, obs_uv);
       LINTERP(log_bh_acc_rate,bh_acc_rate);
       LINTERP(log_bh_acc_rate_obs, bh_acc_rate_obs);

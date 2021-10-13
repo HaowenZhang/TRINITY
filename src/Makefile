@@ -263,4 +263,4 @@ clean:
 	rm -f $(CACHE_OBJ_NAME) $(ASMF_OBJ_NAME) $(SMF_NAME) $(R_NAME) $(SMASS_NAME) $(SM2_NAME) $(FIT_NAME) $(DEC_NAME) $(COSMO_NAME) $(SMASS_CV_NAME) $(FIT2_NAME) $(REMARG_NAME)
 	rm -f *~
 	rm -f gmon.out *.gcda *.gcno 
-	-rf *.dSYM
+	rm -rf *.dSYM

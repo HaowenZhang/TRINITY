@@ -1127,7 +1127,7 @@ void calc_avg_eta_rad(int n)
     for (j = 0; j < BHER_BINS; j++)
     {
       double prob = steps[n].bher_dist[i*BHER_BINS + j];
-      if isfinite(prob)
+      if(isfinite(prob))
       {  
           tot += prob * exp10(eta0 + ledd_min + (j + 0.5) * ledd_inv_bpdex) * ledd_inv_bpdex * dc;
       }
@@ -2587,4 +2587,3 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
     INVALIDATE(fit, buffer);
   }
 }
-

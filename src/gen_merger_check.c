@@ -1,7 +1,3 @@
-// Calculate the numbers of SMBH mergers above mass ratios 1:10 and 1:100
-// per halo, as functions of halo mass and redshift. This is for now 
-// ***DEPRECATED*** because we do not store the SMBH mass distributions
-// that are available for mergers.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -27,18 +23,12 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  
-  if (argc < 3) 
-  {
-    fprintf(stderr, "Usage: %s mass_cache parameter_file (> output_file)\n", argv[0]);
+  if (argc<2+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+2]);
 
   nonlinear_luminosity = 1;
   setup_psf(1);
@@ -53,8 +43,9 @@ int main(int argc, char **argv)
     double f = t-i;
     double zp1 = (1.0-f)/steps[i].scale + f/steps[i+1].scale;
     double bh_merge_mchar = (1.0 - f) * steps[i].smhm.bh_merge + f * steps[i+1].smhm.bh_merge;
-     double bh_merge_width = (1.0 - f) * steps[i].smhm.bh_merge_width + f * steps[i+1].smhm.bh_merge_width;
-     double dt = (1.0 - f) * steps[i].dt + f * steps[i+1].dt;
+    // double bh_merge_width = (1.0 - f) * steps[i].smhm.bh_merge_width + f * steps[i+1].smhm.bh_merge_width;
+    double bh_merge_width = 0;
+    double dt = (1.0 - f) * steps[i].dt + f * steps[i+1].dt;
     for (m=8; m<15; m+=0.05) {
       double mf = (m-M_MIN)*BPDEX+0.5;
       int64_t j = mf;

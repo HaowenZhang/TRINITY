@@ -1,9 +1,3 @@
-// Print out the SMBH bolometric luminosity distributions
-// at a given redshift z, as functions of ***observed***
-// SMBH masses. By "observed", we mean the single-epoch
-// spectroscopic SMBH mass measurements.
-// The user needs to provide a random scatter in the 
-// observed SMBH masses around intrinsic ones in this calculation. 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -21,40 +15,22 @@ int main(int argc, char **argv)
   int64_t i;
   struct smf_fit smf;
   double m;
-  if (argc < 5) 
-  {
-    fprintf(stderr, "Usage: %s z scatter_obs mass_cache param_file (> output_file)\n", argv[0]);
+  if (argc<3+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s z scatter_obs mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  // Read in the redshift, observed scatter, and the model parameters.
   double z = atof(argv[1]);
   double scatter_obs = atof(argv[2]);
-
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[4], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-  
-  // Fix some model parameters.
-  assert_model(&smf);
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+4]);
   gsl_set_error_handler_off();
-  // We use non-linear scaling relation between the radiative and total Eddington ratios.
-  nonlinear_luminosity = 1;
-  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[3]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&smf);
   int64_t step;
   double f;
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_step_at_z(z, &step, &f);
   
   
@@ -69,7 +45,6 @@ int main(int argc, char **argv)
   double mbh_bpdex = MBH_BINS / (steps[step].bh_mass_max - steps[step].bh_mass_min);
   double mbh_inv_bpdex = 1.0 / mbh_bpdex;
 
-  // Calculate the SMBH ***intrinsic*** mass function
   double bhmf_z_int[MBH_BINS] = {0};
   for (i=0; i<MBH_BINS; i++)
   {
@@ -77,8 +52,8 @@ int main(int argc, char **argv)
     bhmf_z_int[i] = calc_bhmf(m, z);
   }
 
-  // Calculate the distribution of SMBH ***observed*** masses.
   double P_Mo[MBH_BINS] = {0};//P(Mbh_obs) = Integral(P(Mbh_obs|Mbh_int)*P(Mbh_int));
+
   for (i=0; i<MBH_BINS; i++)
   {
     // double P_Mo = 0; 
@@ -91,9 +66,8 @@ int main(int argc, char **argv)
     }
   }
 
-  // Calculate the probability that the SMBH in j-th intrinsic mass bin
-  // falls in the i-th observed mass bin. 
   double P_Mi_Mo[MBH_BINS*MBH_BINS] = {0};
+
   for (i=0; i<MBH_BINS; i++) //observed Mbh
   {
     double Mo = mbh_min + (i + 0.5) * mbh_inv_bpdex;
@@ -105,20 +79,23 @@ int main(int argc, char **argv)
     }
   }
 
-  // Then the luminosity distribution for each observed mass bin
-  // is the weighted sum of that for each intrinsic mass bin, weighted
-  // by their contribution to the observed mass bin.
   double P_L_Mo[LBOL_BINS*MBH_BINS] = {0};
   for (i=0; i<LBOL_BINS; i++) //luminosity
   {
+    // if (LBOL_MIN + (i + 0.5) * LBOL_INV_BPDEX < 46) continue;
     for (int j=0; j<MBH_BINS; j++) //observed Mbh
     {
       for (int k=0; k<MBH_BINS; k++) //intrinsic Mbh
         P_L_Mo[i*MBH_BINS+j] += steps[step].lum_dist_full[k*LBOL_BINS+i] * P_Mi_Mo[j*MBH_BINS+k];
     }
+    // fprintf(stdout, "%.6f ", LBOL_MIN + (i + 0.5) * LBOL_INV_BPDEX);
+    // for (int j=0; j<MBH_BINS; j++) //observed Mbh
+    // {
+    //   fprintf(stdout, "%.6e ", P_L_Mo[i*MBH_BINS+j]);
+    // }
+    // fprintf(stdout, "\n");
   }
 
-  // Print them out.
   for (i=0; i<MBH_BINS; i++)
   {
     if (mbh_min + (i + 0.5) * mbh_inv_bpdex < 8) continue;

@@ -1,5 +1,3 @@
-// Calculate the quasar bolometric luminosity functions 
-// at redshift z, as a function of bolometric luminosity.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -17,47 +15,43 @@ int main(int argc, char **argv)
   int64_t i;
   struct smf_fit smf;
   double l;
-  if (argc < 4) 
-  {
-    fprintf(stderr, "Usage: %s z mass_cache param_file (> output_file)\n", argv[0]);
+  if (argc<3+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s z mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  // Read in the redshift and model parameters. 
   double z = atof(argv[1]);
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+3]);
 
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[3], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
-  gsl_set_error_handler_off();
-  // We use non-linear scaling relation between the radiative and total Eddington ratios.
   nonlinear_luminosity = 1;
-  // Set up the PSF for stellar mass functions. See observations.c.
+gsl_set_error_handler_off();
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[2]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  // Calculate star formation histories.
   calc_sfh(&smf);
-  // Find the closest snapshot to the input redshift.
   int64_t step;
   double f;
   calc_step_at_z(z, &step, &f);
 
+  // printf("#Double power-law norm: %e\n", doublePL_norm(-0.6, -10, 2, NULL));
+  // printf("#Schechter avg: %e\n", schechter_inv_avg(-0.6, -10, 2, NULL));
+  // printf("#Double power-law norm: %e\n", doublePL_norm(-0.6, -4, 2, NULL));
+  // printf("#Schechter avg: %e\n", schechter_inv_avg(-0.6, -4, 2, NULL));
   printf("#BH_alpha: %f\n", steps[step].smhm.bh_alpha);
   printf("#BH_delpha: %f\n", steps[step].smhm.bh_delta);
-  // Calculate and output quasar luminosity functions.
-  for (l=-10; l>-34.1; l-=0.1) 
-  {
+  for (l=-10; l>-34.1; l-=0.1) {
     printf("%f %f\n", l, log10(calc_quasar_lf_new(l, z))); //, log10(calc_quasar_lf(l+6.25, z))-2.5);
   }
 
-
+  /*printf("#Alpha Inv.Avg\n");
+  for (i=0; i<10; i++) {
+    float alpha = i/10.0;
+    }*/
+  
+  /*  printf("#M_h M_bh dM_bh/dt Edd_r. Eta L_typ L_typ2\n");
+  for (i=0; i<M_BINS; i++) {
+    printf("%f %e %e %e %f %f\n", M_MIN+i*INV_BPDEX, steps[step].bh_mass[i], steps[step].bh_acc_rate[i], steps[step].bh_acc_rate[i]/steps[step].bh_mass[i]*4.5e7, steps[step].bh_eta[i], -5.26 -2.5*log10(steps[step].bh_acc_rate[i]*4.5e7));
+    }*/
   return 0;
 }

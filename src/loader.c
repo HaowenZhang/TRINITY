@@ -1,5 +1,3 @@
-// The function to load the Universe Machine SFR catalogs, which can be found at:
-// https://www.peterbehroozi.com/data.html
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

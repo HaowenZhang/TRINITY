@@ -214,9 +214,11 @@ int64_t load_steps_from_file(char *filename)
   FILE *input = fopen(filename, "rb");
   if (!input) return 0;
   fread(&nout, sizeof(int64_t), 1, input);
+  // printf("%d snapshots read.\n", nout);
   if (nout == num_outputs) 
   {
     success = fread(steps, sizeof(struct timestep), num_outputs, input);
+    // printf("success: %d\n", success);
     if (success == num_outputs) 
     {
       for (i=0; i<num_outputs; i++) 
@@ -263,13 +265,13 @@ void init_timesteps(void)
   steps = check_realloc(steps, sizeof(struct timestep)*(num_outputs),
 		     "Allocating timesteps.");
   
-// #ifdef __APPLE__
+#ifdef __APPLE__
   if (load_steps_from_file("steps_PLaexp_sat_frac.bin")) 
   {
     build_stepcache();
     return;
   }
-// #endif /* __APPLE__ */
+#endif /* __APPLE__ */
 
   // The multiplicative factor between two consecutive snapshots' scale factors. 
   double scale_base = pow(1.0 + Z_START, 1.0 / ((double)TOTAL_OUTPUTS - 1.0));

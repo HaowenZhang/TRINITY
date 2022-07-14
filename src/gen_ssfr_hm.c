@@ -1,5 +1,3 @@
-// Calculate the galaxy specific star formation rate
-// as a function of halo mass and redshift.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -11,6 +9,12 @@
 #include "mlist.h"
 #include "calc_sfh.h"
 
+#define MASS_START 7.5
+#define MASS_STOP 12.5
+#define MASS_BPDEX 10
+#define MASS_BINS (int)((MASS_STOP-MASS_START)*(MASS_BPDEX))
+#define MASS_STEP (1.0/(double)MASS_BPDEX)
+
 extern struct timestep *steps;
 extern int64_t num_outputs;
 
@@ -19,43 +23,27 @@ int main(int argc, char **argv)
   float m;
   struct smf_fit the_smf;
   int i, j;
-  
-  if (argc < 3) 
-  {
-    fprintf(stderr, "Usage: %s mass_cache parameter_file (> output_file)\n", argv[0]);
+  if (argc<3+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
+  for (i=0; i<NUM_PARAMS; i++)
+    the_smf.params[i] = atof(argv[i+2]);
+  the_smf.params[NUM_PARAMS] = 0;
 
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, the_smf.params, NUM_PARAMS);
 
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
-  gsl_set_error_handler_off();
-  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
   calc_sfh(&the_smf);
 
   printf("#z log10(M_halo)[Msun] SSFR[yr^-1]\n");
-  for (j=0; j<num_outputs; j++) 
-  {
+  for (j=0; j<num_outputs; j++) {
     if (steps[j].scale < 1.0/9.0) continue;
     float z = 1.0/steps[j].scale - 1.0;
-    for (i=0; i<M_BINS; i++) 
-    {
+    for (i=0; i<M_BINS; i++) {
       m = M_MIN + (i+0.5)*INV_BPDEX;
       if (m<9 || steps[j].t[i] < 1e-9) continue;
-      // Since we already calculated and stored the average stellar mass and star formation
-      // rates for every halo mass bin, we calcualte the specific star formation rate 
-      // using its definition: SSFR = SFR/Mstar.
       printf("%f %f %g\n", z, m, steps[j].sfr[i]/steps[j].sm_avg[i]);
     }
   }

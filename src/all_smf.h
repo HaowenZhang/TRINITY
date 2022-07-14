@@ -48,7 +48,7 @@
 // #define SMF_CPUS 8
 
 // The number of steps in the burn-in phase.
-#define BURN_IN_LENGTH (1<<6)
+#define BURN_IN_LENGTH (1<<16)
 
 // The number of parameters in Trinity. Note that this number may be different
 // than is shown in the papers, because lots of the parameters are fixed or
@@ -156,8 +156,9 @@
 #define EFF_0_A(x)   ((x).params[1])
 #define EFF_0_A2(x)  ((x).params[2])
 #define EFF_0_A3(x)  ((x).params[3])
-#define EXPSCALE(x)  ((x).params[4])
-#define Z_CEIL(x) ((x).params[4])
+//#define EXPSCALE(x)  ((x).params[4])
+#define DC_MBH_1(x) ((x).params[4])
+//#define Z_CEIL(x) ((x).params[4])
 #define M_1(x)       ((x).params[5])
 #define M_1_A(x)     ((x).params[6])
 #define M_1_A2(x)    ((x).params[7])
@@ -178,9 +179,14 @@
 #define GAMMA(x)    ((x).params[19])
 #define GAMMA_A(x)  ((x).params[20])
 #define GAMMA_A2(x)  ((x).params[21])
-#define LAMBDA(x)    ((x).params[22])
-#define LAMBDA_A(x)  ((x).params[23])
-#define LAMBDA_A2(x)  ((x).params[24])
+// #define LAMBDA(x)    ((x).params[22])
+// #define LAMBDA_A(x)  ((x).params[23])
+
+#define BH_DUTY_M_0(x)   ((x).params[22])
+#define BH_DUTY_M_1(x)  ((x).params[23])
+
+//#define LAMBDA_A2(x)  ((x).params[24])
+#define DC_MBH_W_1(x) ((x).params[24])
 #define MU(x)       ((x).params[25])
 #define KAPPA(x)    ((x).params[26])
 #define SCATTER(x)  ((x).params[27])
@@ -191,9 +197,12 @@
 #define KAPPA_A(x)  ((x).params[31])
 #define SCATTER_A(x) ((x).params[32])
 #define ICL_FRAC_E(x) ((x).params[33])
-#define BURST_DUST(x) ((x).params[34])
-#define BURST_DUST_AMP(x) ((x).params[35])
-#define BURST_DUST_Z(x) ((x).params[36])
+// #define BURST_DUST(x) ((x).params[34])
+// #define BURST_DUST_AMP(x) ((x).params[35])
+// #define BURST_DUST_Z(x) ((x).params[36])
+#define RHO_BH_0(x) ((x).params[34])
+#define RHO_BH_1(x) ((x).params[35])
+#define RHO_BH_2(x) ((x).params[36])
 #define RHO_05(x) ((x).params[37])
 
 
@@ -207,12 +216,14 @@
 #define BH_ALPHA_0(x)      ((x).params[44])
 #define BH_ALPHA_1(x)      ((x).params[45])
 #define BH_DELTA_0(x)      ((x).params[46])
-#define BH_DUTY_0(x)       ((x).params[47])
-#define BH_DUTY_1(x)       ((x).params[48])
+#define BH_DUTY_ALPHA_0(x)       ((x).params[47])
+#define BH_DUTY_ALPHA_1(x)       ((x).params[48])
 #define BH_MERGE_F_0(x)    ((x).params[49])
 #define BH_MERGE_F_1(x)    ((x).params[50])
-#define BH_MERGE_W_0(x)    ((x).params[51])
-#define BH_MERGE_W_1(x)    ((x).params[52])
+// #define BH_MERGE_W_0(x)    ((x).params[51])
+#define F_OCC_MIN_0(x)    ((x).params[51])
+// #define BH_MERGE_W_1(x)    ((x).params[52])
+#define F_OCC_MIN_1(x)    ((x).params[52])
 // #define BH_EFFICIENCY_0(x) ((x).params[53])
 // #define BH_EFFICIENCY_1(x) ((x).params[54])
 #define BH_ETA_CRIT_0(x) ((x).params[53])
@@ -261,7 +272,6 @@ void shutdown_clients(void); //Deprecated.
 // For the non-deprecated function below, please see
 // the comments in all_smf.c.
 void init_frac_below8(void);
-void read_params(char *buffer, double *data, int max_n);
 float all_smf_chi2_err(struct smf_fit test);
 float all_smf_chi2_err_write(struct smf_fit test); //Deprecated.
 float chi2_type(struct smf_fit test);

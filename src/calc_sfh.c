@@ -53,6 +53,22 @@ extern int no_obs_scatter;
 extern double frac_below8[MBH_BINS];
 extern double frac_below11[MBH_BINS];
 
+
+void check_bhsm(struct smf_fit *f, int n)
+{
+  int i;
+  #pragma omp for schedule(dynamic,5)
+    for (i=0; i<M_BINS; i++)
+    {
+      if (steps[n].scale > 0.08 && (i > 0 && steps[n].log_bh_mass[i] > 0 && steps[n].log_bh_mass[i] < steps[n].log_bh_mass[i-1]))
+      {
+//            fprintf(stderr, "BHSM is not monotonic. a: %f, m: %f, mstar: %f, mbh: %f, mbh_i-1: %f, n=%d, i=%d\n", steps[n].scale, 
+  //          steps[n].med_hm_at_a[i], steps[n].log_sm[i], steps[n].log_bh_mass[i], steps[n].log_bh_mass[i-1], n, i);
+            INVALIDATE(f, "BHSM is not monotonic.");
+      }
+    }
+}
+
 void calc_sfh(struct smf_fit *f) 
 {
   int64_t i,j;
@@ -60,7 +76,11 @@ void calc_sfh(struct smf_fit *f)
   {
     if (!no_z_scaling || ((steps[i].scale < 1.0/(z_min+1.0)) &&
 			  (steps[i].scale > 1.0/(z_max+1.0))))
-    calc_sm_hist(i, f);
+    {
+      calc_sm_hist(i, f);
+      check_bhsm(f, i);
+    }
+    
   }
 
 #pragma omp for schedule(guided,5)
@@ -74,7 +94,7 @@ void calc_sfh(struct smf_fit *f)
       calc_bh_acc_rate_distribution(j, f);
       calc_bh_lum_distribution_full(j, f);
       calc_active_bh_fraction(j, f);
-      calc_avg_eta_rad(j);
+      // calc_avg_eta_rad(j);
       calc_total_bhar(j);
       // for (i=0; i<M_BINS; i++)
       //   calc_supEdd_frac_lum(j, i, 45);
@@ -82,28 +102,25 @@ void calc_sfh(struct smf_fit *f)
   }
   for (j=1; j<num_outputs; j++)
   {
+    for (int k=0; k<M_BINS; k++) steps[j].sfr[k] -= (1 - steps[j].sfrac[k]) * steps[j].old_sm[k] * SSFR_AVG_Q;
     if (1 / steps[j].scale - 1 >= 6 && steps[j].cosmic_sfr < steps[j-1].cosmic_sfr)
     {
       //fprintf(stderr, "Increasing CSFR at z>6.\n");
       INVALIDATE(f, "decreasing CSFR at z>6.");
       break;
     }
+    
   }
 }
 
-// Calculate the fraction of super-Eddington SMBHs among the quasars that are
-// above a certain bolometric luminosities (logLbol >= l), 
-// for the i-th halo mass bin in the n-th snapshot.
+
 void calc_supEdd_frac_lum(int n, int i, double l)
 {
   double ledd_min = steps[n].ledd_min[i];
   // double ledd_max = steps[n].ledd_max[i];
   double bpdex = steps[n].ledd_bpdex[i];
 
-  // Figure out the distribution in SMBH mass in the halo mass bin, which is a
-  // log-normal. The scatter is the quadratic sum of the scatter in BH mass--bulge
-  // mass relation, and the scatter around the stellar mass--halo mass relation
-  // scaled up by the slope of the BH mass--bulge mass relation.
+  
   double scatter_tot = sqrt(steps[n].smhm.bh_scatter * steps[n].smhm.bh_scatter +
                             steps[n].smhm.scatter * steps[n].smhm.bh_gamma * 
                             steps[n].smhm.scatter * steps[n].smhm.bh_gamma);
@@ -123,8 +140,6 @@ void calc_supEdd_frac_lum(int n, int i, double l)
     return;
   }
 
-  // Count the fraction of super-Eddington objects among those above the 
-  // luminosity threshold by using the Eddington ratio distribution.
   double frac_above_l = 0.0;
   for (double mbh=mbh_min; mbh<=mbh_max; mbh+=dmbh)
   {
@@ -289,47 +304,50 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
    // double eta = -(l_min + 5.26) / 2.5 - steps[n].log_bh_mass[i];
   double eta = -(l_min + 5.26) / 2.5 - log10(steps[n].bh_mass_avg[i]);
    double eta_frac = eta - steps[n].bh_eta[i];
-   bhar += steps[n].bh_acc_rate[i] * steps[n].t[i];
-   if (eta_frac > steps[n].ledd_max[i]) continue;
-   if (eta_frac < steps[n].ledd_min[i]) 
-    {
-      bhar_obs += steps[n].bh_acc_rate[i] * steps[n].t[i];
-    }
-   else
-   {
-    double bher_f = (eta_frac - steps[n].ledd_min[i]) * steps[n].ledd_bpdex[i];
-    int64_t bher_b = bher_f;
-    bher_f -= bher_b;
-    double p1 = 0, p2 = 0;
-    if (i*BHER_BINS+bher_b+1 < M_BINS * BHER_BINS)
-    {
-      p1 = steps[n].bher_dist_full[i*BHER_BINS+bher_b];
-      p2 = steps[n].bher_dist_full[i*BHER_BINS+bher_b+1];
-    }
-    else if (i*BHER_BINS+bher_b < M_BINS * BHER_BINS)
-    {
-      p1 = steps[n].bher_dist_full[i*BHER_BINS+bher_b];
-      p2 = p1;
-    }
+   bhar += steps[n].bh_acc_rate[i] * steps[n].t[i] * steps[n].bh_f_occ[i];
+
+
+   // if (eta_frac > steps[n].ledd_max[i]) continue;
+   // if (eta_frac < steps[n].ledd_min[i]) 
+   //  {
+   //    bhar_obs += steps[n].bh_acc_rate[i] * steps[n].t[i] * steps[n].bh_f_occ[i];
+   //  }
+   // else
+   // {
+   //  double bher_f = (eta_frac - steps[n].ledd_min[i]) * steps[n].ledd_bpdex[i];
+   //  int64_t bher_b = bher_f;
+   //  bher_f -= bher_b;
+   //  double p1 = 0, p2 = 0;
+   //  if (i*BHER_BINS+bher_b+1 < M_BINS * BHER_BINS)
+   //  {
+   //    p1 = steps[n].bher_dist_full[i*BHER_BINS+bher_b];
+   //    p2 = steps[n].bher_dist_full[i*BHER_BINS+bher_b+1];
+   //  }
+   //  else if (i*BHER_BINS+bher_b < M_BINS * BHER_BINS)
+   //  {
+   //    p1 = steps[n].bher_dist_full[i*BHER_BINS+bher_b];
+   //    p2 = p1;
+   //  }
     
-    // if (bher_b >= BHER_BINS-1) p2 = p1;
-    double prob = p1 + bher_f*(p2-p1);
-    for (;bher_b + 1< BHER_BINS; bher_b++) prob += steps[n].bher_dist_full[i*BHER_BINS+bher_b+1];
-    double total = 0;
-    for (bher_b = 0; bher_b < BHER_BINS; bher_b++) total += steps[n].bher_dist_full[i*BHER_BINS+bher_b];
-      //fprintf(stderr, "prob=%f, total=%f\n", prob, total);
-    if (prob > 0) prob /= total;
+   //  // if (bher_b >= BHER_BINS-1) p2 = p1;
+   //  double prob = p1 + bher_f*(p2-p1);
+   //  for (;bher_b + 1< BHER_BINS; bher_b++) prob += steps[n].bher_dist_full[i*BHER_BINS+bher_b+1];
+   //  double total = 0;
+   //  for (bher_b = 0; bher_b < BHER_BINS; bher_b++) total += steps[n].bher_dist_full[i*BHER_BINS+bher_b];
+   //    //fprintf(stderr, "prob=%f, total=%f\n", prob, total);
+   //  if (prob > 0) prob /= total;
     
-    // double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    // f_mass = f_mass / (1 + f_mass);
-    // double dc = steps[n].smhm.bh_duty * f_mass;
-    // if (dc < 1e-4) dc = 1e-4;
-    // prob *= dc;
-    bhar_obs += steps[n].bh_acc_rate[i] * steps[n].t[i] * prob;
-   }
+
+   //  // double dc = steps[n].bh_duty[i];
+   //  // if (dc < 1e-4) dc = 1e-4;
+   //  // prob *= dc;
+   //  bhar_obs += steps[n].bh_acc_rate[i] * steps[n].t[i] * prob;
+   // }
+
+
  }
  steps[n].cosmic_bhar = bhar;
- steps[n].observed_cosmic_bhar = bhar_obs;
+ steps[n].observed_cosmic_bhar = bhar;
 }
 
 // Also calculates observable duty cycle.
@@ -347,11 +365,7 @@ l_min = 90 - 2.5 * l_min; //Convert it to magnitude
    if (steps[n].t[i] == 0) continue;
 
    // double eta = -(l_min + 5.26) / 2.5 - steps[n].log_bh_mass[i];
-   double dc = steps[n].smhm.bh_duty;
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    // f_mass = f_mass < 1? f_mass : 1;
-    dc *= f_mass;
+   double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4;
   double eta = -(l_min + 5.26) / 2.5 - log10(steps[n].bh_mass_avg[i]);
    double eta_frac = eta - steps[n].bh_eta[i];
@@ -408,7 +422,7 @@ struct smf smhm_at_z(double z, struct smf_fit f)
   c.delta = DELTA(f);
   c.beta = BETA(f) + a1*BETA_A(f) + z8*BETA_A2(f);
   c.gamma = 0;
-  c.lambda = doexp10(LAMBDA(f) + (a1*LAMBDA_A(f) + z8*LAMBDA_A2(f)));
+  //c.lambda = doexp10(LAMBDA(f) + (a1*LAMBDA_A(f) + z8*LAMBDA_A2(f)));
   c.mu = MU(f) + a1*MU_A(f);
   c.kappa = KAPPA(f) + a1*KAPPA_A(f);
   c.passive_mass = 10.3 + z*0.5 - c.mu;
@@ -420,18 +434,20 @@ struct smf smhm_at_z(double z, struct smf_fit f)
 
   c.icl_frac = exp10(ICL_FRAC(f) + a1 * ICL_FRAC_E(f) + z8 * ICL_FRAC_Z(f));
 
-  incompleteness = BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-z));
-  if (z < 1.0) incompleteness = 0;
-  if (z > 1.0) incompleteness -= BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-1.0));
-  if (incompleteness < 0) incompleteness = 0;
+  // incompleteness = BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-z));
+  // if (z < 1.0) 
+  incompleteness = 0;
+  // if (z > 1.0) incompleteness -= BURST_DUST_AMP(f)/(1+exp(BURST_DUST_Z(f)-1.0));
+  // if (incompleteness < 0) incompleteness = 0;
   c.sm_completeness = 1.0 - incompleteness;
-  c.csfr_completeness = 1.0 - (1.0-BURST_DUST(f))*incompleteness;
+  c.csfr_completeness = 1.0;
   c.sfr_sm_corr = 1.0 + (4.0*RHO_05(f)-3.23)*a + (2.46-4.0*RHO_05(f))*a*a;
-  if (c.csfr_completeness < 0.01) c.csfr_completeness = 0.01;
-  if (c.sm_completeness < 0.01) c.sm_completeness = 0.01;
-  c.ssfr_corr = 1.0/(1.0-BURST_DUST(f)*incompleteness);
+  // if (c.csfr_completeness < 0.01) c.csfr_completeness = 0.01;
+  // if (c.sm_completeness < 0.01) c.sm_completeness = 0.01;
+  // c.ssfr_corr = 1.0/(1.0-BURST_DUST(f)*incompleteness);
+  c.ssfr_corr = 1.0;
   c.sm_max = c.sm_min = 0;
-  c.f_1 = dolog10(2)-c.delta*pow(dolog10(2), c.gamma)/(1.0+exp(1));
+  // c.f_1 = dolog10(2)-c.delta*pow(dolog10(2), c.gamma)/(1.0+exp(1));
   c.lm_slope = 1.0/c.alpha - 1.0;
   c.mpk = c.mu+c.kappa;
   c.combined_scatter = 0;
@@ -444,20 +460,28 @@ struct smf smhm_at_z(double z, struct smf_fit f)
   c.bh_beta = BH_BETA_0(f) +BH_BETA_1(f)*a1 + BH_BETA_2(f)*z8;
   c.bh_gamma = BH_GAMMA_0(f) + BH_GAMMA_1(f)*a1 + BH_GAMMA_2(f)*z8;
   c.f_merge_bh = exp10(BH_MERGE_F_0(f) + BH_MERGE_F_1(f)*a1);
-  c.bh_merge_width = BH_MERGE_W_0(f) + BH_MERGE_W_1(f)*a1;
+  // c.bh_merge_width = BH_MERGE_W_0(f) + BH_MERGE_W_1(f)*a1;
   c.bh_alpha = BH_ALPHA_0(f) + BH_ALPHA_1(f)*a1;
   c.bh_delta = BH_DELTA_0(f) + BH_DELTA_1(f)*a1;
 
+  c.f_occ_min = exp10(F_OCC_MIN_0(f) + F_OCC_MIN_1(f)*log(1+z));
+  c.bh_duty_m = (BH_DUTY_M_0(f) + BH_DUTY_M_1(f)*log(1+z));
+  c.bh_duty_alpha = (BH_DUTY_ALPHA_0(f) + BH_DUTY_ALPHA_1(f)*log(1+z));
+  // c.bh_duty_min = exp10(BH_DUTY_MIN_0(f) + BH_DUTY_MIN_1(f)*log(1+z));
+  //fprintf(stderr, "z=%f, bh_duty_min=%e\n", z, c.bh_duty_min);
 
   c.abhmf_shift = ABHMF_SHIFT(f);
   c.bh_efficiency_rad = exp10(BH_EFFICIENCY_0(f) + a1 * BH_ETA_CRIT_1(f));
-  c.bh_eta_crit = BH_ETA_CRIT_0(f)+BH_ETA_CRIT_1(f)*a1;
-  c.bh_duty = BH_DUTY_0(f)+BH_DUTY_1(f)*a1;
-  if (c.bh_duty < 1e-4) c.bh_duty = 1e-4;
+  c.bh_eta_crit = BH_ETA_CRIT_0(f);
+  // c.bh_duty = BH_DUTY_0(f)+BH_DUTY_1(f)*a1;
+  // if (c.bh_duty < 1e-4) c.bh_duty = 1e-4;
   c.bh_scatter = BH_SCATTER_0(f) + BH_SCATTER_1(f)*a1;
+  c.rho_bh = RHO_BH_0(f) + a1*RHO_BH_1(f) + z8*RHO_BH_2(f);
+  c.log_bh_scatter_corr = c.bh_gamma*c.bh_gamma*c.scatter*c.scatter + c.bh_scatter*c.bh_scatter;
+  c.log_bh_scatter_corr = 0.5 * M_LN10 * c.log_bh_scatter_corr;
 
-  c.dc_mbh = DC_MBH_0(f);
-  c.dc_mbh_w = DC_MBH_W_0(f);
+  c.dc_mbh = DC_MBH_0(f) + DC_MBH_1(f) * log(1+z);
+  c.dc_mbh_w = DC_MBH_W_0(f) + DC_MBH_W_1(f) * log(1+z);
   c.eta_mu = ETA_MU_0(f);
 
   return c;
@@ -663,11 +687,11 @@ void calc_active_bh_fraction(int n, struct smf_fit *fit)
 
     // Scaled critical Eddington ratio (log10(0.01) == -2) relative to 
     // the typical value.
-    double eta_frac = -2.0 - steps[n].bh_eta[i];
+   double eta_frac = -2.0 - (steps[n].bh_eta[i] + log10(steps[n].bh_f_occ[i])); 
 
     // If the scaled Eddington ratio is too small or too large,
     // we can directly assign zero or one to the active fraction.
-    if (eta_frac > ledd_max)
+    if (eta_frac > ledd_max || !steps[n].t[i])
     {
       steps[n].f_active[i] = 0;
       continue;
@@ -702,14 +726,10 @@ void calc_active_bh_fraction(int n, struct smf_fit *fit)
     // The Eddington ratio distributions are only for those that are active.
     // To account for the fact that not every SMBH is active, we need to 
     // fold in the factor of duty cycle.
-    double dc = steps[n].smhm.bh_duty;
-    // f_mass is the mass-dependent component of the duty cycle.
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    dc *= f_mass;
+    double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4;
-
-    steps[n].f_active[i] = p_good / p_total * dc;
+    // f_active is the fraction of active SMBHs among ***HOST*** halos.
+    steps[n].f_active[i] = (p_good / p_total) * dc / steps[n].bh_f_occ[i];
   }
 }
 
@@ -764,10 +784,7 @@ void calc_active_bh_fraction_lim(int n, struct smf_fit *fit, int ledd_or_lum, do
       p_good += steps[n].bher_dist[i*BHER_BINS + j];
     }
 
-    double dc = steps[n].smhm.bh_duty;
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    dc *= f_mass;
+    double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4;
 
     steps[n].f_active[i] = p_good / p_total * dc;
@@ -797,10 +814,10 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit)
 
   for (i=0; i<M_BINS; i++)
   {
-    // mass-dependent modulation of duty cycle
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    double dc = (steps[n].smhm.bh_duty * f_mass);
+    // mass-dependent modulation of duty cycle. Note here that we ASSUME that the duty cycle is dependent on
+    // the average BH mass of ***ALL*** halos, not SMBH host halos. Since bh_mass_avg is now the average BH mass
+    // for host halos, we have to give back the bh_f_occ factor.
+    double dc = (steps[n].bh_duty[i]);
     if (dc < 1e-4) dc = 1e-4;
 
     // Note that here we are going to calculate integrals of 1 / (x**a + x**b) dx and 1 / (x**(a+1) + x**(b+1)) dx,
@@ -808,7 +825,11 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit)
     // an additional -1 offset in the following power-law indices!!!!!!
     double nom = doublePL_norm(steps[n].smhm.bh_alpha, steps[n].smhm.bh_delta, bher_min, BHER_EFF_MAX, fit);
     double dnom = doublePL_norm(steps[n].smhm.bh_alpha - 1, steps[n].smhm.bh_delta - 1, bher_min, BHER_EFF_MAX, fit);
-    double bh_eta_corr = log10(nom/dnom/dc);
+    // Note that the duty cycle is defined as the fraction of active SMBHs among ***ALL*** halos, but we need the fraction
+    // of active SMBHs among all SMBHs in the denominator of the correction factor. So a factor of 1 / bh_f_occ is needed.
+    // double bh_eta_corr = log10(nom/dnom/(dc / steps[n].bh_f_occ[i]));
+    double bh_eta_corr = log10(nom/dnom/(dc));
+    //double bh_eta_corr = log10(nom/dnom/(dc));
     steps[n].bh_eta[i] += bh_eta_corr;
 
 
@@ -827,14 +848,18 @@ void calc_bh_acc_rate_distribution(int n, struct smf_fit *fit)
     if (ledd_max > steps[n].ledd_max_abs) steps[n].ledd_max_abs = ledd_max;
 
     ledd_min = steps[n].bh_eta[i] + BHER_MIN;
+    //ledd_min = steps[n].bh_eta[i] - log10(steps[n].bh_f_occ[i]) + BHER_MIN;
     if (nonlinear_luminosity && ledd_min < bh_eta_crit)
     ledd_min = (ledd_min - 0.5 * bh_eta_crit)*2.0;
     ledd_min -= steps[n].bh_eta[i];
-    double ledd_eff_min = steps[n].bh_eta[i] + BHER_EFF_MIN;
+    //ledd_min -= (steps[n].bh_eta[i] - log10(steps[n].bh_f_occ[i]));
 
+    //double ledd_eff_min = steps[n].bh_eta[i] - log10(steps[n].bh_f_occ[i]) + BHER_EFF_MIN;
+    double ledd_eff_min = steps[n].bh_eta[i] + BHER_EFF_MIN;
     if (nonlinear_luminosity && ledd_eff_min < bh_eta_crit)
     ledd_eff_min = (ledd_eff_min - 0.5 * bh_eta_crit)*2.0;
     ledd_eff_min -= steps[n].bh_eta[i];
+    //ledd_eff_min -= (steps[n].bh_eta[i] - log10(steps[n].bh_f_occ[i]));
 
     ledd_max = steps[n].bh_eta[i] + BHER_MAX;
     if (nonlinear_luminosity && ledd_max < bh_eta_crit)
@@ -896,17 +921,19 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
   for (i=0; i<MBH_BINS; i++)
   {
     double mbh = steps[n].bh_mass_min + (i + 0.5) * mbh_inv_bpdex;
-    // The mass-dependent component of AGN duty cycle.
-    double f_mass = exp((mbh - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    double dc = steps[n].smhm.bh_duty * f_mass;
-    if (dc < 1e-4) dc = 1e-4;
+    
     double tnd = 0; //Total ND of BHs with this mass, including dormant and active BHs.
                     //This is gonna be used to calculate the luminosity distributions 
                     //(not functions) of active BHs, and also the total BH mass functions.
     // Traverse all the halo mass bins to count their contribution to each BH mass bin.
     for (j=0; j < M_BINS; j++)
     {
+      
+      // The mass-dependent component of AGN duty cycle.
+      double dc = steps[n].bh_duty[j];
+      if (dc < 1e-4) dc = 1e-4;
+
+
       // The difference between the median BH mass of the halo mass bin
       // and the BH mass we're interested in.
       double dmbh = (mbh - steps[n].log_bh_mass[j]) / scatter;
@@ -924,8 +951,9 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
                                               //being EXACTLY (i.e., including the normalization) the gaussian PDF of Mbh as given by the BHBM.
 
       // So the contribution to the BH mass functions from this halo mass bin
-      // is simply w_mbh * halo number density (steps[n].t[j])
-      tnd += w_mbh * steps[n].t[j];
+      // is simply w_mbh * halo number density (steps[n].t[j]) * SMBH occupation 
+      // fraction (steps[n].bh_f_occ[j]).
+      tnd += w_mbh * steps[n].t[j] * steps[n].bh_f_occ[j];
 
       // Calculate the halo mass bin's contribution to every bolometric luminosity bin.
       for (k=0; k<LBOL_BINS; k++)
@@ -934,7 +962,8 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         // Convert the luminosity into Eddington ratio...
         double bh_eta = lbol - 38.1 - mbh;
         // ... and scale it with the typical Eddington ratio.
-        double eta_frac = bh_eta - steps[n].bh_eta[j];
+        double eta_frac = bh_eta - (steps[n].bh_eta[j] + log10(steps[n].bh_f_occ[j]) 
+          - (steps[n].smhm.rho_bh - 1) * (mbh - steps[n].log_bh_mass[j] - steps[n].smhm.log_bh_scatter_corr));
         // If the fractional (or scaled) Eddington ratio is too small/big or even
         // not a finite number, just skip.
         if ((!isfinite(eta_frac)) || eta_frac < steps[n].ledd_min[j] || eta_frac > steps[n].ledd_max[j])
@@ -952,9 +981,10 @@ void calc_bh_lum_distribution_full(int n, struct smf_fit *fit)
         if (bher_b >= BHER_BINS-1) p2 = p1;
         // Note that the steps[n].bher_dist is not normalized to match the duty cycle,
         // so we need to put the duty cycle (dc) into the calculation of nd_l below.
-        double nd_l = (p1 + bher_f*(p2-p1)) * w_mbh * steps[n].t[j] * dc; //The number density (Mpc^-3)
-                                                                          //of AGN with this luminosity
-                                                                          //and this Mbh in this Mh bin.
+        // We also have to account for the occupation fraction.
+        double nd_l = (p1 + bher_f*(p2-p1)) * w_mbh * steps[n].t[j] * steps[n].bh_f_occ[j] * dc / steps[n].bh_f_occ[j]; //The number density (Mpc^-3)
+                                                                                                                        //of AGN with this luminosity
+                                                                                                                        //and this Mbh in this Mh bin.
         steps[n].lum_func_full[i*LBOL_BINS+k] += nd_l;
       }
     }
@@ -1116,18 +1146,14 @@ void calc_avg_eta_rad(int n)
     double tot = 0;
 
     // mass- and redshift-dependent AGN duty cycle.
-    double dc = steps[n].smhm.bh_duty;
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    f_mass = f_mass < 1? f_mass : 1;
-    dc *= f_mass;
+    double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4; 
 
     // Count the contribution from all radiative Eddington ratio bins.
     for (j = 0; j < BHER_BINS; j++)
     {
       double prob = steps[n].bher_dist[i*BHER_BINS + j];
-      if isfinite(prob)
+      if (isfinite(prob))
       {  
           tot += prob * exp10(eta0 + ledd_min + (j + 0.5) * ledd_inv_bpdex) * ledd_inv_bpdex * dc;
       }
@@ -1475,7 +1501,8 @@ void calc_smf_and_ssfr(int n, struct smf_fit *fit)
 // building GSL interpolation objects, we by default
 // need to reverse the order of M_UV for the first segment,
 // and keep the second segment as it is, if needed.
-void calc_uvlf(int n, struct smf_fit *fit) {
+void calc_uvlf(int n, struct smf_fit *fit) 
+{
   int64_t i, j;
   char buffer[1024];
   double m, m2, uv, uv_max=-1000, uv_min=1000;
@@ -1701,7 +1728,8 @@ void calc_uvlf(int n, struct smf_fit *fit) {
 // Create fake star formation rate histories
 // for halos that only emerge after some time
 // in the simulation.
-void create_fake_sfr_hist(int n, int i) {
+void create_fake_sfr_hist(int n, int i) 
+{
   double frac_lost = 0, weight = 0;
   double sm, total_time, time, prev_scale;
   int k;
@@ -1744,7 +1772,8 @@ double icl_fract(int64_t i, int64_t j, int64_t n, double ICL_RATIO)
 }
 
 // Calculate the star formation histories for a certain snapshot.
-void calc_sm_hist(int n, struct smf_fit *fit) {
+void calc_sm_hist(int n, struct smf_fit *fit) 
+{
   int64_t i, j, k, bin;
   double t;
   // sm_hist_i/j is the stellar mass histories of the i/j-th halo mass bin.
@@ -1758,7 +1787,11 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
   double *sm_inc_hist_i;
   double ejec_frac;
   steps[n].smhm = smhm_at_z((1.0/steps[n].scale)-1.0, *fit);
-
+  if (n && steps[n].smhm.rho_bh > steps[n-1].smhm.rho_bh)
+  {
+	fprintf(stderr, "Increasing rho_bh.\n");
+	INVALIDATE(fit, "Increasing rho_bh");
+  }
   // Invalidate the model if the fraction that the incoming satellite galaxies
   // get merged into central galaxies is too big or too small.
   if (steps[n].smhm.icl_frac < 1e-20 || steps[n].smhm.icl_frac > 1)
@@ -1817,12 +1850,12 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     // steps[n].sfrac[i] = calc_sfrac_at_lv(lv, steps[n].smhm);
     steps[n].sfrac[i] = calc_sfrac_at_m(steps[n].lv[i], steps[n].smhm);
     steps[n].sfr[i] = calc_sfr_at_lv(steps[n].med_hm_at_a[i], lv, steps[n].smhm)*exp(pow(0.30*log(10), 2)/2.0);
-
+    //if (n >= 111 && n <= 152 && i == 9) fprintf(stderr, "n=%d, i=%d, calling calc_sm_hist().\n", n, i);
     // Ignore the SFR in the first snapshot.
     if (n == 0) steps[n].sfr[i] = 0;
     
     // Note that we shouldn't calculate the BH mass here, as the real stellar mass will not
-    // be calculated until calc_new_sm_and_ssfr().
+    // be calculated until calc_new_sm_and_sfr().
     steps[n].sm[i] = steps[n].sfr[i]*steps[n].dt;
     steps[n].sm_from_icl[i] = 0;
     steps[n].old_bh_mass[i] = 0;
@@ -1862,12 +1895,12 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
       	  bin = j*M_BINS + i;
 
           // Calculate the old BH mass inherited from their MMPs.
-          steps[n].old_bh_mass[i] += steps[n-1].bh_mass_avg[j]*steps[n].mmp[bin];
+          steps[n].old_bh_mass[i] += steps[n-1].bh_mass_avg[j]*steps[n-1].bh_f_occ[j]*steps[n].mmp[bin];
           // Unmerged (or wandering) BH masses come from: 1) unmerged BH masses
           // that have not been used up by the MMPs; 2) the BH masses from incoming
           // satellite galaxies.
-      	  steps[n].bh_unmerged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j] + 
-                                    steps[n-1].bh_unmerged[j]) + steps[n].mmp[bin]*steps[n-1].bh_unmerged[j];
+      	  steps[n].bh_unmerged[i] += steps[n-1].bh_f_occ[j]*(steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j] + 
+                                    steps[n-1].bh_unmerged[j]) + steps[n].mmp[bin]*steps[n-1].bh_unmerged[j]);
           
           // steps[n].bh_merged[i] += steps[n].merged[bin]*(steps[n-1].bh_mass_avg[j]);
           // // The following lines are used to calculate the mass distributions of unmerged BHs for the i-th mass bin
@@ -1997,17 +2030,26 @@ void calc_sm_hist(int n, struct smf_fit *fit) {
     if (steps[n].std_uv[i] < 0) steps[n].std_uv[i] = 0.001; 
     if (steps[n].std_uv[i] > 1) steps[n].std_uv[i] = 1.000; 
 
-    // Calculate the newly formed stellar masses, SFRs, new BH masses,
-    // and BH accretion and merger rates.
+    // Calculate the newly formed stellar masses, SFRs, BH occupation fractions,
+    // new BH masses, and BH accretion and merger rates.
+    
+    //if (n >= 111 && n <= 152 && i == 9) fprintf(stderr, "n=%d, i=%d, before calling calc_new_sm_and_sfr().\n", n, i);
     calc_new_sm_and_sfr(n,i,fit);
 
+    
+
   }
+
+
+  
+
 }
 
 // Calculate the old stellar masses by integrating over the star formation histories.
 // Note that steps[n].smloss[k] is the fraction of ***remaining*** stellar mass that
 // has formed in the k-th snapshot by the n-th snapshot.
-void calc_old_sm(int n, int j) {
+void calc_old_sm(int n, int j) 
+{
   int k;
   steps[n].old_sm[j] = 0;
   for (k=0; k<n; k++)
@@ -2015,6 +2057,28 @@ void calc_old_sm(int n, int j) {
   steps[n].sm_icl[j] = 0;
   for (k=0; k<n; k++)
     steps[n].sm_icl[j] += steps[n].smloss[k]*steps[n].icl_stars[j*num_outputs+k];
+}
+
+double prior_focc()
+{
+  int n, i;
+  double chi2_prior = 0;
+  for (n=0; n<num_outputs; n++)
+  {
+    for (i=0; i<M_BINS; i++)
+    {
+      if (steps[n].scale > 0.16 && steps[n].med_hm_at_a[i] >= 11)
+      {
+        
+        if (steps[n].bh_f_occ[i] > steps[n].bh_f_occ_max[i])
+        {
+          chi2_prior += 10000 * log10(steps[n].bh_f_occ[i] / steps[n].bh_f_occ_max[i]);
+        }
+      }
+    }
+  }
+  
+  return chi2_prior;
 }
 
 // Calculate the number of quasars that exist between (z_low, z_high), and
@@ -2171,7 +2235,8 @@ double recent_sfh_in_massive_halos(void)
 }
 
 // Calculate the recent AGN kinetic power in massive halos.
-double recent_kinetic_power_in_massive_halos(void) {
+double recent_kinetic_power_in_massive_halos(void) 
+{
   int64_t n, j, k;
   double L_kin = 0;
   double nd_tot = 0;
@@ -2192,10 +2257,7 @@ double recent_kinetic_power_in_massive_halos(void) {
       if (steps[n].t[j] <= 0) continue;
 
       // mass- and redshift-dependent AGN duty cycle.
-      double dc = steps[n].smhm.bh_duty;
-      double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-      f_mass = f_mass / (1 + f_mass);
-      dc *= f_mass;
+      double dc = steps[n].bh_duty[j];
       if (dc < 1e-4) dc = 1e-4;
 
       for (k=0; k<BHER_BINS; k++) 
@@ -2227,10 +2289,7 @@ void calc_bh_eta_avg(int n)
     double inv_bpdex = 1.0 / steps[n].ledd_bpdex[i];
 
     // Need to account for the fact that only part of the SMBHs are active, which is parametrized by the duty cycle.
-    double dc = steps[n].smhm.bh_duty;
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    dc *= f_mass;
+    double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4;
 
     for (k = 0; k < BHER_BINS; k++) 
@@ -2257,10 +2316,7 @@ void calc_bh_eta_kin_avg(int n)
     double inv_bpdex = 1.0 / BHER_BPDEX;
 
     // Need to account for the fact that only part of the SMBHs are active, which is parametrized by the duty cycle.
-    double dc = steps[n].smhm.bh_duty;
-    double f_mass = exp((log10(steps[n].bh_mass_avg[i]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    dc *= f_mass;
+    double dc = steps[n].bh_duty[i];
     if (dc < 1e-4) dc = 1e-4;
 
     for (k = 0; k < BHER_BINS; k++) 
@@ -2277,7 +2333,8 @@ void calc_bh_eta_kin_avg(int n)
 
 
 // Calculate the fraction of kinetically powerful SMBHs in massive halos at low-z.
-double recent_kinetic_frac_in_massive_halos(void) {
+double recent_kinetic_frac_in_massive_halos(void) 
+{
   int64_t n, j, k;
   double nd_tot = 0;
   double frac_tot = 0;
@@ -2299,10 +2356,7 @@ double recent_kinetic_frac_in_massive_halos(void) {
       if (steps[n].t[j] <= 0) continue;
 
       // Need to account for the fact that only part of the SMBHs are active, which is parametrized by the duty cycle.
-      double dc = steps[n].smhm.bh_duty;
-      double f_mass = exp((log10(steps[n].bh_mass_avg[j]) - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
-      f_mass = f_mass / (1 + f_mass);
-      dc *= f_mass;
+      double dc = steps[n].bh_duty[j];
       if (dc < 1e-4) dc = 1e-4;
 
       // The critical Eddington ratio is calculated from the kinetic power limit,
@@ -2339,7 +2393,8 @@ double recent_kinetic_frac_in_massive_halos(void) {
 }
 
 // Calculate the recent AGN radiative power in massive halos.
-double recent_radiative_power_in_massive_halos(void) {
+double recent_radiative_power_in_massive_halos(void) 
+{
   int64_t n, j;
   double L_rad = 0;
   double nd_tot = 0;
@@ -2359,7 +2414,7 @@ double recent_radiative_power_in_massive_halos(void) {
       //if (steps[n].t[j]<REAL_ND_CUTOFF) continue;
       if (steps[n].t[j] <= 0) continue;
 
-      L_tmp = 5.66e46 * steps[n].smhm.bh_efficiency_rad * steps[n].bh_acc_rate[j];
+      L_tmp = 5.66e46 * steps[n].smhm.bh_efficiency_rad * steps[n].bh_acc_rate[j] * steps[n].bh_f_occ[j];
       L_rad += L_tmp * steps[n].t[j];
       nd_tot += steps[n].t[j];
     
@@ -2455,7 +2510,8 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   // Calculate the bulge mass with the bulge mass--total stellar mass relation (BMSM).
   // Note that the stellar mass here should be corrected for the systematic offset,
   // since the BMSM is based on ***observed*** data.
-  steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
+  // steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i]+steps[n].smhm.mu, steps[n].scale);
+  steps[n].log_bm[i] = bulge_mass(steps[n].log_sm[i], steps[n].scale);
   steps[n].log_sm_obs[i] = steps[n].log_sm[i]+steps[n].smhm.mu;
 
 
@@ -2475,6 +2531,9 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   // The correction between the average and median BH masses assuming a log-normal scatter.
   double bh_scatter_corr = exp(pow(combined_scatter*log(10), 2)/2.0);
 
+
+
+
   // Calculate median BH mass based on the black hole mass--bulge mass relation.
   // the M-sigma option is deprecated for now.
   steps[n].log_bh_mass[i] = (vel_dispersion) ? 
@@ -2483,7 +2542,45 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
 
   // the average BH mass is offset from the median by a factor of bh_scatter_corr.
   steps[n].bh_mass_avg[i] = doexp10(steps[n].log_bh_mass[i])*bh_scatter_corr;
+  //if (n >= 111 && n <= 152 && i == 9)
+  //fprintf(stderr, "n=%d, i=%d, log_sm=%f, log_bm=%f, log_bh_mass=%f, bh_scatter_corr=%e, bh_mass_avg=%e\n", n, i, steps[n].log_sm[i], steps[n].log_bm[i], steps[n].log_bh_mass[i], bh_scatter_corr, steps[n].bh_mass_avg[i]);
 
+  double f_mass = exp((steps[n].med_hm_at_a[i]
+                      - steps[n].smhm.dc_mbh) / steps[n].smhm.dc_mbh_w);
+  f_mass = f_mass / (1.0 + f_mass);
+  steps[n].bh_f_occ[i] = steps[n].smhm.f_occ_min + (1.0 - steps[n].smhm.f_occ_min) * f_mass;
+  double dc_pl = doexp10(steps[n].smhm.bh_duty_alpha * (steps[n].med_hm_at_a[i] - steps[n].smhm.bh_duty_m));
+  if (dc_pl > 1.0) dc_pl = 1.0;
+  //steps[n].bh_duty[i] = steps[n].bh_f_occ[i] * dc_pl;
+
+
+  steps[n].bh_f_occ_max[i] = 1.0;
+  double f_occ_max = 0;
+  if (steps[n].scale > 0.142857   && steps[n].med_hm_at_a[i] >= 9)
+  {
+    double tp = steps[n - 1].t[i];
+    double f_occ_p = steps[n - 1].bh_f_occ[i];
+    double r = steps[n].merged[i*M_BINS+i];
+    f_occ_max = 1.0 / steps[n].t[i] * 
+    (steps[n].mmp[i*M_BINS+i] * ((tp - r) * f_occ_p + r * f_occ_p * (2 - f_occ_p)) / (tp - r)
+     + steps[n].mmp[(i-1)*M_BINS+i] * steps[n - 1].bh_f_occ[i - 1]);
+    steps[n].bh_f_occ[i] = f_occ_max;
+    // if (steps[n].bh_f_occ[i] > f_occ_max * (1 + 1e-10))
+    // {
+    //   fprintf(stderr, 
+    //     "Too much increase in SMBH occupation fraction! a: %f, m: %f, tp: %e, r: %e, t: %e, mmp[i,i]: %e, mmp[i-1,i]: %e, f_occ_p: %e, f_occ_i-1: %e, max f_occ: %e, new f_occ: %e\n", 
+    //     steps[n].scale, steps[n].med_hm_at_a[i], tp, r, steps[n].t[i], steps[n].mmp[i*M_BINS+i], steps[n].mmp[(i-1)*M_BINS+i], f_occ_p, steps[n - 1].bh_f_occ[i - 1], f_occ_max, steps[n].bh_f_occ[i]);
+    //   INVALIDATE(fit, buffer); 
+    // }
+  }
+  steps[n].bh_duty[i] = steps[n].bh_f_occ[i] * dc_pl;
+
+  // steps[n].bh_f_occ[i] = 1.0;
+  steps[n].bh_mass_avg[i] /= steps[n].bh_f_occ[i];
+  steps[n].log_bh_mass[i] -= log10(steps[n].bh_f_occ[i]);
+  // We also have to correct old and wandering BH mass to account for the occupation fraction!
+  steps[n].old_bh_mass[i] /= steps[n].bh_f_occ[i];
+  steps[n].bh_unmerged[i] /= steps[n].bh_f_occ[i];
 
   // The new BH mass is the difference between the current and old BH masses.
   float new_bh_mass = steps[n].bh_mass_avg[i] - steps[n].old_bh_mass[i];
@@ -2495,10 +2592,18 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   float mfrac = n ? steps[n].smhm.f_merge_bh * sm_from_icl / steps[n].new_sm[i] : 0; 
 
   // Calculate the accretion and merger rates based on the total BH mass growth
-  // and merger contributions.
+  // and merger contributions. Note that the average BHAR and BHMR are now for
+  // SMBH host halos, not for all halos.
   steps[n].new_bh_mass[i] = new_bh_mass;
   steps[n].bh_merge_rate[i] = mfrac * new_bh_mass / dt;
   steps[n].bh_acc_rate[i] = (1 - mfrac) * new_bh_mass /dt;
+
+  if (steps[n].scale > 0.08 && ((steps[n].med_hm_at_a[i] > 11 && steps[n].log_bh_mass[i] >= steps[n].log_sm[i] - 0.5)))
+  {
+   //      fprintf(stderr, "Too big Mbh compared to Mstar. a: %f, m: %f, mstar: %f, mbh: %f, mbh_i-1: %f, n=%d, i=%d\n", steps[n].scale, steps[n].med_hm_at_a[i], steps[n].log_sm[i], steps[n].log_bh_mass[i], steps[n].log_bh_mass[i-1], n, i);
+         INVALIDATE(fit, buffer);
+  }
+
 
   // Since our parametrization cannot guarantee that the new BH mass is positive,
   // ill-behaved parameter sets are discarded if they produce negative BH mass
@@ -2506,6 +2611,7 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   // masses above BH_MASS_TO_REQUIRE_GROWTH.
   if ((!(new_bh_mass>=0) || !(steps[n].bh_acc_rate[i]>0)) && (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11)))
   {
+   //fprintf(stderr, "Negative BH accretion rate. a: %f, m: %f, new_bh_mass: %f, old_bh_mass: %f, bh_f_occ: %e, dc_mbh: %f, dc_mbh_w:%f, focc_min: %e, focc_max: %e, mbh_mmp: %e, focc_mmp: %e, nd_mmp: %e, nd_last: %e\n", steps[n].scale, steps[n].med_hm_at_a[i], steps[n].bh_mass_avg[i], steps[n].old_bh_mass[i], steps[n].bh_f_occ[i], steps[n].smhm.dc_mbh, steps[n].smhm.dc_mbh_w, steps[n].smhm.f_occ_min, f_occ_max, steps[n-1].bh_mass_avg[i-1], steps[n-1].bh_f_occ[i-1], steps[n].mmp[(i-1)*M_BINS+i], steps[n-1].t[i-1]);
     INVALIDATE(fit, buffer); 
   }
 
@@ -2516,8 +2622,8 @@ void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit)
   {
     if (steps[n].scale > 0.08 && i>BPDEX && (steps[n].log_bh_mass[i] > BH_MASS_TO_REQUIRE_GROWTH || steps[n].med_hm_at_a[i] > 11))
     {
-      //fprintf(stderr, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
-      //steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i], new_bh_mass, new_bh_mass*mfrac, steps[n].bh_unmerged[i]);
+   //   fprintf(stderr, "Merging rate exceeds available mergers! (sm: %e, m: %e, scale: %f; old_bh: %e; new_bh: %e! DBH: %e; Merge: %e; M_avail: %e \n",
+     // steps[n].sm_avg[i], exp10(M_MIN+(i+0.5)/BPDEX), steps[n].scale, steps[n].old_bh_mass[i], steps[n].bh_mass_avg[i], new_bh_mass, new_bh_mass*mfrac, steps[n].bh_unmerged[i]);
        INVALIDATE(fit, buffer); 
     } 
     else 

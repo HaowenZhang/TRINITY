@@ -1,4 +1,3 @@
-// Calculate the accretion-rate-weighted average AGN efficiency at each snapshot (redshift).
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -11,37 +10,54 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
+//#include "fitter.h"
+
+#define INTERP(y,x) { double s1, s2; s1 = (1.0-f)*steps[i].x[j]+f*steps[i+1].x[j];     \
+    s2 = (1.0-f)*steps[i].x[j+1]+f*steps[i+1].x[j+1];			               \
+    y = s1+mf*(s2-s1); }
+
+#define LINTERP(y,x) { double s1, s2; s1 = (1.0-f)*log10(steps[i].x[j])+f*log10(steps[i+1].x[j]); \
+    s2 = (1.0-f)*log10(steps[i].x[j+1])+f*log10(steps[i+1].x[j+1]);	\
+    y = s1+mf*(s2-s1); }
+
+float fitter(float *params) {
+  struct smf_fit test;
+  int i;
+  for (i=0; i<NUM_PARAMS; i++)
+    test.params[i] = params[i];
+
+  assert_model(&test);
+
+  for (i=0; i<NUM_PARAMS; i++)
+    params[i] = test.params[i];
+  //iterations++;
+  float err = all_smf_chi2_err(test);
+  if (!isfinite(err) || err<0) return 1e30;
+  return err;
+}
+
+float calc_chi2(float *params) {
+  return fitter(params);
+}
 
 int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  
-  if (argc < 3) 
-  {
-    fprintf(stderr, "Usage: %s mass_cache parameter_file (> output_file)\n", argv[0]);
+  if (argc<2+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+2]);
 
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
-  gsl_set_error_handler_off();
-  // We use non-linear scaling relation between the radiative and total Eddington ratios.
   nonlinear_luminosity = 1;
-  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
+  //double chi2 = calc_chi2(smf.params);
+  //printf("Actual chi2=%e\n", chi2);
   calc_sfh(&smf);
 
   printf("#sn_id z total_accretion eff_rad\n");
@@ -53,6 +69,10 @@ int main(int argc, char **argv)
 
   for (i=0; i<num_outputs-1; i++) 
   {
+    // i = t;
+    // double f = t-i;
+    // double zp1 = (1.0-f)/steps[i].scale + f/steps[i+1].scale;
+    // double mu = (1.0 - f) * steps[i].smhm.mu + f * steps[i].smhm.mu;
 
     double eff_rad = steps[i].smhm.bh_efficiency_rad;
     double dt = steps[i].dt;
@@ -62,13 +82,12 @@ int main(int argc, char **argv)
     for (int64_t j = 0; j < M_BINS; j++) 
     {
       double m;
-
       double bh_acc_rate = steps[i].bh_acc_rate[j] == 1e-8 ? 0 : steps[i].bh_acc_rate[j];
       acc_tot += bh_acc_rate * steps[i].t[j] * dt;
     }
 
 
-    // Weigh the efficiency values by cosmic SMBH accretion rates.
+
     weight += acc_tot;
     tot += acc_tot * eff_rad;
 

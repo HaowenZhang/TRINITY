@@ -1,5 +1,3 @@
-// Helper functions to do system-level operations, and print
-// errors if any.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

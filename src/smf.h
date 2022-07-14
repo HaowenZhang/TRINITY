@@ -54,7 +54,8 @@ struct smf {
   				scatter_corr, valid, qm, qwidth, fqmin,
   				bh_beta, bh_gamma, bh_merge, bh_merge_width, bh_alpha, bh_delta,
   				bh_efficiency, bh_efficiency_rad, bh_duty, bh_scatter, bh_prob_norm, 
-  				dc_mbh, dc_mbh_w, eta_mu, rho_bh, bh_eta_crit, abhmf_shift, f_merge_bh;
+  				dc_mbh, dc_mbh_w, eta_mu, rho_bh, bh_eta_crit, abhmf_shift, f_merge_bh, bh_duty_m, bh_duty_alpha,
+          f_occ_min, log_bh_scatter_corr;
  int bin_real;
 };
 

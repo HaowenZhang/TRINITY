@@ -1,6 +1,3 @@
-// Print out the mass distributions of unmerged (or wandering) SMBHs for 
-// each snapshot and halo mass bin. This is deprecated for now because
-// we currently do not store such distributions.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -13,47 +10,67 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
+//#include "fitter.h"
+
+// This file generates interpolated BH merger rates with mass ratio larger than 1:10 and 1:100.
+
+#define INTERP(y,x) { double s1, s2; s1 = (1.0-f)*steps[i].x[j]+f*steps[i+1].x[j];     \
+    s2 = (1.0-f)*steps[i].x[j+1]+f*steps[i+1].x[j+1];			               \
+    y = s1+mf*(s2-s1); }
+
+#define LINTERP(y,x) { double s1, s2; s1 = (1.0-f)*log10(steps[i].x[j])+f*log10(steps[i+1].x[j]); \
+    s2 = (1.0-f)*log10(steps[i].x[j+1])+f*log10(steps[i+1].x[j+1]);	\
+    y = s1+mf*(s2-s1); }
+
+float fitter(float *params) {
+  struct smf_fit test;
+  int i;
+  for (i=0; i<NUM_PARAMS; i++)
+    test.params[i] = params[i];
+
+  assert_model(&test);
+
+  for (i=0; i<NUM_PARAMS; i++)
+    params[i] = test.params[i];
+  //iterations++;
+  float err = all_smf_chi2_err(test);
+  if (!isfinite(err) || err<0) return 1e30;
+  return err;
+}
+
+float calc_chi2(float *params) {
+  return fitter(params);
+}
 
 int main(int argc, char **argv)
 {
   int64_t i, j, k;
   struct smf_fit smf;
-  if (argc < 3) 
-  {
-    fprintf(stderr, "Usage: %s mass_cache param_file (> output_file)\n", argv[0]);
+  if (argc<2+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  // Read in model parameters, redshift, BH mass, and lower and upper limits of Eddington ratio.
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-  
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
-  gsl_set_error_handler_off(); 
-  // We use non-linear scaling relation between the radiative and total Eddington ratios.  
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+2]);
+
   nonlinear_luminosity = 1;
-  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
+
   calc_sfh(&smf);
   printf("#Is the model invalid? %e\n", INVALID(smf));
-  double m;
-  // Printing.
+  double t,m;
+  // int t;
   printf("#1+z M_h SM M_bh bh_unmerged_dist\n");
-  for (i=0; i<num_outputs-1; i++) 
-  {
+ 
+
+  for (i=0; i<num_outputs-1; i++) {
     double zp1 = (1.0)/steps[i].scale;
     double mu = steps[i].smhm.mu;
 
-    for (j=0; j<M_BINS; j++) 
-    {
+    for (j=0; j<M_BINS; j++) {
       double m = M_MIN + (j + 0.5) * INV_BPDEX;
       printf("%f %f %f %f ", zp1, m, log10(steps[i].sm_avg[j]), log10(steps[i].bh_mass_avg[j]));
       for (k=0; k<MBH_BINS; k++) printf(" %e", steps[i].bh_unmerged_dist[j*MBH_BINS+k]);

@@ -22,6 +22,7 @@ void calc_old_sm(int n, int j);
 void calc_new_sm_and_sfr(int n, int i, struct smf_fit *fit);
   //void calc_new_sm_and_sfr(int n, struct smf_fit *fit);
 void calc_total_sfr(int n);
+double prior_focc();
 void calc_total_bhar(int n);
 void calc_observed_bhar(int n);
 double calc_smf_at_sm(int64_t n, double sm);

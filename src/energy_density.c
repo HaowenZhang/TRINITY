@@ -1,5 +1,3 @@
-// Calculate cosmic radiative and kinetic AGN energy densities
-// as a function of redshift.
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -12,52 +10,65 @@
 #include "calc_sfh.h"
 #include "expcache2.h"
 #include "universe_time.h"
+//#include "fitter.h"
 
 #define MSUN_YR_TO_ERG_S 5.6631e46
+
+#define INTERP(y,x) { double s1, s2; s1 = (1.0-f)*steps[i].x[j]+f*steps[i+1].x[j];     \
+    s2 = (1.0-f)*steps[i].x[j+1]+f*steps[i+1].x[j+1];			               \
+    y = s1+mf*(s2-s1); }
+
+#define LINTERP(y,x) { double s1, s2; s1 = (1.0-f)*log10(steps[i].x[j])+f*log10(steps[i+1].x[j]); \
+    s2 = (1.0-f)*log10(steps[i].x[j+1])+f*log10(steps[i+1].x[j+1]);	\
+    y = s1+mf*(s2-s1); }
+
+float fitter(float *params) {
+  struct smf_fit test;
+  int i;
+  for (i=0; i<NUM_PARAMS; i++)
+    test.params[i] = params[i];
+
+  assert_model(&test);
+
+  for (i=0; i<NUM_PARAMS; i++)
+    params[i] = test.params[i];
+  //iterations++;
+  float err = all_smf_chi2_err(test);
+  if (!isfinite(err) || err<0) return 1e30;
+  return err;
+}
+
+float calc_chi2(float *params) {
+  return fitter(params);
+}
 
 int main(int argc, char **argv)
 {
   int64_t i, j, k;
   struct smf_fit smf;
-  
-  if (argc < 3) 
-  {
-    fprintf(stderr, "Usage: %s mass_cache parameter_file (> output_file)\n", argv[0]);
+  if (argc<2+NUM_PARAMS) {
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-
-  // Read in model parameters.
   for (i=0; i<NUM_PARAMS; i++)
     smf.params[i] = atof(argv[i+2]);
-  // Fix some model parameters.
   assert_model(&smf);
-  // Turn off the built-in GSL error handler that kills the program
-  // when an error occurs. We handle the errors manually.
   gsl_set_error_handler_off();
-  // We use non-linear scaling relation between the radiative and total Eddington ratios.
   nonlinear_luminosity = 1;
-  // Set up the PSF for stellar mass functions. See observations.c.
   setup_psf(1);
-  // Load cached halo mass functions.
   load_mf_cache(argv[1]);
-  // Initialize all the timesteps/snapshots.
   init_timesteps();
   INVALID(smf) = 0;
-  // Calculate the star-formation histories and black hole histories. See calc_sfh.c.
+  //double chi2 = calc_chi2(smf.params);
+  //printf("Actual chi2=%e\n", chi2);
   calc_sfh(&smf);
-
   printf("#Is the model invalid? %e\n", INVALID(smf));
   double t,m;
-
+  // int t;
   printf("#z rho_tot rho_rad rho_rad_6m7, rho_rad_7m8, rho_rad_8m9, rho_rad_9m10, rho_kin\n");
-  // SMBH mass bins where energy densities are counted.
+
   double mbh_lims[] = {6,7,8,9,10};
+  //double rho_rad_split[4] = {0};
 
   for (i=0; i<num_outputs; i++) 
   {
@@ -67,21 +78,18 @@ int main(int argc, char **argv)
     double eff_rad = steps[i].smhm.bh_efficiency_rad;
     double mbh_min = steps[i].bh_mass_min, mbh_max = steps[i].bh_mass_max;
     double mbh_inv_bpdex = (mbh_max - mbh_min) / MBH_BINS;
-    // calculate the total scatter in BH mass at fixed ***halo mass***,
-    // which is a quadratic sum of the scatter around the median black
-    // hole mass--bulge mass relation, and that of the median stellar
-    // mass--halo mass relation, enhanced by the slope of the black
-    // hole mass--bulge mass relation.
     double scatter_tot = sqrt(steps[i].smhm.bh_scatter*steps[i].smhm.bh_scatter+
 			steps[i].smhm.scatter*steps[i].smhm.scatter*steps[i].smhm.bh_gamma*steps[i].smhm.bh_gamma);
-    // The correction from median to average BH masses for log-normal distributions.
     double corr = exp(0.5 * pow((scatter_tot * M_LN10), 2));
-    // The critical Eddington ratio below which radiative Eddington ratio is proportional
-    // to (total Eddington ratio)^2.
     double eta_crit = steps[i].smhm.bh_eta_crit;
+    // double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
 
-    // Count radiative and kinetic energy densities from all SMBHs, 
-    // and radiative energy densities from SMBHs in each SMBH mass bin.
+    // for (j=0; j<M_BINS; j++)
+    // {
+    //   double bhar = steps[i].bh_acc_rate[j] > 0 ? steps[i].bh_acc_rate[j] : 1e-8;
+    //   rho_tot += eff_rad * bhar * corr * MSUN_YR_TO_ERG_S * steps[i].t[j];
+    // }
+
     for (j=0; j<MBH_BINS; j++) 
     {
       double rho_rad_mbh = 0;
@@ -97,10 +105,14 @@ int main(int argc, char **argv)
           double eta_kin = log10(exp10(0.5*(eta_crit + eta_rad)) - exp10(eta_rad));
           double lkin = eta_kin + mbh + 38.1;
           if (eta_kin < -6 || mbh < 8) continue;
-
+	  // double dlog_rad_dlog_kin = (exp10(0.5*eta_crit) - exp10(0.5*eta_rad)) / 
+          //                           (0.5*exp10(0.5*eta_crit) - exp10(0.5*eta_rad));
           rho_kin += exp10(lkin) * steps[i].lum_func_full[j*LBOL_BINS + k] * LBOL_INV_BPDEX;
           fprintf(stderr, "scale=%f, mbh=%f, lbol=%f, eta_rad=%f, eta_kin=%f, lkin=%f, contribution=%e\n", steps[i].scale, mbh, lbol, eta_rad, eta_kin, lkin, exp10(lkin) * steps[i].lum_func_full[j*LBOL_BINS + k] * LBOL_INV_BPDEX);
-	      }
+	}
+
+        
+
       }
       rho_rad += rho_rad_mbh;
       for (k=0; k<4; k++)
@@ -110,7 +122,7 @@ int main(int argc, char **argv)
 
     }
     rho_tot = rho_kin + rho_rad;
-
+    // rho_kin = rho_tot - rho_rad;
     fprintf(stdout, "%f %e %e ", z, rho_tot, rho_rad);
     for (j=0; j<4; j++)
     {

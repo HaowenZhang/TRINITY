@@ -66,7 +66,9 @@ int main(int argc, char **argv) {
   struct smf_fit test;
   for (i=0; i<NUM_PARAMS; i++)
     test.params[i] = params[i];
-
+  fprintf(stderr, "Initial params:\n");
+  for (i=0; i<NUM_PARAMS-1; i++) fprintf(stderr, "%.12f ", test.params[i]);
+  printf("%.12f\n", test.params[NUM_PARAMS-1]);
   fprintf(stderr, "Initial Chi2 before asserting: %e\n", calc_chi2(params));
   assert_model(&test);
   chi2_type(test);
@@ -155,7 +157,7 @@ void fitting_round(float *params, float *steps)
     {
           //if (i >= 63) continue;
           chi2 = improve_fit(params, cur_steps, i, chi2);
-          fprintf(stderr, "chi2: %.3f\n", chi2);
+          fprintf(stderr, "last_chi2: %.3f, chi2: %.3f\n", last_chi2, chi2);
     }
   }
 }
@@ -166,19 +168,19 @@ float calc_chi2(float *params)
   return fitter(params);
 }
 
-// void read_params(char *buffer, float *data, int max_n) 
-// {
-//   int num_entries = 0;
-//   char *cur_pos = buffer, *end_pos;
-//   float val = strtod(cur_pos, &end_pos);
-//   while (cur_pos != end_pos && num_entries < max_n) {
-//     data[num_entries] = val;
-//     num_entries++;
-//     cur_pos=end_pos;
-//     while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
-//     val = strtod(cur_pos, &end_pos);
-//   }
-// }
+void read_params(char *buffer, float *data, int max_n) 
+{
+  int num_entries = 0;
+  char *cur_pos = buffer, *end_pos;
+  float val = strtod(cur_pos, &end_pos);
+  while (cur_pos != end_pos && num_entries < max_n) {
+    data[num_entries] = val;
+    num_entries++;
+    cur_pos=end_pos;
+    while (*cur_pos==' ' || *cur_pos=='\t' || *cur_pos=='\n') cur_pos++;
+    val = strtod(cur_pos, &end_pos);
+  }
+}
 
 void read_params_and_steps(float *params, float *steps) 
 {

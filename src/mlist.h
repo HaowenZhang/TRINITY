@@ -175,6 +175,9 @@ struct timestep {
   double bh_merge_rate[M_BINS]; // Average BH merger rate for each halo mass bin
   double bh_eta[M_BINS]; // Typical BH Eddington ratio (the breaking point in the 
                          // double power-law) for each halo mass bin.
+  double bh_f_occ[M_BINS]; //The SMBH occupation fraction for each halo mass bin.
+  double bh_duty[M_BINS]; //The SMBH occupation fraction for each halo mass bin.
+  double bh_f_occ_max[M_BINS];
   double dc_obs[M_BINS]; // The observed AGN duty cycle for each halo mass bin.
                           // See calc_observed_bhar() in calc_sfh.c.
   double bh_unmerged[M_BINS]; // The average unmerged (or wandering) BH mass for each halo mass bin.

@@ -133,8 +133,7 @@ double eigenvalues_original[NUM_PARAMS] = { EFF_0_STEP, EFF_0_A_STEP, EFF_0_A2_S
 
 // Read model parameters from buffer and store them
 // in data. Repeat for at most max_n times.
-// static void read_params(char *buffer, double *data, int max_n) 
-void read_params(char *buffer, double *data, int max_n) 
+static void read_params(char *buffer, double *data, int max_n) 
 {
   int num_entries = 0;
   char *cur_pos = buffer, *end_pos;
@@ -164,10 +163,10 @@ void initial_conditions(void)
   for (i=0; i<NUM_PARAMS-1; i++) fprintf(stderr, "%.12f ", initial_smf_fit.params[i]);
   printf("%.12f\n", initial_smf_fit.params[NUM_PARAMS-1]);
 
-  CHI2(initial_smf_fit) = all_smf_chi2_err(initial_smf_fit);
+  for (i=0; i<10; i++) CHI2(initial_smf_fit) = all_smf_chi2_err(initial_smf_fit);
 
   // Calculate the chi2's contributed by each type of observational data.
-  chi2_type(initial_smf_fit);
+  //chi2_type(initial_smf_fit);
   // Initialize the orth_matrix that specifies how well the model parameters
   // are correlated to each other.
   init_orth_matrix();
@@ -207,13 +206,14 @@ float all_smf_chi2_err(struct smf_fit test)
       SIGMA_Z(test) < 0 || EFF_0(test) > 3 ||
       EFF_0_A(test) < -2 ||
       smf_limit.epsilon > 1e5 || smf_mid.epsilon > 1e4 ||
-      SIGMA_A(test) > 0 ||
+      //SIGMA_A(test) > 0 ||
       SCATTER(test) > 0.3 ||
       SCATTER(test) < 0 || smf_limit.obs_scatter > 1.0 ||
-      BURST_DUST_Z(test) < 0.8 || BURST_DUST_Z(test)>6 ||
-      BURST_DUST(test) < 0 || BURST_DUST(test) > 1 ||
-      BURST_DUST_AMP(test) < 0 ||
-      BURST_DUST_AMP(test) > 5 || fabs(MU_A(test)) > 0.8 ||
+      // BURST_DUST_Z(test) < 0.8 || BURST_DUST_Z(test)>6 ||
+      // BURST_DUST(test) < 0 || BURST_DUST(test) > 1 ||
+      // BURST_DUST_AMP(test) < 0 ||
+      // BURST_DUST_AMP(test) > 5 || 
+      fabs(MU_A(test)) > 0.8 ||
       fabs(KAPPA_A(test)) > KAPPA_LIMIT || SCATTER_A(test) > SCATTER(test) ||
       RHO_05(test) < 0.23 || RHO_05(test) > 1.0 ||
 
@@ -236,22 +236,42 @@ float all_smf_chi2_err(struct smf_fit test)
 
       BH_MERGE_F_0(test) < -5 || BH_MERGE_F_0(test) > 5 ||
       smf_limit.f_merge_bh < 1e-5 || smf_limit.f_merge_bh > 1e5 || 
+
+      F_OCC_MIN_0(test) < -5 || F_OCC_MIN_0(test) > 0 ||
+      //F_OCC_MIN_0(test) > F_OCC_MIN_1(test) ||
+      smf_limit.f_occ_min < 1e-5 || smf_limit.f_occ_min > 1 ||
+
+      BH_DUTY_M_0(test) < 7 || BH_DUTY_M_0(test) > 16 ||
+      smf_limit.bh_duty_m < 7 || smf_limit.bh_duty_m > 16 ||
+      fabs(BH_DUTY_ALPHA_0(test)) > 5 ||
+      fabs(smf_limit.bh_duty_alpha) > 5 ||
+
+      // BH_DUTY_MIN_0(test) < -5 || BH_DUTY_MIN_0(test) > 0 ||
+      //BH_DUTY_MIN_0(test) > BH_DUTY_MIN_1(test) ||
+      // smf_limit.bh_duty_min < 1e-5 || smf_limit.bh_duty_min > 1 ||
+
+      // BH_DUTY_MIN_0(test) > F_OCC_MIN_0(test) ||
+      // smf_limit.bh_duty_min > smf_limit.f_occ_min ||
+
+
       BH_ETA_CRIT_0(test) < -2.5 || BH_ETA_CRIT_0(test) > -0.3 ||
       smf_limit.bh_eta_crit < -2.5 || smf_limit.bh_eta_crit > -0.3 ||
       log10(smf_limit.bh_efficiency_rad) < -2.5 || log10(smf_limit.bh_efficiency_rad) > -0.3 ||
-      BH_DUTY_0(test) < 0.001 || BH_DUTY_0(test) > 1 ||
-      BH_DUTY_1(test) > BH_DUTY_0(test) ||
-      smf_limit.bh_duty < 0.001 || smf_limit.bh_duty > 1 ||
-      BH_SCATTER_0(test) < 0 || BH_SCATTER_0(test) > 2 ||
-      smf_limit.bh_scatter < 0 || smf_limit.bh_scatter > 2 ||
-      DC_MBH_0(test) < 4 || DC_MBH_0(test) > 10 ||
+      // BH_DUTY_0(test) < 0.001 || BH_DUTY_0(test) > 1 ||
+      // BH_DUTY_1(test) > BH_DUTY_0(test) ||
+      // smf_limit.bh_duty < 0.001 || smf_limit.bh_duty > 1 ||
+      BH_SCATTER_0(test) < 0.2 || BH_SCATTER_0(test) > 2 ||
+      smf_limit.bh_scatter < 0.2 || smf_limit.bh_scatter > 2 ||
+      DC_MBH_0(test) < 10 || DC_MBH_0(test) > 15 ||
       DC_MBH_W_0(test) < 0.001 || DC_MBH_W_0(test) > 4 ||
-      ABHMF_SHIFT(test) < -1 || ABHMF_SHIFT(test) > 1)
+      ABHMF_SHIFT(test) < -1 || ABHMF_SHIFT(test) > 1||
+      fabs(RHO_BH_0(test)) > 1.0 || fabs(smf_limit.rho_bh) > 1.0)
 
   {
-    //fprintf(stderr, "Is NOT OK!\n");
+    //fprintf(stderr, "all_smf_chi2_err. Is NOT OK!\n");
   		return (-1);
   }
+  //fprintf(stderr, "all_smf_chi2_err. Is OK.\n");
   #pragma omp parallel
     {
       calc_sfh(&test);
@@ -311,7 +331,7 @@ float all_smf_chi2_err(struct smf_fit test)
     + pow(MU_A(test)/MU_PRIOR, 2) + pow(KAPPA_A(test)/KAPPA_PRIOR, 2)
     + pow(SCATTER_A(test)/MU_PRIOR, 2)
     + pow((SCATTER(test)-SCATTER_CENTER)/SCATTER_PRIOR, 2)
-    + pow(((-0.5*SIGMA_A(test)+SIGMA_Z(test))-SIGMA_Z_CENTER)/SIGMA_Z_PRIOR, 2);
+    + pow(((SIGMA_Z(test))-SIGMA_Z_CENTER)/SIGMA_Z_PRIOR, 2);
 
   if (!vel_dispersion) 
   {
@@ -356,19 +376,24 @@ float all_smf_chi2_err(struct smf_fit test)
     double chi2_kin = 0;
     double chi2_rad = 0;
     double chi2_qso = 0;
+    // double chi2_focc = 0;
     
     double penalty_rising_sfh = rising_sfh_penalty();
-    // fprintf(stderr, "The chi2 penalty for rising SFH in massive halos at low-z: %f\n", penalty_rising_sfh); 
+    //fprintf(stderr, "The chi2 penalty for rising SFH in massive halos at low-z: %f\n", penalty_rising_sfh); 
 
     // priors on high-z bright quasars
-    double ratio_z6_qso = ratio_high_z_qso(5.7, 6.5, 47, area_sdss);
-    fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
+    //double ratio_z6_qso = ratio_high_z_qso(5.7, 6.5, 47, area_sdss);
+    //fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
 
     double n_z6_qso = number_high_z_low_mass_qso(5.7, 6.5, 47, area_sdss);
     fprintf(stderr, "The number of quasars with Lbol>10^47, Mbh<10^8, and 5.7 < z < 6.5 is %e\n", n_z6_qso);
 
     if (n_z6_qso > 0) chi2_qso = 2 * n_z6_qso;
-    chi2_qso += log10(ratio_z6_qso) * 10;
+    //chi2_qso += log10(ratio_z6_qso) * 10;
+
+    // chi2_focc = prior_focc();
+    // fprintf(stderr, "chi2_focc: %e\n", chi2_focc);
+
 
     // Prior on recent SFR histories among massive halos
     double recent_sfr = recent_sfh_in_massive_halos();
@@ -391,6 +416,196 @@ float all_smf_chi2_err(struct smf_fit test)
     chi2 += chi2_sfr + chi2_icl + chi2_qso + chi2_rad;
     chi2 += penalty_rising_sfh;
     fprintf(stderr, "recent rad power: %f, chi2_rad:%f\n", recent_radiative_power, chi2_rad);
+  }
+
+
+  // Note that since we re-allocate space for these spline objects every time due to
+  // their varying sizes, we should free them every time after using them to calculate
+  // the observables, to avoid out-of-memory kills.
+  for (i = 0; i < num_outputs; i++)
+  {
+    if (steps[i].flag_alloc)
+    {
+      gsl_spline_free(steps[i].spline); //free the spline object since we are allocating it every time.
+      gsl_spline_free(steps[i].spline_sfr);
+      if (steps[i].alloc2smf)
+      {
+        gsl_spline_free(steps[i].spline2); //same for the second segment of the SMHM relation.
+        gsl_spline_free(steps[i].spline_sfr2);
+      }
+    }
+
+    if (steps[i].flag_alloc == 2)
+    {
+      gsl_spline_free(steps[i].spline_uv); //free the spline object since we are allocating it every time.
+      if (steps[i].alloc2uvlf) gsl_spline_free(steps[i].spline_uv2); //same for the second segment of the UV-HM relation.
+    }
+  }
+  return (chi2);
+}
+
+float all_smf_chi2_err_write(struct smf_fit test) 
+{
+  float chi2 = 0;
+  double chi2_bhmf = 0;
+  int i;
+
+  // Two limiting cases for the smhm model.
+  z_limit = 8.5;
+  struct smf smf_limit = smhm_at_z(z_limit, test);
+  struct smf smf_mid = smhm_at_z(2, test);
+  // struct smf smf_z4 = smhm_at_z(4.0, test);
+  INVALID(test) = 0;
+
+  
+  #pragma omp parallel
+    {
+      calc_sfh(&test);
+
+      // The number density of massive BHs should not have decreased from z=1 to z=0.
+      double bhz0 = calc_bhmf(BH_MASS_TO_REQUIRE_ND_GROWTH, 0);
+      double bhz1 = calc_bhmf(BH_MASS_TO_REQUIRE_ND_GROWTH, 1);
+      if ((bhz1 < 0) || (bhz0 < 0) || (bhz0 < bhz1)) 
+      {  
+        fprintf(stderr, "BH ND down. bhz0: %.6e, bhz1: %.6e\n", bhz0, bhz1);
+        INVALIDATE(&test, "BH Number Density Decreased from z=1 to z=0!");
+      }
+
+  #pragma omp for schedule(simd:dynamic, 8) //private(m,epsilon,smf_val)
+      for (i=0; i<num_obs_smfs; i++)
+        if (!(INVALID(test)))
+        {
+          obs_smfs[i].chi2 = calc_single_chi2_err_point(&(obs_smfs[i]));          
+        }
+      
+    }
+
+  if (INVALID(test)) 
+  {
+    for (i = 0; i < num_outputs; i++)
+    {
+      if (steps[i].flag_alloc)
+      {
+        gsl_spline_free(steps[i].spline); //free the spline object since we are allocating it every time.
+        gsl_spline_free(steps[i].spline_sfr);
+        if (steps[i].alloc2smf)
+        {
+          gsl_spline_free(steps[i].spline2); //same for the second segment of the SMHM relation.
+          gsl_spline_free(steps[i].spline_sfr2);
+        }
+      }
+
+      if (steps[i].flag_alloc == 2)
+      {
+        gsl_spline_free(steps[i].spline_uv); //free the spline object since we are allocating it every time.
+        if (steps[i].alloc2uvlf) gsl_spline_free(steps[i].spline_uv2); //same for the second segment of the UV-HM relation.
+      }
+    }
+    return -1;
+  }
+
+
+  double chi2_type[11] = {0};
+
+  for (i=0; i<num_obs_smfs; i++) 
+  {
+    chi2 += obs_smfs[i].chi2;
+    // Add up the contribution from each type.
+    chi2_type[obs_smfs[i].type] += obs_smfs[i].chi2;
+  }
+
+  for (i=0; i < 11; i++)
+    fprintf(stderr, "%f ", i, chi2_type[i]);
+
+  //fprintf(stderr, "Before adding priors, chi2=%f\n", chi2);
+
+  // Apply the priors on several model parameters. See the table of priors
+  // in Zhang et al. (2021)
+  chi2 += pow(MU(test)/MU_PRIOR, 2) + pow(KAPPA(test)/KAPPA_PRIOR, 2)
+    + pow(MU_A(test)/MU_PRIOR, 2) + pow(KAPPA_A(test)/KAPPA_PRIOR, 2)
+    + pow(SCATTER_A(test)/MU_PRIOR, 2)
+    + pow((SCATTER(test)-SCATTER_CENTER)/SCATTER_PRIOR, 2)
+    + pow(((SIGMA_Z(test))-SIGMA_Z_CENTER)/SIGMA_Z_PRIOR, 2);
+
+  if (!vel_dispersion) 
+  {
+    chi2 += pow((BH_BETA_0(test)-BH_BETA_CENTER)/BH_BETA_PRIOR, 2)
+         + pow((BH_GAMMA_0(test)-BH_GAMMA_CENTER)/BH_GAMMA_PRIOR, 2);
+  } 
+  else 
+  {
+    chi2 += pow((BH_BETA_0(test)-BH_BETA_CENTER_VD)/BH_BETA_PRIOR, 2)
+         + pow((BH_GAMMA_0(test)-BH_GAMMA_CENTER_VD)/BH_GAMMA_PRIOR, 2);
+  }
+
+  //fprintf(stderr, "after adding priors on parameters, chi2=%f\n", chi2);
+
+  // Priors on stellar mass--halo mass relations and against a hole in BHARs.
+  double chi2_smhm = 0;
+  double chi2_bhar = 0;
+   for (i = 1; i < num_outputs; i++)
+   {
+      for (int j=1; j < M_BINS; j++)
+      {
+        if (steps[i].t[j] >= 2e-8 && steps[i].log_sm[j] > 0 && steps[i].log_sm[j] < steps[i].log_sm[j - 1])
+        {
+          double delta = steps[i].log_sm[j - 1] - steps[i].log_sm[j];
+          chi2_smhm += delta * delta;
+        }
+        if (steps[i].scale > 0.5 && steps[i].med_hm_at_a[j] >= 11.5 && steps[i].med_hm_at_a[j] <= 12.5 && steps[i].bh_acc_rate[j] <= steps[i].bh_acc_rate[j-1] && steps[i].bh_acc_rate[j] <= steps[i].bh_acc_rate[j+1])
+        {
+          double dd = 0.5 * (steps[i].bh_acc_rate[j+1] + steps[i].bh_acc_rate[j-1]) / steps[i].bh_acc_rate[j];
+          chi2_bhar += dd * dd;
+        }
+      }
+   }
+
+   chi2 += chi2_smhm;
+   chi2 += chi2_bhar;
+
+   if (!no_z_scaling && !no_sfr_constraint) 
+   {
+    double chi2_sfr = 0;
+    double chi2_icl = 0;
+    double chi2_kin = 0;
+    double chi2_rad = 0;
+    double chi2_qso = 0;
+    
+    double penalty_rising_sfh = rising_sfh_penalty();
+    // fprintf(stderr, "The chi2 penalty for rising SFH in massive halos at low-z: %f\n", penalty_rising_sfh); 
+
+    // priors on high-z bright quasars
+    double ratio_z6_qso = ratio_high_z_qso(5.7, 6.5, 47, area_sdss);
+    // fprintf(stderr, "The ratio of quasars with Lbol>10^47, Mbh<10^8 vs. Mbh>10^8, and 5.7 < z < 6.5 is %e\n", ratio_z6_qso);
+
+    double n_z6_qso = number_high_z_low_mass_qso(5.7, 6.5, 47, area_sdss);
+    // fprintf(stderr, "The number of quasars with Lbol>10^47, Mbh<10^8, and 5.7 < z < 6.5 is %e\n", n_z6_qso);
+
+    if (n_z6_qso > 0) chi2_qso = 2 * n_z6_qso;
+    chi2_qso += log10(ratio_z6_qso) * 10;
+
+    // Prior on recent SFR histories among massive halos
+    double recent_sfr = recent_sfh_in_massive_halos();
+
+    if (recent_sfr > SFR_CONSTRAINT)
+      chi2_sfr = pow((recent_sfr-SFR_CONSTRAINT)/(SFR_CONSTRAINT_WIDTH), 2);
+
+    // Prior on intra-cluster light to stellar mass ratios
+    double recent_icl_star_ratio = recent_Micl_Mstar_ratio_in_massive_halos();
+    // Prior on recent (low redshift) radiative luminosities among massive halos.
+    double recent_radiative_power = recent_radiative_power_in_massive_halos();
+
+    if (recent_icl_star_ratio > ICL_RATIO_CONSTRAINT)
+      chi2_icl = pow((recent_icl_star_ratio - ICL_RATIO_CONSTRAINT) / (ICL_RATIO_CONSTRAINT_WIDTH), 2);
+
+    if (recent_radiative_power > RAD_POWER_CONSTRAINT_HIGH)
+      chi2_rad = pow((recent_radiative_power - RAD_POWER_CONSTRAINT_HIGH) / (RAD_POWER_CONSTRAINT_WIDTH), 2);
+
+    fprintf(stderr, "%f %f %f %f %f %f\n", chi2_smhm, chi2_bhar, chi2_sfr, chi2_icl, chi2_rad, chi2_qso);
+
+    chi2 += chi2_sfr + chi2_icl + chi2_qso + chi2_rad;
+    chi2 += penalty_rising_sfh;
+    // fprintf(stderr, "recent rad power: %f, chi2_rad:%f\n", recent_radiative_power, chi2_rad);
   }
 
 
@@ -447,17 +662,18 @@ float chi2_type(struct smf_fit test)
       BETA(test) > 15 || smf_limit.beta > 15 || smf_mid.beta > 15 ||
       DELTA(test) < 0.01 || smf_limit.delta < 0.01 || smf_mid.delta < 0.01 ||
       fabs(DELTA(test)) > 10 || fabs(smf_limit.delta) > 10 || fabs(smf_mid.delta) > 10 ||
-      LAMBDA(test) > 10 || smf_limit.lambda > 10 || 
-      LAMBDA(test) < -10 || smf_limit.lambda < -10 || 
+      //LAMBDA(test) > 10 || smf_limit.lambda > 10 || 
+      //LAMBDA(test) < -10 || smf_limit.lambda < -10 || 
       SIGMA_Z(test) < 0 || EFF_0(test) > 3 ||
       smf_limit.epsilon > 1e5 || smf_mid.epsilon > 1e4 ||
-      SIGMA_A(test) > 0 ||
+      //SIGMA_A(test) > 0 ||
       SCATTER(test) > 0.3 ||
       SCATTER(test) < 0 || smf_limit.obs_scatter > 1.0 ||
-      BURST_DUST_Z(test) < 0.8 || BURST_DUST_Z(test)>6 ||
-      BURST_DUST(test) < 0 || BURST_DUST(test) > 1 ||
-      BURST_DUST_AMP(test) < 0 ||
-      BURST_DUST_AMP(test) > 5 || fabs(MU_A(test)) > 0.8 ||
+      // BURST_DUST_Z(test) < 0.8 || BURST_DUST_Z(test)>6 ||
+      // BURST_DUST(test) < 0 || BURST_DUST(test) > 1 ||
+      // BURST_DUST_AMP(test) < 0 ||
+      // BURST_DUST_AMP(test) > 5 || 
+      fabs(MU_A(test)) > 0.8 ||
       fabs(KAPPA_A(test)) > KAPPA_LIMIT || SCATTER_A(test) > SCATTER(test) ||
       RHO_05(test) < 0.23 || RHO_05(test) > 1.0 ||
 
@@ -479,8 +695,8 @@ float chi2_type(struct smf_fit test)
       BH_ETA_CRIT_0(test) < -2.5 || BH_ETA_CRIT_0(test) > -0.3 ||
       smf_limit.bh_eta_crit < -2.5 || smf_limit.bh_eta_crit > -0.3 ||
       log10(smf_limit.bh_efficiency_rad) < -2.5 || log10(smf_limit.bh_efficiency_rad) > -0.3 ||
-      BH_DUTY_0(test) < 0.001 || BH_DUTY_0(test) > 1 ||
-      BH_DUTY_1(test) > BH_DUTY_0(test) ||
+      // BH_DUTY_0(test) < 0.001 || BH_DUTY_0(test) > 1 ||
+      // BH_DUTY_1(test) > BH_DUTY_0(test) ||
       smf_limit.bh_duty < 0.001 || smf_limit.bh_duty > 1 ||
       BH_SCATTER_0(test) < 0 || BH_SCATTER_0(test) > 0.4 ||
       smf_limit.bh_scatter < 0 || smf_limit.bh_scatter > 2 ||
@@ -550,7 +766,7 @@ float chi2_type(struct smf_fit test)
     + pow(MU_A(test)/MU_PRIOR, 2) + pow(KAPPA_A(test)/KAPPA_PRIOR, 2)
     + pow(SCATTER_A(test)/MU_PRIOR, 2)
     + pow((SCATTER(test)-SCATTER_CENTER)/SCATTER_PRIOR, 2)
-    + pow(((-0.5*SIGMA_A(test)+SIGMA_Z(test))-SIGMA_Z_CENTER)/SIGMA_Z_PRIOR, 2)
+    + pow(((SIGMA_Z(test))-SIGMA_Z_CENTER)/SIGMA_Z_PRIOR, 2)
     + pow((BH_SCATTER_0(test)-BH_SCATTER_CENTER)/BH_SCATTER_PRIOR, 2);
  
   if (!vel_dispersion) 
@@ -782,7 +998,7 @@ int main(int argc, char **argv)
   init_mcmc_from_args(argc, argv);
   initial_conditions();
   fprintf(stderr, "Total number of data points: %ld", num_obs_smfs);
-  // return 0;
+  //return 0;
 
   // // Users can turn on the randomness if needed.
   // srand(time(0));
@@ -800,7 +1016,7 @@ int main(int argc, char **argv)
     stats_to_step(num_points);
     if (i<num_temps-1) clear_stats();
   }
-  return 0;
+  //return 0;
   inv_temperature = 1;
 
   // Final MCMC
@@ -918,16 +1134,16 @@ void stats_to_step(int64_t num_stats)
 // by various flags.
 void assert_model(struct smf_fit *a) 
 {
-  LAMBDA(*a) = LAMBDA_A(*a) = 0;
+  // LAMBDA(*a) = LAMBDA_A(*a) = 0;
   DELTA_A2(*a) = 0;
-  EXPSCALE(*a) = 4;
+  //EXPSCALE(*a) = 4;
 
   if (no_bh_mergers) 
   {
     BH_MERGE_F_0(*a) = -100;
     BH_MERGE_F_1(*a) = 0;
-    BH_MERGE_W_0(*a) = 0;
-    BH_MERGE_W_1(*a) = 0;
+    // BH_MERGE_W_0(*a) = 0;
+    // BH_MERGE_W_1(*a) = 0;
   }
 
   if (no_z_scaling) 
@@ -937,21 +1153,21 @@ void assert_model(struct smf_fit *a)
     EFF_0_A(*a) = 0;
     EFF_0_A2(*a) = 0;
     EFF_0_A3(*a) = 0;
-    EXPSCALE(*a) = 0;
-    DELTA_A(*a) = 0;
-    DELTA_A2(*a) = 0;
+    //EXPSCALE(*a) = 0;
+    // DELTA_A(*a) = 0;
+    // DELTA_A2(*a) = 0;
     ALPHA_A(*a) = 0;
     ALPHA_A2(*a) = 0;
     BETA_A(*a) = 0;
     BETA_A2(*a) = 0;
     GAMMA_A(*a) = 0;
     GAMMA_A2(*a) = 0;
-    LAMBDA_A(*a) = 0;
-    LAMBDA_A2(*a) = 0;
+    //LAMBDA_A(*a) = 0;
+    //LAMBDA_A2(*a) = 0;
     SCATTER_A(*a) = 0;
     MU_A(*a) = 0;
     KAPPA_A(*a) = 0;
-    BURST_DUST(*a) = 0;
+    // BURST_DUST(*a) = 0;
     SIGMA_Z(*a) = 0.04;
     SCATTER(*a) = 0.16;
     ALPHA(*a) = -1.490795596100;
@@ -966,7 +1182,7 @@ void assert_model(struct smf_fit *a)
     DELTA(*a) = DELTA(initial_smf_fit);
     BETA(*a) = BETA(initial_smf_fit);
     GAMMA(*a) = GAMMA(initial_smf_fit);
-    LAMBDA(*a) = LAMBDA(initial_smf_fit);
+    //LAMBDA(*a) = LAMBDA(initial_smf_fit);
     KAPPA(*a) = KAPPA(initial_smf_fit);
     MU(*a) = MU(initial_smf_fit);
     SCATTER(*a) = SCATTER(initial_smf_fit);
@@ -988,11 +1204,11 @@ void assert_model(struct smf_fit *a)
     MU(*a) = 0;
     KAPPA_A(*a) = 0;
     MU_A(*a) = 0;
-    BURST_DUST_AMP(*a) = 0;
-    BURST_DUST_Z(*a) = 1;
-    BURST_DUST(*a) = 0;
+    // BURST_DUST_AMP(*a) = 0;
+    // BURST_DUST_Z(*a) = 1;
+    // BURST_DUST(*a) = 0;
   }
-
+  BH_ETA_CRIT_1(*a) = 0;
   BH_SCATTER_1(*a) = 0;
   BH_ETA_CRIT_0(*a) = -1.5;
   ABHMF_SHIFT(*a) = 0.2;
@@ -1000,11 +1216,11 @@ void assert_model(struct smf_fit *a)
   DELTA(*a) = 0.055;
   KAPPA_A(*a) = 0.0;
 
-  BURST_DUST_AMP(*a) = 0;
-  BURST_DUST_Z(*a) = 1;
-  BURST_DUST(*a) = 0;
+  // BURST_DUST_AMP(*a) = 0;
+  // BURST_DUST_Z(*a) = 1;
+  // BURST_DUST(*a) = 0;
   SCATTER_A(*a) = 0;
-  SIGMA_A(*a) = 0;
+  //SIGMA_A(*a) = 0;
   
   ICL_FRAC_Z(*a) = 0;
   ICL_FRAC_E(*a) = 0;

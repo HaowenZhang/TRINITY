@@ -18,22 +18,17 @@ int main(int argc, char **argv)
 {
   int64_t i, j, k, l;
   struct smf_fit smf;
-  
-  if (argc < 6) 
+  // Calculate the black hole mass function within a certain luminosity bin (lbol_low, lbol_high) at a certain redshift.
+  if (argc<2+NUM_PARAMS) 
   {
-    fprintf(stderr, "Usage: %s mass_cache param_file z lbol_low(in erg/s) lbol_high(in erg/s) (> output_file)\n", argv[0]);
+    fprintf(stderr, "Usage: %s mass_cache (mcmc output) z lbol_low(in erg/s) lbol_high(in erg/s)\n", argv[0]);
     exit(1);
   }
-
-  // Read in model parameters
-  FILE *param_input = check_fopen(argv[2], "r");
-  char buffer[2048];
-  fgets(buffer, 2048, param_input);
-  read_params(buffer, smf.params, NUM_PARAMS);
-
-  double z = atof(argv[3]);
-  double Lbol_low = atof(argv[4]);
-  double Lbol_high = atof(argv[5]);
+  for (i=0; i<NUM_PARAMS; i++)
+    smf.params[i] = atof(argv[i+2]);
+  double z = atof(argv[i+4]);
+  double Lbol_low = atof(argv[i+5]);
+  double Lbol_high = atof(argv[i+6]);
 
   nonlinear_luminosity = 1;
   // Turn off the built-in GSL error handler that kills the program
@@ -99,15 +94,15 @@ int main(int argc, char **argv)
     prob_lum += lbol_f_high * steps[step].lum_dist_full[i*LBOL_BINS+lbol_b_high];
     
     // Duty cycle, i.e., the fraction of SMBHs that are active.
-    double dc = steps[step].smhm.bh_duty;
-    double f_mass = exp((mbh - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
-    dc *= f_mass;
-    if (dc < 1e-4) dc = 1e-4;
+    //double dc = steps[step].smhm.bh_duty;
+    //double f_mass = exp((mbh - steps[step].smhm.dc_mbh) / steps[step].smhm.dc_mbh_w);
+    //f_mass = f_mass / (1 + f_mass);
+    //dc *= f_mass;
+    //if (dc < 1e-4) dc = 1e-4;
 
     // Normalize the probability, and scale it by the duty cycle.
     prob_lum /= prob_tot;
-    prob_lbol[i] = prob_lum * dc;
+    prob_lbol[i] = prob_lum;
     fprintf(stderr, "%f %e\n", mbh, prob_lbol[i]);
   }
 
@@ -134,7 +129,7 @@ int main(int argc, char **argv)
     // is the number density in the unit of ***Mpc^-3 bin^-1***,
     // so a factor of BPDEX (# of bins per dex) is needed to convert it
     // back to Mpc^-3 dex^-1.
-    printf("%f %e\n", m, steps[step].t[i] * BPDEX * p_l);
+    printf("%f %e\n", m, steps[step].t[i] * steps[step].bh_f_occ[i] * BPDEX * p_l);
 
   }
 

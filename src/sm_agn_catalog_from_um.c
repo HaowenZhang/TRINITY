@@ -4,6 +4,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <sys/stat.h>
+#include <omp.h>
 #include "observations.h"
 #include "smf.h"
 #include "all_smf.h"
@@ -96,25 +97,28 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
   double p_aird = 0;
   char scale_string[1024];
   int64_t filename_len = strlen(filename);
+  //fprintf(stderr, "filename: %s\n", filename + filename_len + SCALE_START);
   strncpy(scale_string, filename + filename_len + SCALE_START, SCALE_LENGTH);
 
+  int id = omp_get_thread_num();
+
   double scale = atof(scale_string);
-  fprintf(stderr, "scale_string=%s, scale=%f\n", scale_string, scale);
+  fprintf(stderr, "thread ID=%d, scale_string=%s, scale=%f\n", id, scale_string, scale);
   
 
   int64_t num_halos = 0;
   struct catalog_halo *halos = read_from_um_catalog(filename, &num_halos);
-  fprintf(stderr, "num_halos=%d\n", num_halos);
+  //fprintf(stderr, "num_halos=%d\n", num_halos);
   
-  strncpy(buffer, "Catalogs/final_eff_z/sm_agn_catalog_a", 1024);
+  strncpy(buffer, "/xdisk/behroozi/mig2020/extra/hwzhang0595/Catalogs/focc_mbh_log1pz_consistent_PL_duty_fix_BHAR/sm_agn_catalog_a", 1024);
   strcat(buffer, scale_string);
   strcat(buffer, ".dat");
-  fprintf(stderr, "Output file name: %s\n", buffer);  
+  //fprintf(stderr, "Output file name: %s\n", buffer);  
   n = strlen(buffer);
 
 
   output = check_fopen(buffer, "w");
-  fprintf(output, "#scale(0) id(1) desc_id(2) upid(3) flags(4) uparent_dist(5) x(6) y(7) z(8) vx(9) vy(10) vz(11) mvir(12) vmax(13) Mpeak(14) Vpeak(15) rvir(16) Rank1(17) Rank2(18) A_UV(19) Log(SM)(20) Log(ICL)(21) log(SFR)(22) Log(obs_SM)(23) Log(obs_SFR)(24) obs_UV(25) Mbh(26) p_eta_0001(27) p_eta_001(28) p_eta_01(29) p_eta_1(30) p_lbol_41(31) p_lbol_42(32) p_lbol_43(33) p_lbol_44(34) p_lbol_45(35) p_eta01_lbol45(36)\n");
+  fprintf(output, "#scale(0) id(1) desc_id(2) upid(3) flags(4) uparent_dist(5) x(6) y(7) z(8) vx(9) vy(10) vz(11) mvir(12) vmax(13) Mpeak(14) Vpeak(15) rvir(16) Rank1(17) Rank2(18) A_UV(19) Log(SM)(20) Log(ICL)(21) log(SFR)(22) Log(obs_SM)(23) Log(obs_SFR)(24) obs_UV(25) Mbh(26) p_eta_0001(27) p_eta_001(28) p_eta_01(29) p_eta_1(30) p_lbol_42(31) p_lbol_43(32) p_lbol_44(33) p_lbol_45(34) p_lbol_46(35) p_eta01_lbol46(36)\n");
 
   
   // Header lines
@@ -151,7 +155,7 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
   ts = num_outputs-2;
 
   for (i=0; i<(num_halos); i++)
-  //for (i=0; i<(1000); i++)
+  //for (i=0; i<(100); i++)
   {
     // Ignore the halos that are already ignored in the Universe Machine catalogs.
     if (halos[i].flags & IGNORE_FLAG) continue;
@@ -171,6 +175,8 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
     float sm1 = calc_sm_at_m(logm, steps[ts]);
     float sm2 = calc_sm_at_m(logm, steps[ts+1]);
     sm = sm1 + tf*(sm2-sm1);
+
+
     
 #define INTERP(y) (steps[ts].smhm.y + tf*(steps[ts+1].smhm.y - steps[ts].smhm.y))
     // Interpolate to get relevant model parameters
@@ -183,7 +189,7 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
     float bh_gamma = INTERP(bh_gamma);
     float bh_beta = INTERP(bh_beta);
     float bh_scatter = INTERP(bh_scatter);
-    float bh_duty = INTERP(bh_duty);
+    //float bh_duty = INTERP(bh_duty);
     float dc_mbh = INTERP(dc_mbh);
     float dc_mbh_w = INTERP(dc_mbh_w);
 
@@ -202,11 +208,11 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
     mbh += mbh_offset * bh_scatter;
 
     // Calculate the duty cycle.
-    double f_mass = exp((mbh - dc_mbh) / dc_mbh_w);
-    f_mass = f_mass / (1 + f_mass);
+    //double f_mass = exp((mbh - dc_mbh) / dc_mbh_w);
+    //f_mass = f_mass / (1 + f_mass);
     // f_mass = f_mass < 1? f_mass : 1;
-    bh_duty *= f_mass;
-    if (bh_duty < 1e-4) bh_duty = 1e-4;
+    //bh_duty *= f_mass;
+    //if (bh_duty < 1e-4) bh_duty = 1e-4;
 
     //fprintf(stderr, "mh=%f, sm=%f, obs_sm=%f, mbh=%f\n", logm, sm, obs_sm, mbh);  
 
@@ -223,6 +229,11 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
     if (halos[i].upid >= 0) { sfr += log10(halos[i].m/halos[i].mp); }
     // if (sfr - sm > 11) obs_sm += kappa;
     float obs_sfr = sfr + mu + kappa;
+    // float bh_duty = (biterp(steps[ts].bh_duty[j], steps[ts+1].bh_duty[j], steps[ts].bh_duty[j+1], steps[ts+1].bh_duty[j+1], tf, mf));
+    float bh_f_occ = (biterp(steps[ts].bh_f_occ[j], steps[ts+1].bh_f_occ[j], steps[ts].bh_f_occ[j+1], steps[ts+1].bh_f_occ[j+1], tf, mf));
+
+    mbh -= bh_f_occ;
+    bh_f_occ = exp10(bh_f_occ);
 
     // Calculate the cumulative probabilities of hosting AGN above certain Eddington ratio
     // or luminosity thresholds.
@@ -231,83 +242,74 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
       // Eddington ratio thresholds. Only calculate when k < 4, because we only have
       // 4 threshold values.
       
-      float eta_crit;
-      double prob1, prob2, bher_f;
-      int64_t bher_b;
+      float eta_crit, lbol_crit;
+      double prob1, prob2, lbol_f;
+      int64_t lbol_b;
 
-      float mf = (logm - M_MIN) * BPDEX;
+      mf = (mbh - MBH_MIN) * MBH_BPDEX;
       int64_t mb = mf;
       mf -= mb;
-      if (mb == M_BINS - 1) {mb = M_BINS - 2; mf = 1;}
+      if (mb == MBH_BINS - 1) {mb = MBH_BINS - 2; mf = 1;}
 
 
       if (k < 4)
       {
 
         eta_crit = -3.0 + k;
+        lbol_crit = eta_crit + 38.1 + mbh;
 
         // for the (mb)-th halo mass bin
         prob1 = 0.0;
-        bher_f = (eta_crit - steps[ts].bh_eta[mb] - steps[ts].ledd_min[mb]) * steps[ts].ledd_bpdex[mb];
-        bher_b = bher_f;
-        bher_f -= bher_b;
-        if (bher_b >= BHER_BINS - 1) {bher_b = BHER_BINS - 2; bher_f = 1;}
+        lbol_f = (lbol_crit - LBOL_MIN) * LBOL_BPDEX;
+        lbol_b = lbol_f;
+        lbol_f -= lbol_b;
+        if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
+        else if (lbol_b < 0) {lbol_b = 0; lbol_f = 0.0;}
 
-        prob1 += (1 - bher_f) * steps[ts].bher_dist[mb*BHER_BINS+bher_b];
-        for (int ii=bher_b+1; ii<BHER_BINS; ii++)
-          prob1 += steps[ts].bher_dist[mb*BHER_BINS+ii];
-        if (steps[ts].bher_dist_norm[mb] > 0) prob1 /= steps[ts].bher_dist_norm[mb];
+        prob1 += (1 - lbol_f) * steps[ts].lum_dist_full[mb*LBOL_BINS+lbol_b];
+        for (int ii=lbol_b+1; ii<LBOL_BINS; ii++)
+          prob1 += steps[ts].lum_dist_full[mb*LBOL_BINS+ii];
+        // if (steps[ts].bher_dist_norm[mb] > 0) prob1 /= steps[ts].bher_dist_norm[mb];
 
         // for the (mb+1)-th halo mass bin
         prob2 = 0.0;
-        bher_f = (eta_crit - steps[ts].bh_eta[mb+1] - steps[ts].ledd_min[mb+1]) * steps[ts].ledd_bpdex[mb+1];
-        bher_b = bher_f;
-        bher_f -= bher_b;
-        if (bher_b >= BHER_BINS - 1) {bher_b = BHER_BINS - 2; bher_f = 1;}
-
-        prob2 += (1 - bher_f) * steps[ts].bher_dist[(mb+1)*BHER_BINS+bher_b];
-        for (int ii=bher_b+1; ii<BHER_BINS; ii++)
-          prob2 += steps[ts].bher_dist[(mb+1)*BHER_BINS+ii];
-        if (steps[ts].bher_dist_norm[(mb+1)] > 0) prob2 /= steps[ts].bher_dist_norm[(mb+1)];
+        prob2 += (1 - lbol_f) * steps[ts].lum_dist_full[(mb+1)*LBOL_BINS+lbol_b];
+        for (int ii=lbol_b+1; ii<LBOL_BINS; ii++)
+          prob2 += steps[ts].lum_dist_full[(mb+1)*BHER_BINS+ii];
+        // if (steps[ts].bher_dist_norm[(mb+1)] > 0) prob2 /= steps[ts].bher_dist_norm[(mb+1)];
 
         // interpolate between the mb-th and the (mb+1)-th mass bin.
-        p_eta[k] = (prob1 + mf * (prob2 - prob1)) * bh_duty;
+        p_eta[k] = (prob1 + mf * (prob2 - prob1)) * bh_f_occ;
       }
       
 
       //fprintf(stderr, "mbh=%f, eta_crit=%f, p_eta[%d]=%e, prob1=%e, prob2=%e, bher_b=%d, bher_f=%f, bher_dist_norm=%e\n", mbh, eta_crit, k, p_eta[k], prob1, prob2, bher_b, bher_f, steps[ts].bher_dist_norm[mb+1]); 
 
       // luminosity thresholds.
-      float lbol_crit = 41.0 + k;
-      eta_crit = lbol_crit - 38.1 - mbh;
-
+      lbol_crit = 42.0 + k;
 
       // for the mb-th halo mass bin
       prob1 = 0.0;
-      bher_f = (eta_crit - steps[ts].bh_eta[mb] - steps[ts].ledd_min[mb]) * steps[ts].ledd_bpdex[mb];
-      bher_b = bher_f;
-      bher_f -= bher_b;
-      if (bher_b >= BHER_BINS - 1) {bher_b = BHER_BINS - 2; bher_f = 1;}
+      lbol_f = (lbol_crit - LBOL_MIN) * LBOL_BPDEX;
+      lbol_b = lbol_f;
+      lbol_f -= lbol_b;
+      if (lbol_b >= LBOL_BINS - 1) {lbol_b = LBOL_BINS - 2; lbol_f = 1;}
+      else if (lbol_b < 0) {lbol_b = 0; lbol_f = 0.0;}
 
-      prob1 += (1 - bher_f) * steps[ts].bher_dist[mb*BHER_BINS+bher_b];
-      for (int ii=bher_b+1; ii<BHER_BINS; ii++)
-        prob1 += steps[ts].bher_dist[mb*BHER_BINS+ii];
-      if (steps[ts].bher_dist_norm[mb] > 0) prob1 /= steps[ts].bher_dist_norm[mb];
+      prob1 += (1 - lbol_f) * steps[ts].lum_dist_full[mb*LBOL_BINS+lbol_b];
+      for (int ii=lbol_b+1; ii<LBOL_BINS; ii++)
+        prob1 += steps[ts].lum_dist_full[mb*LBOL_BINS+ii];
+      // if (steps[ts].bher_dist_norm[mb] > 0) prob1 /= steps[ts].bher_dist_norm[mb];
 
       // for the (mb+1)-th halo mass bin
       prob2 = 0.0;
-      bher_f = (eta_crit - steps[ts].bh_eta[mb+1] - steps[ts].ledd_min[mb+1]) * steps[ts].ledd_bpdex[mb+1];
-      bher_b = bher_f;
-      bher_f -= bher_b;
-      if (bher_b >= BHER_BINS - 1) {bher_b = BHER_BINS - 2; bher_f = 1;}
-
-      prob2 += (1 - bher_f) * steps[ts].bher_dist[(mb+1)*BHER_BINS+bher_b];
-      for (int ii=bher_b+1; ii<BHER_BINS; ii++)
-        prob2 += steps[ts].bher_dist[(mb+1)*BHER_BINS+ii];
-      if (steps[ts].bher_dist_norm[(mb+1)] > 0) prob2 /= steps[ts].bher_dist_norm[(mb+1)];
+      prob2 += (1 - lbol_f) * steps[ts].lum_dist_full[(mb+1)*LBOL_BINS+lbol_b];
+      for (int ii=lbol_b+1; ii<LBOL_BINS; ii++)
+        prob2 += steps[ts].lum_dist_full[(mb+1)*BHER_BINS+ii];
+      // if (steps[ts].bher_dist_norm[(mb+1)] > 0) prob2 /= steps[ts].bher_dist_norm[(mb+1)];
 
       // interpolate between the mb-th and the (mb+1)-th mass bin.
-      p_lbol[k] = (prob1 + mf * (prob2 - prob1)) * bh_duty;
+      p_lbol[k] = (prob1 + mf * (prob2 - prob1)) * bh_f_occ;
     }
 
     float eta_lbol_Aird = lbol_aird - 38.1 - mbh;
@@ -327,6 +329,7 @@ void add_agn_to_catalog(struct smf_fit f, char *filename) {
       p_eta[0], p_eta[1], p_eta[2], p_eta[3], p_lbol[0], p_lbol[1], p_lbol[2], p_lbol[3], p_lbol[4], p_aird);
   }
   fclose(output);
+  free(halos);
 }
 
 
@@ -364,8 +367,11 @@ int main(int argc, char **argv)
   INVALID(base_smf) = 0;
   calc_sfh(&base_smf);
 
-#pragma omp for schedule(guided,5)
+#pragma omp parallel
+#pragma omp for
   for (i=2; i<argc; i++)
+  {
     add_agn_to_catalog(base_smf, argv[i]);
-  return 0;
+  }
+return 0;
 }

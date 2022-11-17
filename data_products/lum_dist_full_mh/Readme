@@ -1,0 +1,5 @@
+These files contain the quasar luminosity distributions for each halo population across cosmic time, predicted by Trinity. In each file, the first a few lines gives the information on the halo mass and quasar bolometric luminosity bins, as well as the redshift at which the data are recorded. Each data line starts with the median halo mass in the halo mass bin, which is followed by the luminosity distributions for that halo mass bin. The dimension of the luminosity distributions is dex^-1. When integrated over the whole luminosity range, these luminosity distributions give the fraction of halos containing an active SMBH of ANY bolometric luminosities.
+
+For full details on how these distributions are calculated, please see the first Trinity paper: [https://doi.org/10.1093/mnras/stac2633](https://doi.org/10.1093/mnras/stac2633) 
+
+For any questions, please contact the author at: hwzhang0595@arizona.edu

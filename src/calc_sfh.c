@@ -95,14 +95,13 @@ void calc_sfh(struct smf_fit *f)
       calc_bh_lum_distribution_full(j, f);
       calc_active_bh_fraction(j, f);
       // calc_avg_eta_rad(j);
-      calc_total_bhar(j);
+      //calc_total_bhar(j);
       // for (i=0; i<M_BINS; i++)
       //   calc_supEdd_frac_lum(j, i, 45);
     }
   }
   for (j=1; j<num_outputs; j++)
   {
-    for (int k=0; k<M_BINS; k++) steps[j].sfr[k] -= (1 - steps[j].sfrac[k]) * steps[j].old_sm[k] * SSFR_AVG_Q;
     if (1 / steps[j].scale - 1 >= 6 && steps[j].cosmic_sfr < steps[j-1].cosmic_sfr)
     {
       //fprintf(stderr, "Increasing CSFR at z>6.\n");

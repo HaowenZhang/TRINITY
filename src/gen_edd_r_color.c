@@ -106,7 +106,7 @@ int main(int argc, char **argv)
       INTERP(bh_eta, bh_eta);
       LINTERP(eta_rad_avg, bh_eta_rad_avg);
       INTERP(eta_kin_avg, bh_eta_kin_avg);
-      LINTERP(bh_merge_rate,bh_merge_rate);
+      INTERP(bh_merge_rate,bh_merge_rate);
       INTERP(bh_unmerged,bh_unmerged);
       INTERP(frac_active, f_active);
       
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
       log_edd_obs = log_edd + log10(efficiency) + 1.0;
       avg_l = -5.26 -2.5*(log_edd_obs+log_bh_mass);
       avg_l = -1.0*avg_l;
-      //bh_merge_rate = log10(bh_merge_rate);
+      bh_merge_rate = log10(bh_merge_rate);
       l_kin = 38.1 + log_bh_mass + eta_kin_avg;
       // bh_unmerged = (bh_unmerged > 0.1 ) ? log10(bh_unmerged) : -1;
       // bh_unmerged = log10(bh_unmerged);

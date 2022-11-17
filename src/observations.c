@@ -1889,7 +1889,6 @@ double cosmic_bh_density(double z, double thresh_ledd, double thresh_lbol, struc
 
     // average BH mass for each halo mass bin, interpolated between two snapshots.
     double bhm = (1.0-f)*steps[step].bh_mass_avg[i] + f*(steps[step+1].bh_mass_avg[i]);
-    if (bhm < 1e7) continue;
     // halo number densities, interpolated between two snapshots.
     double nd = (1.0-f)*steps[step].t[i] + f*(steps[step+1].t[i]);
     double bh_f_occ = (1.0-f)*steps[step].bh_f_occ[i] + f*(steps[step+1].bh_f_occ[i]);

@@ -76,13 +76,13 @@ The file ./bin/mbh_perc_mstar_lbol predicts the 16th, 50th, and 84th percentiles
 
 Below is an example to generate the BHSM relation (including 16th, median, and 84th percentile values) for z=6 quasars brighter than $\log L_\mathrm{bol}>=46.5$, with a 0.5 dex random scatter in observed SMBH mass:
 
-	./bin/mbh_perc_mstar_lbol 6.0 46.5 0.5 ../aux/mf_bolshoi_planck.dat >./bhsm_quasars.dat
+	./bin/mbh_perc_mstar_lbol 6.0 46.5 0.5 ./aux/mf_bolshoi_planck.dat >./bhsm_quasars.dat
 
  
 ### 3. Deviation from the quasar SMBH mass--galaxy mass relation
 The file ./bin/mbh_perc_mstar_lbol_individual calculates the deviation in SMBH mass from the expected quasar BHSM relation, for individual quasars. The usage is as follows: 
 
-	./bin/mbh_perc_mstar_lbol_individual ../aux/mf_bolshoi_planck.dat quasar_catalog.dat >./output.dat
+	./bin/mbh_perc_mstar_lbol_individual ./aux/mf_bolshoi_planck.dat quasar_catalog.dat >./output.dat
  , where quasar_catalog.dat is a catalog of quasars with the following format:
 
  Column 1: redshift

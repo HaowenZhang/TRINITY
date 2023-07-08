@@ -1,25 +1,46 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/param_default.h"
+
+extern double param_default[];
 
 int main(int argc, char **argv)
 {
   float z;
   struct smf_fit the_smf;
   int i;
-  if (argc<2+NUM_PARAMS) {
+  // if (argc<2+NUM_PARAMS) {
+  //   fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
+  //   exit(1);
+  // }
+  if (argc<2) {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    the_smf.params[i] = atof(argv[i+2]);
+
+
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   the_smf.params[i] = atof(argv[i+2]);
+
+  // Read in the model parameter values if provided by the user
+  if (argc >= 2+NUM_PARAMS)
+    for (i=0; i<NUM_PARAMS; i++)
+      the_smf.params[i] = atof(argv[i+2]);
+  // Otherwise use our default values
+  else
+    for (i=0; i<NUM_PARAMS; i++)
+      the_smf.params[i] = param_default[i];
+
+
   the_smf.params[NUM_PARAMS] = 0;
 
   setup_psf(1);

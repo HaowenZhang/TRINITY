@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
-#include "expcache2.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/expcache2.h"
 
 int main(int argc, char **argv)
 {

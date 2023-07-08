@@ -1,14 +1,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
-#include "expcache2.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/expcache2.h"
+#include "../base/param_default.h"
+
+extern double param_default[];
 
 #define UV_START -25 
 #define UV_STOP -15
@@ -17,10 +21,11 @@
 #define MAG_STEP (1.0/(double)MAG_BPMAG)
 
 float integrate_uvlf(float z_low, float z_high, double uv, struct smf_fit *fit) {
-  float uvlf_val, epsilon;
+  // float uvlf_val, epsilon;
+  float uvlf_val;
   double v_high = comoving_volume(z_high);
   double v_low = comoving_volume(z_low);
-  double weight = fabs(v_high - v_low);
+  // double weight = fabs(v_high - v_low);
 
   if (z_low != z_high) {
       uvlf_val = chi2_err_helper_uv((v_high+v_low)/2.0, &uv);
@@ -42,14 +47,30 @@ int main(int argc, char **argv)
   struct smf_fit smfs[4];
   float uvlf_points[4][MAG_BINS];
   int i,j;
-  if (argc<4+NUM_PARAMS) {
+  // if (argc<4+NUM_PARAMS) {
+  //   fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
+  //   exit(1);
+  // }
+  if (argc<4) {
     fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
   z_low = atof(argv[1]);
   z_high = atof(argv[2]);
-  for (i=0; i<NUM_PARAMS; i++)
-    smfs[0].params[i] = atof(argv[i+4]);
+
+
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   smfs[0].params[i] = atof(argv[i+4]);
+
+  // Read in the model parameter values if provided by the user
+  if (argc >= 4+NUM_PARAMS)
+    for (i=0; i<NUM_PARAMS; i++)
+      smfs[0].params[i] = atof(argv[i+4]);
+  // Otherwise use our default values
+  else
+    for (i=0; i<NUM_PARAMS; i++)
+      smfs[0].params[i] = param_default[i];
+
   smfs[0].params[NUM_PARAMS] = 0;
 
   smfs[1] = smfs[2] = smfs[3] = smfs[0];

@@ -1,19 +1,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
-#include "mah.h"
-#include "check_syscalls.h"
-#include "expcache2.h"
-#include "sm_limits.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/mah.h"
+#include "../base/check_syscalls.h"
+#include "../base/expcache2.h"
+#include "../base/sm_limits.h"
+#include "../base/param_default.h"
 
-#define NUM_ZS 9
+extern double param_default[];
+
+#define NUM_ZS 10
 extern int64_t num_outputs;
 extern struct timestep *steps;
 
@@ -81,12 +85,29 @@ int main(int argc, char **argv)
   double smah_mass[16];
   double smah_started[16];
 
-  if (argc<3+NUM_PARAMS) {
+  // if (argc<2+NUM_PARAMS) {
+  //   fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
+  //   exit(1);
+  // }
+
+  if (argc<2) {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    the_smf.params[i] = atof(argv[i+2]);
+
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   the_smf.params[i] = atof(argv[i+2]);
+
+  // Read in the model parameter values if provided by the user
+  if (argc >= 2+NUM_PARAMS)
+    for (i=0; i<NUM_PARAMS; i++)
+      the_smf.params[i] = atof(argv[i+2]);
+  // Otherwise use our default values
+  else
+    for (i=0; i<NUM_PARAMS; i++)
+      the_smf.params[i] = param_default[i];
+
+
   gsl_set_error_handler_off();
   gen_exp10cache();
   setup_psf(1);

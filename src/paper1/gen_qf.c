@@ -1,14 +1,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
-#include "expcache2.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/expcache2.h"
+#include "../base/param_default.h"
+
+extern double param_default[];
 
 #define MASS_START 7
 #define MASS_STOP 12.5
@@ -41,14 +45,32 @@ int main(int argc, char **argv)
   struct smf_fit smfs[4];
   float qf_points[4][MASS_BINS];
   int i,j;
-  if (argc<4+NUM_PARAMS) {
+  // if (argc<4+NUM_PARAMS) {
+  //   fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
+  //   exit(1);
+  // }
+  if (argc<4) {
     fprintf(stderr, "Usage: %s z_low z_high mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
   z_low = atof(argv[1]);
   z_high = atof(argv[2]);
-  for (i=0; i<NUM_PARAMS; i++)
-    smfs[0].params[i] = atof(argv[i+4]);
+
+
+
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   smfs[0].params[i] = atof(argv[i+4]);
+
+  // Read in the model parameter values if provided by the user
+  if (argc >= 4+NUM_PARAMS)
+    for (i=0; i<NUM_PARAMS; i++)
+      smfs[0].params[i] = atof(argv[i+4]);
+  // Otherwise use our default values
+  else
+    for (i=0; i<NUM_PARAMS; i++)
+      smfs[0].params[i] = param_default[i];
+
+
   smfs[0].params[NUM_PARAMS] = 0;
 
   smfs[1] = smfs[2] = smfs[3] = smfs[0];

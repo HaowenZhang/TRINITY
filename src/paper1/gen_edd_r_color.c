@@ -1,16 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "observations.h"
-#include "smf.h"
-#include "all_smf.h"
-#include "distance.h"
-#include "integrate.h"
-#include "mlist.h"
-#include "calc_sfh.h"
-#include "expcache2.h"
-#include "universe_time.h"
-//#include "fitter.h"
+#include <gsl/gsl_errno.h>
+#include "../base/observations.h"
+#include "../base/smf.h"
+#include "../base/all_smf.h"
+#include "../base/distance.h"
+#include "../base/integrate.h"
+#include "../base/mlist.h"
+#include "../base/calc_sfh.h"
+#include "../base/expcache2.h"
+#include "../base/universe_time.h"
+#include "../base/param_default.h"
+
+extern double param_default[];
 
 #define INTERP(y,x) { double s1, s2; s1 = (1.0-f)*steps[i].x[j]+f*steps[i+1].x[j];     \
     s2 = (1.0-f)*steps[i].x[j+1]+f*steps[i+1].x[j+1];			               \
@@ -44,12 +47,27 @@ int main(int argc, char **argv)
 {
   int64_t i;
   struct smf_fit smf;
-  if (argc<2+NUM_PARAMS) {
+  // if (argc<2+NUM_PARAMS) {
+  //   fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
+  //   exit(1);
+  // }
+  if (argc<2) {
     fprintf(stderr, "Usage: %s mass_cache (mcmc output)\n", argv[0]);
     exit(1);
   }
-  for (i=0; i<NUM_PARAMS; i++)
-    smf.params[i] = atof(argv[i+2]);
+
+  // for (i=0; i<NUM_PARAMS; i++)
+  //   smf.params[i] = atof(argv[i+2]);
+
+  // Read in the model parameter values if provided by the user
+  if (argc >= 2+NUM_PARAMS)
+    for (i=0; i<NUM_PARAMS; i++)
+      smf.params[i] = atof(argv[i+2]);
+  // Otherwise use our default values
+  else
+    for (i=0; i<NUM_PARAMS; i++)
+      smf.params[i] = param_default[i];
+
   assert_model(&smf);
   gsl_set_error_handler_off();
   nonlinear_luminosity = 1;
@@ -77,7 +95,7 @@ int main(int argc, char **argv)
     i = t;
     double f = t-i;
     double zp1 = (1.0-f)/steps[i].scale + f/steps[i+1].scale;
-    double mu = (1.0 - f) * steps[i].smhm.mu + f * steps[i].smhm.mu;
+    // double mu = (1.0 - f) * steps[i].smhm.mu + f * steps[i].smhm.mu;
     double z = zp1 - 1;
     double mass_real = 13.5351-0.23712*z+2.0187*exp(-z/4.48394);
     for (m=8; m<15; m+=0.05) {

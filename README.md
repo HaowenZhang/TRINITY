@@ -1,11 +1,15 @@
 # TRINITY
 TRINITY is an empirical model that statistically connects dark matter halos, galaxies and supermassive black holes (SMBHs) from z=0-10. Constrained by multiple galaxy (0<z<10) and SMBH datasets (0<z<6.5), TRINITY finds the posterior probability distributions of the halo--galaxy--SMBH connection and SMBH properties, all of which are allowed to evolve with redshift.
 
-Most code: Copyright (C)2018-2021 Haowen Zhang
+Most code: Copyright (C)2018-2023 Haowen Zhang
 
 License: GNU GPLv3
 
-Science/Documentation Paper: https://arxiv.org/abs/2105.10474
+TRINITY Papers:
+1. Methodology/Documentation Paper (Paper I): https://doi.org/10.1093/mnras/stac2633
+2. Prediction: AGN luminosity-dependent bias in the SMBH mass--galaxy mass relation at z=6 (Paper II): https://doi.org/10.1093/mnrasl/slad060
+3. Prediction: AGN luminosity functions contributed by different halo/galaxy/SMBH populations from z=0-10 (Paper III): https://ui.adsabs.harvard.edu/abs/2023arXiv230519315Z/abstract
+
 
 ## 1. Prerequisites
 This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:

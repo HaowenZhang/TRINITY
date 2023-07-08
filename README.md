@@ -7,28 +7,30 @@ License: GNU GPLv3
 
 Science/Documentation Paper: https://arxiv.org/abs/2105.10474
 
-## Prerequisites
+## 1. Prerequisites
 This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:
 
 $GSL_INCLUDE=/your/path/to/gsl/include
 
 $GSL_LIB=/your/path/to/gsl/lib
 
-## Installation
+Alternatively, the users can also modify the $GSL_FLAG variable in Makefile to include these dependencies.
+
+## 2. Installation
 TRINITY comes with a Makefile, so user can use the "make" command to compile the whole project. Alternatively, users can use target names specified in the Makefile to specifically produce the corresponding executables. For example, if one wants to compile the code to predict quasar luminosity functions (QLFs) only, there is a target in the Makefile as follows:
 
 
 qlf:
 	
-$(CC) $(BASE_FILES) gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o gen_qlf
+	$(CC) $(BASE_FILES) $(DIR_PAPER1)/gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(DIR_BIN)/gen_qlf
   
 So they can use the command "make qlf" to compile gen_qlf.c and produce gen_qlf, without having to compile the entire project.
 
-## Roadmap
+## 3. Roadmap
 After successful compilation, multiple binary executables will be produced:
 
-1. TRINITY/src/fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
-2. TRINITY/src/all_smf_mcmc is used for performing Markov Chain Monte Carlo (MCMC);
+1. TRINITY/bin/fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
+2. TRINITY/bin/all_smf_mcmc is used for performing Markov Chain Monte Carlo (MCMC);
 3. Other files, e.g., gen_smf and gen_edd_r_color, are used for predicting galaxy and SMBH properties based on input model parameters. For the purpose of each executables, please see the comments in their corresponding c codes.
 
 ## Renerating Predictions Based on Model Parameters
@@ -60,3 +62,40 @@ Here, several numerical flags are set (1 1 1 1 1 0 0). For the meaning of each f
 OMP_NUM_THREADS=16 ../src/all_smf_mcmc 1 1 1 1 1 0 0 ../aux/mf_bolshoi_planck.dat ../obs/Kelly_BHMF_TypeI/\*.bhmf_typei ../obs/\*.\* ../obs/Ueda_QLF_CTK/\*.qlf ../obs/Aird_qpdf_no_high/\*no_highest_0.3dex.qpdf ../obs/qf/\*.qf ../obs/uvlf/new/\*.uvlf < ../mcmc_runs/fit_final_eff_z.dat > ../mcmc_runs/all_final_eff_z.dat 2> ../mcmc_runs/burn_in_final_eff_z.dat
 
 The format is very similar to the model fitting case.
+
+## TRINITY Paper II: Predicting the AGN luminosity-dependent bias in the SMBH mass--galaxy mass relation
+
+### 1. Compilation
+In ./src/, users can use the command "make paper2_plots" to compile the codes to reproduce Figs. 1-2 of TRINITY Paper II (https://doi.org/10.1093/mnrasl/slad060). The compiled binary files are stored in ./bin/ . 
+
+### 2. Luminosity-dependent SMBH mass--galaxy mass relation (BHSM) as a function of redshift and lower limit in AGN bolometric luminosity
+The file ./bin/mbh_perc_mstar_lbol predicts the 16th, 50th, and 84th percentiles of SMBH mass as a function of galaxy stellar mass and redshift for AGNs/quasars above certain bolometric luminosities. The usage is as follows: 
+
+	./bin/mbh_perc_mstar_lbol z log(lbol_min) sigma_mbh mf_cache >./output.dat
+, where z is the redshift, log(lbol_min[erg/s]) is the log10 of the lower limit in AGN bolometric luminosity, and sigma_mbh is the random scatter in the log10 of observed SMBH mass around the intrinsic value. Typically, 0.5 dex is adopted for virial estimates. mf_cache is a file containing cached halo mass functions (HMFs) that are pre-calculated based on dark matter N-body simulations. We also included the cached HMF file we used in this repository: ./aux/mf_bolshoi_planck.dat.
+
+Below is an example to generate the BHSM relation (including 16th, median, and 84th percentile values) for z=6 quasars brighter than $\log L_\mathrm{bol}>=46.5$, with a 0.5 dex random scatter in observed SMBH mass:
+
+	./bin/mbh_perc_mstar_lbol 6.0 46.5 0.5 ./aux/mf_bolshoi_planck.dat >./bhsm_quasars.dat
+
+ 
+### 3. Deviation from the quasar SMBH mass--galaxy mass relation
+The file ./bin/mbh_perc_mstar_lbol_individual calculates the deviation in SMBH mass from the expected quasar BHSM relation, for individual quasars. The usage is as follows: 
+
+	./bin/mbh_perc_mstar_lbol_individual ./aux/mf_bolshoi_planck.dat quasar_catalog.dat >./output.dat
+ , where quasar_catalog.dat is a catalog of quasars with the following format:
+
+ Column 1: redshift
+ 
+ Column 2: log10 of SMBH mass [Msun]
+ 
+ Column 3: log10 of galaxy mass [Msun]
+ 
+ Column 4: log10 of AGN bolometric luminosity [erg/s]
+
+ Column 5: uncertainty in SMBH mass [dex]
+
+The first four(4) columns of output.dat will be the same as quasar_catalog.dat, but the fifth column will contain the deviation in SMBH mass from the expected quasar BHSM relation AT each quasar/AGN's bolometric luminosity. NOTE the difference from ./mbh_perc_mstar_lbol, which calculates BHSM relations ABOVE a certain luminosity. For the full details between these two calculations, we refer readers to 
+	
+ 	./src/paper2/mbh_perc_mstar_lbol(_individual).c.
+

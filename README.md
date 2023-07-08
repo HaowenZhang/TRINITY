@@ -1,11 +1,15 @@
 # TRINITY
 TRINITY is an empirical model that statistically connects dark matter halos, galaxies and supermassive black holes (SMBHs) from z=0-10. Constrained by multiple galaxy (0<z<10) and SMBH datasets (0<z<6.5), TRINITY finds the posterior probability distributions of the halo--galaxy--SMBH connection and SMBH properties, all of which are allowed to evolve with redshift.
 
-Most code: Copyright (C)2018-2021 Haowen Zhang
+Most code: Copyright (C)2018-2023 Haowen Zhang
 
 License: GNU GPLv3
 
-Science/Documentation Paper: https://arxiv.org/abs/2105.10474
+TRINITY Papers:
+1. Methodology/Documentation Paper (Paper I): https://doi.org/10.1093/mnras/stac2633
+2. Prediction: AGN luminosity-dependent bias in the SMBH mass--galaxy mass relation at z=6 (Paper II): https://doi.org/10.1093/mnrasl/slad060
+3. Prediction: AGN luminosity functions contributed by different halo/galaxy/SMBH populations from z=0-10 (Paper III): https://ui.adsabs.harvard.edu/abs/2023arXiv230519315Z/abstract
+
 
 ## 1. Prerequisites
 This project requires OpenMP and GSL. The users should specify the path to GSL by setting up environmental variables $GSL_INCLUDE and $GSL_LIB:
@@ -17,16 +21,21 @@ $GSL_LIB=/your/path/to/gsl/lib
 Alternatively, the users can also modify the $GSL_FLAG variable in Makefile to include these dependencies.
 
 ## 2. Installation
-TRINITY comes with a Makefile, so user can use the "make" command to compile the whole project. Alternatively, users can use target names specified in the Makefile to specifically produce the corresponding executables. For example, if one wants to compile the code to predict quasar luminosity functions (QLFs) only, there is a target in the Makefile as follows:
-
-
-qlf:
+TRINITY comes with a Makefile (TRINITY/src/Makefile), so user can use the "make" command to compile the whole project. Alternatively, users can use target names specified in the Makefile to specifically produce the corresponding executables. For example, if one wants to compile the code to generate plots in Paper I, there is a target (i.e., named groups of codes to be compiled) called paper1_plots. To compile these codes only, users can simply execute the following command:
 	
-	$(CC) $(BASE_FILES) $(DIR_PAPER1)/gen_qlf.c sm_limits.c $(CFLAGS) $(EXTRA_FLAGS) -DGEN_SMF -o $(DIR_BIN)/gen_qlf
+	make paper1_plots
   
-So they can use the command "make qlf" to compile gen_qlf.c and produce gen_qlf, without having to compile the entire project.
+. For the full list and content of all the compiling targets, please see TRINITY/src/Makefile.
 
 ## 3. Roadmap
+1. TRINITY/src contains the source codes of TRINITY:
+2. TRINITY/src/base contains the basic utility codes that are used in all fitting, MCMC, and prediction codes;
+3. TRINITY/src/fitting_mcmc contains the codes to run gradient descent optimization of model parameters (the code to run MCMC is all_smf.c, which is in TRINITY/src/base);
+4. TRINITY/src/paper1 contains the codes to generate the plots in Paper I;
+5. TRINITY/src/paper2 contains the codes to generate the plots in Paper II;
+6. The codes to generate plots for future papers will be added to the repository upon the acceptance of those papers.
+
+
 After successful compilation, multiple binary executables will be produced:
 
 1. TRINITY/bin/fitter is used for finding the best fitting parameter using a iterative gradient descent algorithm;
@@ -36,17 +45,17 @@ After successful compilation, multiple binary executables will be produced:
 ## Renerating Predictions Based on Model Parameters
 TRINITY is able to are predict many observational data (e.g., galaxy stellar mass functions and quasar luminosity functions) and underlying galaxy and SMBH properties (e.g., SMBH Eddington average Eddington ratios). These predictions are made by different code files like gen_smf.c, gen_qlf.c, gen_edd_r_color.c, etc.. There are broadly two types of ''prediction'' codes: the first type generate observable data given input redshift or redshift invertals like gen_smf.c and gen_qlf.c; the second type generates galaxy or SMBH properties as a function of host halo mass and redshift, like gen_edd_r_color.c.
 
-### Predictions of Observables Such As Galaxy Stellar Mass Functions and Quasar Luminosity Functions (Figs. 3-9 of Zhang et al. 2021)
+### Predictions of Observables Such As Galaxy Stellar Mass Functions and Quasar Luminosity Functions (Figs. 3-9 of Paper I)
 Below is how to generate quasar luminosity functions with gen_qlf:
 
-./gen_qlf z mass_cache param_file > qlf.dat
+./gen_qlf z mass_cache > qlf.dat
 
-Here, z is the input redshift at which the quasar luminosity function will be calculated, and mass_cache is the file containing the cached halo mass functions (we used TRINITY/aux/mf_bolshoi_planck.dat in Zhang et al. 2021). param_file is the file containing the model parameters, e.g., TRINITY/aux/best_fit_final_eff_z.dat. qlf.dat is the output file containing the predicted quasar luminosity function.
+Here, z is the input redshift at which the quasar luminosity function will be calculated, and mass_cache is the file containing the cached halo mass functions (we used TRINITY/aux/mf_bolshoi_planck.dat in Zhang et al. 2021). qlf.dat is the output file containing the predicted quasar luminosity function. Unless otherwise noted, the default model parameters used in such calculations are the best-fitting values of the fiducial TRINITY model (see Paper I and the erratum), which can be found in TRINITY/src/base/params_default.h.
 
-### Predictions of Galaxy and SMBH Properties as Functions of Halo Mass and Redshift (Figs. 15-19, 23 of Zhang et al. 2021)
+### Predictions of Galaxy and SMBH Properties as Functions of Halo Mass and Redshift (Figs. 15-19, 23 of Paper I)
 Below is how to predict galaxy and SMBH properties as functions of halo mass and redshift with codes with gen_edd_r_color:
 
-./gen_edd_r_color mass_cache param_file > properties.dat.
+./gen_edd_r_color mass_cache > properties.dat.
 
 The required inputs are similar to the usage of gen_qlf except for the redshift.
 
@@ -82,8 +91,8 @@ Below is an example to generate the BHSM relation (including 16th, median, and 8
 ### 3. Deviation from the quasar SMBH mass--galaxy mass relation
 The file ./bin/mbh_perc_mstar_lbol_individual calculates the deviation in SMBH mass from the expected quasar BHSM relation, for individual quasars. The usage is as follows: 
 
-	./bin/mbh_perc_mstar_lbol_individual ./aux/mf_bolshoi_planck.dat quasar_catalog.dat >./output.dat
- , where quasar_catalog.dat is a catalog of quasars with the following format:
+	./bin/mbh_perc_mstar_lbol_individual mf_cache quasar_catalog >./output.dat
+ , where quasar_catalog is a (text file, not binary) catalog of quasars with the following format:
 
  Column 1: redshift
  

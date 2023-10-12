@@ -1,0 +1,38 @@
+#Host dark matter halo mass functions for z=0 descendants of supermassive black holes
+#with intrinsic (Column 1)/observed (Column 2) masses above 10^7 Msun at z=9 (like CEERS_1019), from TRINITY PaperIV (arXiv:2309.07210)
+#Note: The halo mass used here are the peak masses across the
+#assembly histories (up to the redshifts where the halo mass function is calculated),
+#which is more robust against halo mass loss due to tidal stripping.
+#Whenever applicable, the uncertainty in observed black hole mass is set to 0.5 dex.
+#z: 0.00
+#log10(Mpeak [Msun]) log10(HMF_int [Mpc^-3 dex^-1]) log10(HMF_obs [Mpc^-3 dex^-1])
+13.050000 -8.026436 -7.598495
+13.150000 -7.832521 -7.412453
+13.250000 -7.731644 -7.349046
+13.350000 -7.488358 -7.177213
+13.450000 -7.360500 -7.075167
+13.550000 -7.327122 -7.022681
+13.650000 -7.218481 -6.957567
+13.750000 -7.073071 -6.867811
+13.850000 -7.009094 -6.811844
+13.950000 -6.870029 -6.732939
+14.050000 -6.890056 -6.733938
+14.150000 -6.936753 -6.797942
+14.250000 -6.983706 -6.826343
+14.350000 -6.990811 -6.846175
+14.450000 -6.963067 -6.848697
+14.550000 -7.096468 -6.973926
+14.650000 -7.115585 -7.019867
+14.750000 -7.343944 -7.201267
+14.850000 -7.370260 -7.255610
+14.950000 -7.517846 -7.416754
+15.050000 -7.739196 -7.648539
+15.150000 -7.756287 -7.696606
+15.250000 -8.103712 -8.041824
+15.350000 -8.162708 -8.056361
+15.450000 -8.532191 -8.484614
+15.550000 -11.142043 -10.133624
+15.650000 -inf -inf
+15.750000 -18.978165 -14.198073
+15.850000 -inf -inf
+15.950000 -inf -inf

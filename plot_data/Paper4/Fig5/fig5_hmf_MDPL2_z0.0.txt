@@ -1,0 +1,37 @@
+#Dark matter halo mass functions from the MultiDark-Planck2 (MDPL2) simulations
+#Ref.: Klypin et al. (2016), https://arxiv.org/pdf/1411.4001v2.pdf
+#Note: The halo mass used here are the peak masses across the
+#assembly histories (up to the redshifts where the halo mass function is calculated),
+#which is more robust against halo mass loss due to tidal stripping.
+#z: 0.00
+#log10(Mpeak [Msun]) log10(HMF [Mpc^-3 dex^-1])
+13.050000 -5.273500
+13.150000 -5.372083
+13.250000 -5.470969
+13.350000 -5.569199
+13.450000 -5.671699
+13.550000 -5.776062
+13.650000 -5.884532
+13.750000 -5.994054
+13.850000 -6.110077
+13.950000 -6.221001
+14.050000 -6.347165
+14.150000 -6.468168
+14.250000 -6.604090
+14.350000 -6.742584
+14.450000 -6.881616
+14.550000 -7.043314
+14.650000 -7.216054
+14.750000 -7.404908
+14.850000 -7.596755
+14.950000 -7.843553
+15.050000 -8.029190
+15.150000 -8.392368
+15.250000 -8.673802
+15.350000 -8.807341
+15.450000 -9.392368
+15.550000 -9.603221
+15.650000 -inf
+15.750000 -10.506311
+15.850000 -inf
+15.950000 -inf

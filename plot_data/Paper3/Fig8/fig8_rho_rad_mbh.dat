@@ -1,7 +1,7 @@
 #Cosmic AGN radiative luminosity density as a function of redshift,
 #including total density and densities in different SMBH mass bins
 #(best-fitting model, 16th, and 84th percentile values).
-#These data are used make Fig. 8 (Top Panel) from TRINITY PaperIII ( arXiv:2305.19315)
+#These data are used make Fig. 8 (Top Panel) from TRINITY PaperIII (arXiv:2305.19315)
 #z log10(rho_rad_tot [erg/s/Mpc^3]) log10(rho_rad_tot_16 [erg/s/Mpc^3]) log10(rho_rad_tot_84 [erg/s/Mpc^3]) log10(rho_rad(6<log10Mbh<7) [erg/s/Mpc^3]) log10(rho_rad(6<log10Mbh<7)_16 [erg/s/Mpc^3]) log10(rho_rad(6<log10Mbh<7)_84 [erg/s/Mpc^3]) log10(rho_rad(7<log10Mbh<8) [erg/s/Mpc^3]) log10(rho_rad(7<log10Mbh<8)_16 [erg/s/Mpc^3]) log10(rho_rad(7<log10Mbh<8)_84 [erg/s/Mpc^3]) log10(rho_rad(8<log10Mbh<9) [erg/s/Mpc^3]) log10(rho_rad(8<log10Mbh<9)_16 [erg/s/Mpc^3]) log10(rho_rad(8<log10Mbh<9)_84 [erg/s/Mpc^3]) log10(rho_rad(9<log10Mbh<10) [erg/s/Mpc^3]) log10(rho_rad(9<log10Mbh<10)_16 [erg/s/Mpc^3]) log10(rho_rad(9<log10Mbh<10)_84 [erg/s/Mpc^3])
 15.000000 -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf -inf
 14.754081 34.198028 32.528022 31.920732 33.314296 33.189053 32.423979 34.086234 33.675491 32.797686 34.643174 33.672461 32.385789 34.974218

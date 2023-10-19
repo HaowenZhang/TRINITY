@@ -1,5 +1,5 @@
 #Active fraction (Eddington ratio above 10%) of SMBHs as a function
-#of peak halo mass and redshift from TRINITY.
+#of peak halo mass and redshift from TRINITY (see Fig. 9 of PaperIII, arXiv:2305.19315).
 #Note: The halo mass used here are the peak masses across the
 #assembly histories (up to the redshifts where the halo mass function is calculated),
 #which is more robust against halo mass loss due to tidal stripping.

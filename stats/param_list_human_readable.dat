@@ -1,0 +1,57 @@
+# The list of model parameters shown in the correlation map from the latest TRINITY model.
+# line numbers | column numbers in the down-sampled MCMC chain | parameter name/symbols
+0 0 $\epsilon_0$
+1 1 $\epsilon_a$
+2 2 $\epsilon_{z1}$
+3 3 $\epsilon_{z2}$
+4 4 $V_0$
+5 5 $V_a$
+6 6 $V_{z1}$
+7 7 $V_{z2}$
+8 8 $\alpha_0$
+9 9 $\alpha_a$
+10 10 $\alpha_{z1}$
+11 11 $\alpha_{z2}$
+12 12 $\beta_0$
+13 13 $\beta_a$
+14 14 $\beta_z$
+15 19 $\sigma_*$
+16 22 $f_\mathrm{merge}$
+17 26 $v_{\mathrm{Q}, 0}$
+18 27 $v_{\mathrm{Q}, a}$
+19 28 $v_{\mathrm{Q}, z}$
+20 29 $w_{\mathrm{Q}, 0}$
+21 30 $w_{\mathrm{Q}, a}$
+22 31 $w_{\mathrm{Q}, z}$
+23 36 $f_{\mathrm{occ,min},0}$
+24 37 $f_{\mathrm{occ,min},a}$
+25 32 $M_{\mathrm{h,c},0}$
+26 33 $M_{\mathrm{h,c},a}$
+27 34 $w_{\mathrm{h,c},0}$
+28 35 $w_{\mathrm{h,c},a}$
+29 38 $\beta_\mathrm{BH,0}$
+30 39 $\beta_{\mathrm{BH},a}$
+31 40 $\beta_{\mathrm{BH},z}$
+32 41 $\gamma_\mathrm{BH,0}$
+33 42 $\gamma_{\mathrm{BH},a}$
+34 43 $\gamma_{\mathrm{BH},z}$
+35 44 $\sigma_\mathrm{BH}$
+36 46 $f_\mathrm{scale,0}$
+37 47 $f_{\mathrm{scale},a}$
+38 50 $c_{1,0}$
+39 51 $c_{1,a}$
+40 52 $c_{2,0}$
+41 53 $c_{2,a}$
+42 54 $c_{2,z}$
+43 55 $M_{duty,0}$
+44 56 $M_{duty,z}$
+45 57 $\alpha_{duty,0}$
+46 58 $\alpha_{duty,z}$
+47 62 $\epsilon_\mathrm{tot,0}$
+48 15 $\mu_0$
+49 16 $\mu_a$
+50 17 $\kappa_0$
+51 21 $\sigma_z$
+52 25 $\rho_{0.5}$
+53 64 $\xi$
+54 67 $\chi^2$

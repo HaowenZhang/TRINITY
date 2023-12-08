@@ -1,0 +1,16 @@
+Descriptions of the files in TRINITY/stats:
+1. best_fit.dat: the best-fitting parameter values from the latest TRINITY model (https://arxiv.org/abs/2305.19315, https://arxiv.org/abs/2309.07210), including the chi^2. Note that only 54 out of the 67 model parameters are used in TRINITY. See below for the list of actually used parameters.
+
+2. down_sampled_chain.dat: the down-sampled (4 million steps -> 1024 random steps) MCMC chain from the latest TRINITY model
+
+3. param_list_human_readable.dat: the list of actually used TRINITY model parameters, and their indices in the parameter vectors in best_fit.dat and down_sampled_chain.dat.
+
+4. ParamCorrelations.pdf: The absolute value of the correlation coefficients between each model parameter pair, shown as a 2D heat map. darker shades indicates stronger correlation (either positive or negative).
+
+5. CornerPlot.pdf: The corner plot for all model parameter pairs.
+
+Notes about the model parameter degeneracies:
+
+1. Naturally, there are degeneracies between different redshift evolution terms of the same model parameter, because each of them can compensate the behaviors of other terms in certain redshift ranges. But at the end of the day, what really matters is the combined redshift evolution  (i.e., adding up all the terms) of the model parameters, which are well constrained by observed data. 
+
+2. Aside from the degeneracies between different redshift evolution terms of the same model parameter, the only major degeneracy is the one between the local normalization of the black hole mass—bulge mass relation (beta_BH0, median mass), the intrinsic random scatter around this relation (sigma_BH), and the AGN efficiency (epsilon_tot). This is because we are effectively using the Soltan argument when forward modeling AGN luminosities: more BH mass in the local Universe entails a lower AGN efficiency with fixed input AGN lumosity data. sigma_BH is also partly constrained by Soltan argument, because a larger scatter in a log-normal BH mass distribution leads to a higher average BH mass compared to median mass, and thus more BH mass in the local Universe.

@@ -53,12 +53,7 @@ int main(int argc, char **argv)
   double f;
   calc_step_at_z(z, &step, &f);
   
-  // printf("#double power-law norm: %e\n", doublePL_norm(-0.6, -10, 2, NULL));
-  // printf("#Schechter avg: %e\n", schechter_inv_avg(-0.6, -10, 2, NULL));
-  // printf("#double power-law norm: %e\n", doublePL_norm(-0.6, -4, 2, NULL));
-  // printf("#Schechter avg: %e\n", schechter_inv_avg(-0.6, -4, 2, NULL));
-  printf("#BH_Alpha: %f\n", steps[step].smhm.bh_alpha);
-  printf("#BH_delpha: %f\n", steps[step].smhm.bh_delta);
+
   double s1 = steps[step].smhm.scatter;
   double s2 = steps[step].smhm.bh_scatter;
   double s = sqrt(s1*s1+s2*s2);

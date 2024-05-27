@@ -64,7 +64,7 @@ int main(int argc, char **argv)
   double s = sqrt(s1*s1+s2*s2);
   printf("#BH_Scatter at fixed mass: %f\n", s);
   printf("#BH_Mass ND ND(Active)\n");
-  fprintf(stderr, "Mbh Mh Mbh_med scatter ND f_active\n");
+  fprintf(stderr, "Mbh Mh Mbh_med scatter ND ND_active\n");
   // FILE * pfile;
   // pfile = fopen('./ABHMF_check.txt', 'w');
   // fprintf(pfile, "Mbh Mh ND f_active\n");
